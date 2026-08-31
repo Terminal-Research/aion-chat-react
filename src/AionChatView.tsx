@@ -16,6 +16,7 @@ import type {
 import { AionChatTranscript } from "./AionChatTranscript";
 import type { AionChatMessageProps } from "./AionChatMessage";
 import type { AionChatArtifactProps } from "./AionChatArtifact";
+import type { AionChatMarkdownComponent } from "./AionChatMarkdown";
 import { useAionChat } from "./hooks";
 
 /** Typed replacement components accepted by the inline chat view. */
@@ -24,6 +25,7 @@ export interface AionChatViewSlots {
   readonly artifact?: ComponentType<AionChatArtifactProps>;
   readonly emptyState?: ComponentType<AionChatEmptyStateProps>;
   readonly composer?: ComponentType<AionChatComposerProps>;
+  readonly markdown?: AionChatMarkdownComponent;
 }
 
 /** Props for the transport-backed inline chat surface. */
@@ -67,6 +69,7 @@ export function AionChatView({
         messageComponent={slots.message}
         artifactComponent={slots.artifact}
         emptyStateComponent={slots.emptyState}
+        markdownComponent={slots.markdown}
       />
       {runStatus === "input-required" && (
         <p className="aion-chat__status" role="status">

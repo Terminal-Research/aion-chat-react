@@ -5,16 +5,22 @@
  */
 import type { HTMLAttributes } from "react";
 
+import {
+  AionChatMarkdown,
+  type AionChatMarkdownComponent,
+} from "./AionChatMarkdown";
 import type { ChatMessage, ChatPart } from "./model";
 
 /** Props for the default typed-part renderer. */
 export interface AionChatPartsProps {
   readonly parts: readonly ChatPart[];
+  readonly textComponent?: AionChatMarkdownComponent;
 }
 
 /** Props supplied to a transcript message slot. */
 export interface AionChatMessageProps extends HTMLAttributes<HTMLDivElement> {
   readonly message: ChatMessage;
+  readonly markdownComponent?: AionChatMarkdownComponent;
 }
 
 function safeFileUrl(url: string | undefined): string | undefined {
@@ -43,10 +49,18 @@ function renderData(data: unknown): string {
   }
 }
 
-function renderPart(part: ChatPart, index: number) {
+function renderPart(
+  part: ChatPart,
+  index: number,
+  TextComponent?: AionChatMarkdownComponent,
+) {
   switch (part.type) {
     case "text":
-      return <span key={index}>{part.text}</span>;
+      return TextComponent ? (
+        <TextComponent key={index} text={part.text} />
+      ) : (
+        <span key={index}>{part.text}</span>
+      );
     case "file": {
       const url = safeFileUrl(part.file.url);
       return url ? (
@@ -63,13 +77,18 @@ function renderPart(part: ChatPart, index: number) {
 }
 
 /** Renders normalized text, file, and structured-data parts safely. */
-export function AionChatParts({ parts }: AionChatPartsProps) {
-  return <>{parts.map(renderPart)}</>;
+export function AionChatParts({ parts, textComponent }: AionChatPartsProps) {
+  return (
+    <>
+      {parts.map((part, index) => renderPart(part, index, textComponent))}
+    </>
+  );
 }
 
 /** Default safe, non-Markdown presentation for one normalized message. */
 export function AionChatMessage({
   message,
+  markdownComponent = AionChatMarkdown,
   className,
   ...props
 }: AionChatMessageProps) {
@@ -81,7 +100,12 @@ export function AionChatMessage({
   return (
     <div className={classes.join(" ")} data-message-role={message.role} {...props}>
       <div className="aion-chat__message-content">
-        <AionChatParts parts={message.parts} />
+        <AionChatParts
+          parts={message.parts}
+          textComponent={
+            message.role === "assistant" ? markdownComponent : undefined
+          }
+        />
       </div>
     </div>
   );

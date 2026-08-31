@@ -76,3 +76,14 @@ export type {
 export { AionChatEmptyState, AionChatTranscript } from "./AionChatTranscript";
 export type { AionChatViewProps, AionChatViewSlots } from "./AionChatView";
 export { AionChatView } from "./AionChatView";
+export type {
+  AionChatMarkdownComponent,
+  AionChatMarkdownProps,
+} from "./AionChatMarkdown";
+export { AionChatMarkdown } from "./AionChatMarkdown";
+export type {
+  AionChatThemeProps,
+  AionChatThemeStyle,
+} from "./AionChatTheme";
+export { AionChatTheme } from "./AionChatTheme";
+export { useAionChatPortalContainer } from "./useAionChatTheme";

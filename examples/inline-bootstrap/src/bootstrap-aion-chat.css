@@ -1,0 +1,46 @@
+.aion-chat-bootstrap-theme {
+  --aion-chat-font-family: var(
+    --ins-body-font-family,
+    var(--bs-body-font-family)
+  );
+  --aion-chat-font-size: var(--ins-body-font-size, var(--bs-body-font-size));
+  --aion-chat-line-height: var(
+    --ins-body-line-height,
+    var(--bs-body-line-height)
+  );
+  --aion-chat-color-background: var(--ins-body-bg, var(--bs-body-bg));
+  --aion-chat-color-surface: var(
+    --ins-tertiary-bg,
+    var(--bs-tertiary-bg)
+  );
+  --aion-chat-color-surface-emphasis: var(
+    --ins-secondary-bg,
+    var(--bs-secondary-bg)
+  );
+  --aion-chat-color-text: var(--ins-body-color, var(--bs-body-color));
+  --aion-chat-color-muted: var(
+    --ins-secondary-color,
+    var(--bs-secondary-color)
+  );
+  --aion-chat-color-border: var(
+    --ins-border-color,
+    var(--bs-border-color)
+  );
+  --aion-chat-color-accent: var(--ins-primary, var(--bs-primary));
+  --aion-chat-color-accent-contrast: var(--ins-white, var(--bs-white));
+  --aion-chat-color-danger: var(--ins-danger, var(--bs-danger));
+  --aion-chat-color-code: var(--ins-code-color, var(--bs-code-color));
+  --aion-chat-radius: var(
+    --ins-border-radius-lg,
+    var(--bs-border-radius-lg)
+  );
+  --aion-chat-radius-small: var(
+    --ins-border-radius,
+    var(--bs-border-radius)
+  );
+  --aion-chat-shadow: var(--ins-box-shadow, var(--bs-box-shadow));
+  --aion-chat-focus-ring: 0 0 0 var(
+      --ins-focus-ring-width,
+      var(--bs-focus-ring-width)
+    ) var(--ins-focus-ring-color, var(--bs-focus-ring-color));
+}

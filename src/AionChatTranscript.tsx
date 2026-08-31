@@ -14,6 +14,7 @@ import {
 
 import { AionChatMessage, type AionChatMessageProps } from "./AionChatMessage";
 import { AionChatArtifact, type AionChatArtifactProps } from "./AionChatArtifact";
+import type { AionChatMarkdownComponent } from "./AionChatMarkdown";
 import type { ChatArtifact, ChatMessage } from "./model";
 
 /** One fully resolved item rendered by the transcript. */
@@ -34,6 +35,7 @@ export interface AionChatTranscriptProps
   readonly messageComponent?: ComponentType<AionChatMessageProps>;
   readonly artifactComponent?: ComponentType<AionChatArtifactProps>;
   readonly emptyStateComponent?: ComponentType<AionChatEmptyStateProps>;
+  readonly markdownComponent?: AionChatMarkdownComponent;
 }
 
 /** Default empty state shown before a conversation begins. */
@@ -62,6 +64,7 @@ export function AionChatTranscript({
   messageComponent: MessageComponent = AionChatMessage,
   artifactComponent: ArtifactComponent = AionChatArtifact,
   emptyStateComponent: EmptyStateComponent = AionChatEmptyState,
+  markdownComponent,
   className,
   ...props
 }: AionChatTranscriptProps) {
@@ -117,11 +120,13 @@ export function AionChatTranscript({
               <MessageComponent
                 key={`message:${entry.message.id}`}
                 message={entry.message}
+                markdownComponent={markdownComponent}
               />
             ) : (
               <ArtifactComponent
                 key={`artifact:${entry.artifact.id}`}
                 artifact={entry.artifact}
+                markdownComponent={markdownComponent}
               />
             ),
           )

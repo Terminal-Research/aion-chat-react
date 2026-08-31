@@ -535,6 +535,8 @@ multiple repositories, use
 
 ### Subtask D — Build the inline chat interface (status: done)
 
+- Commit ID (aion-chat-react): `8126859`
+
 - Selectively adapt CopilotKit's controlled chat-view structure to the Aion
   model and controller contracts.
 - Implement the minimum transcript and composer behavior needed to send, stop,
@@ -544,7 +546,7 @@ multiple repositories, use
 - Add a small Vite fixture that consumes the packed library through its public
   exports.
 
-### Subtask E — Establish safe Markdown and the shared theme boundary (status: not started)
+### Subtask E — Establish safe Markdown and the shared theme boundary (status: done)
 
 - Add the single Aion chat theme boundary and make every inline component style
   consume documented semantic `--aion-chat-*` variables with usable defaults.

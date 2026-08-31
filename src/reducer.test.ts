@@ -78,6 +78,7 @@ describe("reduceChatConversation", () => {
     ).toBe(
       "Daily status",
     );
+    expect(result.artifacts["task-1:aion:stream-delta"]?.parts).toHaveLength(1);
     expect(result.turns[0]?.artifactIds).toEqual([
       "task-1:aion:stream-delta",
     ]);

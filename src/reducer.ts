@@ -176,9 +176,21 @@ function mergeArtifact(
     return incoming;
   }
 
+  const existingParts = [...existing.parts];
+  const incomingParts = [...incoming.parts];
+  const previous = existingParts.at(-1);
+  const next = incomingParts[0];
+  if (previous?.type === "text" && next?.type === "text") {
+    existingParts[existingParts.length - 1] = {
+      ...previous,
+      text: `${previous.text}${next.text}`,
+    };
+    incomingParts.shift();
+  }
+
   return {
     ...incoming,
-    parts: [...existing.parts, ...incoming.parts],
+    parts: [...existingParts, ...incomingParts],
   };
 }
 
