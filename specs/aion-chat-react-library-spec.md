@@ -564,6 +564,8 @@ multiple repositories, use
 
 ### Subtask F — Implement the injected Apollo transport (status: done)
 
+- Commit ID (aion-chat-react): `e857c27`
+
 - Add a GraphQL adapter subpath that accepts an already configured
   `ApolloClient` and translates the current authenticated Aion GraphQL A2A
   stream into core transport events.
