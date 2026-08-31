@@ -48,7 +48,8 @@ describe("reduceChatConversation", () => {
       turnId: "turn-1",
       append: false,
       artifact: {
-        id: "aion:stream-delta",
+        id: "task-1:aion:stream-delta",
+        artifactId: "aion:stream-delta",
         taskId: "task-1",
         contextId: "context-1",
         name: "Stream delta",
@@ -72,10 +73,14 @@ describe("reduceChatConversation", () => {
     const result = reduceChatConversation(afterDuplicate, secondChunk);
 
     expect(afterDuplicate).toBe(afterFirst);
-    expect(getChatText(result.artifacts["aion:stream-delta"]!.parts)).toBe(
+    expect(
+      getChatText(result.artifacts["task-1:aion:stream-delta"]!.parts),
+    ).toBe(
       "Daily status",
     );
-    expect(result.turns[0]?.artifactIds).toEqual(["aion:stream-delta"]);
+    expect(result.turns[0]?.artifactIds).toEqual([
+      "task-1:aion:stream-delta",
+    ]);
     expect(result.contextId).toBe("context-1");
   });
 
@@ -295,6 +300,71 @@ describe("reduceChatConversation", () => {
     expect(assistant && getChatText(assistant.parts)).toBe("Hello");
     expect(result.turns[0]?.assistantMessageIds).toEqual([
       "message-assistant-1",
+    ]);
+  });
+
+  it("retains message and artifact order across multiple turns", () => {
+    let state = reduceChatConversation(
+      createChatConversationState("conversation-1"),
+      startedEvent(),
+    );
+    state = reduceChatConversation(state, {
+      type: "artifact.updated",
+      eventId: "event-artifact-1",
+      requestId: "request-1",
+      occurredAt: UPDATED_AT,
+      turnId: "turn-1",
+      append: false,
+      artifact: {
+        id: "task-1:aion:stream-delta",
+        artifactId: "aion:stream-delta",
+        taskId: "task-1",
+        contextId: "context-1",
+        parts: [{ type: "text", text: "First answer" }],
+        lastChunk: true,
+      },
+    });
+    state = reduceChatConversation(state, {
+      type: "run.completed",
+      eventId: "event-complete-1",
+      requestId: "request-1",
+      occurredAt: UPDATED_AT,
+    });
+    state = reduceChatConversation(
+      state,
+      startedEvent({
+        eventId: "event-start-2",
+        requestId: "request-2",
+        turnId: "turn-2",
+        userMessage: {
+          ...userMessage(),
+          id: "message-user-2",
+          parts: [{ type: "text", text: "Second question" }],
+        },
+      }),
+    );
+    state = reduceChatConversation(state, {
+      type: "artifact.updated",
+      eventId: "event-artifact-2",
+      requestId: "request-2",
+      occurredAt: UPDATED_AT,
+      turnId: "turn-2",
+      append: false,
+      artifact: {
+        id: "task-2:aion:stream-delta",
+        artifactId: "aion:stream-delta",
+        taskId: "task-2",
+        contextId: "context-1",
+        parts: [{ type: "text", text: "Second answer" }],
+        lastChunk: true,
+      },
+    });
+
+    expect(state.transcript).toEqual([
+      { type: "message", id: "message-user-1" },
+      { type: "artifact", id: "task-1:aion:stream-delta" },
+      { type: "message", id: "message-user-2" },
+      { type: "artifact", id: "task-2:aion:stream-delta" },
     ]);
   });
 });

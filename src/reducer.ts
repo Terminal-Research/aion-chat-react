@@ -1,10 +1,11 @@
 import type { ChatTransportEvent } from "./events";
 import type {
-  ArtifactId,
+  ArtifactRecordId,
   ChatArtifact,
   ChatConversationState,
   ChatMessage,
   ChatTaskState,
+  ChatTranscriptItem,
   ChatTurn,
   ChatTurnStatus,
   MessageId,
@@ -20,6 +21,28 @@ const TERMINAL_RUN_STATUSES = new Set<ChatTurnStatus>([
 
 function appendUnique<T>(values: readonly T[], value: T): readonly T[] {
   return values.includes(value) ? values : [...values, value];
+}
+
+function appendTranscriptItem(
+  items: readonly ChatTranscriptItem[],
+  item: ChatTranscriptItem,
+): readonly ChatTranscriptItem[] {
+  return items.some(
+    (candidate) => candidate.type === item.type && candidate.id === item.id,
+  )
+    ? items
+    : [...items, item];
+}
+
+function appendMessageItems(
+  items: readonly ChatTranscriptItem[],
+  messages: readonly ChatMessage[],
+): readonly ChatTranscriptItem[] {
+  return messages.reduce<readonly ChatTranscriptItem[]>(
+    (current, message) =>
+      appendTranscriptItem(current, { type: "message", id: message.id }),
+    items,
+  );
 }
 
 function upsertById<T extends { readonly id: string }>(
@@ -101,7 +124,7 @@ function addTask(
 
 function addArtifact(
   turn: ChatTurn,
-  artifactId: ArtifactId,
+  artifactId: ArtifactRecordId,
   occurredAt: string,
 ): ChatTurn {
   return {
@@ -232,6 +255,10 @@ export function reduceChatConversation(
         ...state,
         turns: upsertById(state.turns, turn),
         messages: upsertById(state.messages, event.userMessage),
+        transcript: appendTranscriptItem(state.transcript, {
+          type: "message",
+          id: event.userMessage.id,
+        }),
         activeRun: {
           requestId: event.requestId,
           turnId: event.turnId,
@@ -260,6 +287,10 @@ export function reduceChatConversation(
         ...next,
         contextId: event.message.contextId ?? next.contextId,
         messages: upsertById(next.messages, event.message),
+        transcript: appendTranscriptItem(next.transcript, {
+          type: "message",
+          id: event.message.id,
+        }),
         turns: updateTurn(next.turns, event.turnId, (turn) =>
           addAssistantMessage(turn, event.message, event.occurredAt),
         ),
@@ -283,6 +314,10 @@ export function reduceChatConversation(
           event.text,
           event.occurredAt,
         ),
+        transcript: appendTranscriptItem(next.transcript, {
+          type: "message",
+          id: event.messageId,
+        }),
         turns: updateTurn(next.turns, event.turnId, (turn) =>
           addAssistantMessage(turn, message, event.occurredAt),
         ),
@@ -299,6 +334,7 @@ export function reduceChatConversation(
         contextId: event.task.contextId || next.contextId,
         tasks: { ...next.tasks, [event.task.id]: event.task },
         messages: upsertManyById(next.messages, taskMessages),
+        transcript: appendMessageItems(next.transcript, taskMessages),
         turns: updateTurn(next.turns, event.turnId, (turn) => {
           const withTask = addTask(
             turn,
@@ -349,6 +385,12 @@ export function reduceChatConversation(
         messages: event.message
           ? upsertById(next.messages, event.message)
           : next.messages,
+        transcript: event.message
+          ? appendTranscriptItem(next.transcript, {
+              type: "message",
+              id: event.message.id,
+            })
+          : next.transcript,
         turns: updateTurn(next.turns, event.turnId, (turn) => {
           const withTask = addTask(
             turn,
@@ -372,6 +414,10 @@ export function reduceChatConversation(
         ...next,
         contextId: event.artifact.contextId || next.contextId,
         artifacts: { ...next.artifacts, [artifact.id]: artifact },
+        transcript: appendTranscriptItem(next.transcript, {
+          type: "artifact",
+          id: artifact.id,
+        }),
         tasks: artifactTask
           ? {
               ...next.tasks,

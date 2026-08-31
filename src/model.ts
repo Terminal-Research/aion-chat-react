@@ -1,6 +1,7 @@
 /** Stable identifier aliases used by the chat model. */
 export type AgentId = string;
 export type ArtifactId = string;
+export type ArtifactRecordId = string;
 export type AttachmentId = string;
 export type ContextId = string;
 export type ConversationId = string;
@@ -113,13 +114,14 @@ export interface ChatTask {
   readonly contextId: ContextId;
   readonly status: ChatTaskStatus;
   readonly history: readonly ChatMessage[];
-  readonly artifactIds: readonly ArtifactId[];
+  readonly artifactIds: readonly ArtifactRecordId[];
   readonly metadata?: Readonly<Record<string, unknown>>;
 }
 
 /** A normalized artifact emitted by an A2A task. */
 export interface ChatArtifact {
-  readonly id: ArtifactId;
+  readonly id: ArtifactRecordId;
+  readonly artifactId: ArtifactId;
   readonly taskId: TaskId;
   readonly contextId: ContextId;
   readonly name?: string;
@@ -153,7 +155,7 @@ export interface ChatTurn {
   readonly requestIds: readonly RequestId[];
   readonly assistantMessageIds: readonly MessageId[];
   readonly taskIds: readonly TaskId[];
-  readonly artifactIds: readonly ArtifactId[];
+  readonly artifactIds: readonly ArtifactRecordId[];
   readonly status: ChatTurnStatus;
   readonly createdAt: string;
   readonly updatedAt: string;
@@ -171,6 +173,11 @@ export interface ChatRun {
   readonly error?: ChatError;
 }
 
+/** Ordered reference to one renderer-visible conversation item. */
+export type ChatTranscriptItem =
+  | { readonly type: "message"; readonly id: MessageId }
+  | { readonly type: "artifact"; readonly id: ArtifactRecordId };
+
 /** Normalized state consumed by headless hooks and view components. */
 export interface ChatConversationState {
   readonly id: ConversationId;
@@ -178,8 +185,9 @@ export interface ChatConversationState {
   readonly contextId?: ContextId;
   readonly turns: readonly ChatTurn[];
   readonly messages: readonly ChatMessage[];
+  readonly transcript: readonly ChatTranscriptItem[];
   readonly tasks: Readonly<Record<TaskId, ChatTask>>;
-  readonly artifacts: Readonly<Record<ArtifactId, ChatArtifact>>;
+  readonly artifacts: Readonly<Record<ArtifactRecordId, ChatArtifact>>;
   readonly attachments: readonly ChatAttachment[];
   readonly activeRun?: ChatRun;
   readonly seenEventIds: Readonly<Record<EventId, true>>;
@@ -195,6 +203,7 @@ export function createChatConversationState(
     agent,
     turns: [],
     messages: [],
+    transcript: [],
     tasks: {},
     artifacts: {},
     attachments: [],

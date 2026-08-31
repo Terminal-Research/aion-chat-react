@@ -27,7 +27,8 @@
   },
   "scripts": {
     "build": "vite build && tsc -p tsconfig.build.json",
-    "check": "npm run lint && npm run typecheck && npm test && npm run build",
+    "check": "npm run lint && npm run typecheck && npm test && npm run build && npm run example:build",
+    "example:build": "npm --workspace @terminal-research/aion-chat-react-example-inline-bootstrap run build",
     "lint": "eslint .",
     "test": "vitest run --passWithNoTests",
     "typecheck": "tsc --noEmit"

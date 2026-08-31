@@ -13,6 +13,7 @@ export type {
 export type {
   AgentId,
   ArtifactId,
+  ArtifactRecordId,
   AttachmentId,
   ChatAgent,
   ChatAgentAvailability,
@@ -30,6 +31,7 @@ export type {
   ChatTaskState,
   ChatTaskStatus,
   ChatTextPart,
+  ChatTranscriptItem,
   ChatTurn,
   ChatTurnStatus,
   ContextId,
@@ -57,3 +59,20 @@ export type {
   AionChatStreamOptions,
   AionChatTransport,
 } from "./transport";
+export type { AionChatComposerProps } from "./AionChatComposer";
+export { AionChatComposer } from "./AionChatComposer";
+export type { AionChatArtifactProps } from "./AionChatArtifact";
+export { AionChatArtifact } from "./AionChatArtifact";
+export type {
+  AionChatMessageProps,
+  AionChatPartsProps,
+} from "./AionChatMessage";
+export { AionChatMessage, AionChatParts } from "./AionChatMessage";
+export type {
+  AionChatEmptyStateProps,
+  AionChatTranscriptEntry,
+  AionChatTranscriptProps,
+} from "./AionChatTranscript";
+export { AionChatEmptyState, AionChatTranscript } from "./AionChatTranscript";
+export type { AionChatViewProps, AionChatViewSlots } from "./AionChatView";
+export { AionChatView } from "./AionChatView";

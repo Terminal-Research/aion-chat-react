@@ -521,6 +521,8 @@ multiple repositories, use
 
 ### Subtask C — Define the transport and controller contracts (status: done)
 
+- Commit ID (aion-chat-react): `4645ccd`
+
 - Define a transport-neutral streaming interface with explicit request,
   cancellation, error, and disposal semantics.
 - Implement the React controller/provider and headless hooks that coordinate
@@ -531,7 +533,7 @@ multiple repositories, use
 - Publish a fake transport and conformance harness through a testing-only
   export.
 
-### Subtask D — Build the inline chat interface (status: not started)
+### Subtask D — Build the inline chat interface (status: done)
 
 - Selectively adapt CopilotKit's controlled chat-view structure to the Aion
   model and controller contracts.
