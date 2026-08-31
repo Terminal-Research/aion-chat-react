@@ -4,10 +4,13 @@ import { defineConfig } from "vite";
 export default defineConfig({
   build: {
     lib: {
-      entry: resolve(import.meta.dirname, "src/index.ts"),
+      entry: {
+        index: resolve(import.meta.dirname, "src/index.ts"),
+        testing: resolve(import.meta.dirname, "src/testing/index.ts"),
+      },
       cssFileName: "styles",
       formats: ["es"],
-      fileName: "index",
+      fileName: (_format, entryName) => `${entryName}.js`,
     },
     rolldownOptions: {
       external: ["react", "react-dom", "react/jsx-runtime"],

@@ -508,6 +508,8 @@ multiple repositories, use
 
 ### Subtask B — Define the Aion chat model (status: done)
 
+- Commit ID (aion-chat-react): `b08e34d`
+
 - Define stable identifiers and models for agent selection, conversation
   context, turns, messages, typed message parts, task lifecycle, artifacts,
   attachments, errors, and transport events.
@@ -517,7 +519,7 @@ multiple repositories, use
   input-required states, cancellation, and retries.
 - Add behavior-focused tests based on current Playground event sequences.
 
-### Subtask C — Define the transport and controller contracts (status: not started)
+### Subtask C — Define the transport and controller contracts (status: done)
 
 - Define a transport-neutral streaming interface with explicit request,
   cancellation, error, and disposal semantics.

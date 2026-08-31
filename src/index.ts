@@ -42,3 +42,18 @@ export type {
 } from "./model";
 export { createChatConversationState, getChatText } from "./model";
 export { reduceChatConversation } from "./reducer";
+export type {
+  AionChatController,
+  AionChatControllerActions,
+  AionChatControllerMeta,
+  AionChatControllerState,
+  AionChatProviderProps,
+  AionChatSendInput,
+} from "./AionChatProvider";
+export { AionChatProvider } from "./AionChatProvider";
+export { useAionChat, useAionChatActions, useAionChatState } from "./hooks";
+export type {
+  AionChatRequest,
+  AionChatStreamOptions,
+  AionChatTransport,
+} from "./transport";

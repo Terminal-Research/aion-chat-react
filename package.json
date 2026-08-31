@@ -19,6 +19,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing/index.d.ts",
+      "import": "./dist/testing.js"
     }
   },
   "scripts": {
@@ -37,6 +41,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@testing-library/react": "^16.3.3",
     "@types/node": "^26.4.0",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.5",
