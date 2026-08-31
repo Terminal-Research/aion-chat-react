@@ -24,7 +24,11 @@
       "types": "./dist/testing/index.d.ts",
       "import": "./dist/testing.js"
     },
-    "./styles.css": "./dist/styles.css"
+    "./styles.css": "./dist/styles.css",
+    "./graphql": {
+      "types": "./dist/graphql/index.d.ts",
+      "import": "./dist/graphql/apollo.js"
+    }
   },
   "scripts": {
     "build": "vite build && tsc -p tsconfig.build.json",
@@ -38,10 +42,21 @@
     "examples/*"
   ],
   "peerDependencies": {
+    "@apollo/client": "^3.14.0",
+    "graphql": "^16.0.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
+  "peerDependenciesMeta": {
+    "@apollo/client": {
+      "optional": true
+    },
+    "graphql": {
+      "optional": true
+    }
+  },
   "devDependencies": {
+    "@apollo/client": "^3.14.0",
     "@eslint/js": "^10.0.1",
     "@testing-library/react": "^16.3.3",
     "@types/node": "^26.4.0",
@@ -52,6 +67,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.5",
     "globals": "^17.11.0",
+    "graphql": "^16.14.2",
     "jsdom": "^29.1.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

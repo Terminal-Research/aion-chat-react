@@ -7,6 +7,7 @@ export default defineConfig({
     lib: {
       entry: {
         index: resolve(import.meta.dirname, "src/index.ts"),
+        "graphql/apollo": resolve(import.meta.dirname, "src/graphql/index.ts"),
         styles: resolve(import.meta.dirname, "src/styles/aion-chat.css"),
         testing: resolve(import.meta.dirname, "src/testing/index.ts"),
       },
@@ -21,6 +22,9 @@ export default defineConfig({
         "react/jsx-runtime",
         "react-markdown",
         "remark-gfm",
+        "@apollo/client",
+        "@apollo/client/core",
+        "graphql",
       ],
     },
     sourcemap: true,

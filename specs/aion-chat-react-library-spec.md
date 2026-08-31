@@ -548,6 +548,8 @@ multiple repositories, use
 
 ### Subtask E — Establish safe Markdown and the shared theme boundary (status: done)
 
+- Commit ID (aion-chat-react): `79e27df`
+
 - Add the single Aion chat theme boundary and make every inline component style
   consume documented semantic `--aion-chat-*` variables with usable defaults.
 - Implement the default Markdown renderer with `react-markdown`,
@@ -560,7 +562,7 @@ multiple repositories, use
   Bootstrap variables used by `aion-agent-cloud`, including its `ins-` prefix
   and `data-bs-theme` color modes.
 
-### Subtask F — Implement the injected Apollo transport (status: not started)
+### Subtask F — Implement the injected Apollo transport (status: done)
 
 - Add a GraphQL adapter subpath that accepts an already configured
   `ApolloClient` and translates the current authenticated Aion GraphQL A2A

@@ -43,4 +43,22 @@ renderer. Raw HTML and remote Markdown images are not rendered, unsafe URL
 protocols are removed, and external links use opener isolation. A host can
 replace the Markdown slot when it intentionally needs a different policy.
 
+## Host Apollo integration
+
+The optional Apollo adapter wraps a client that the host already configured
+for authentication and subscriptions. It does not create, reconnect, reset, or
+dispose that client. By default, the selected agent ID is sent as the Aion
+distribution ID; use `targetForAgent` when the host uses another target
+selector.
+
+```tsx
+import { useApolloClient } from "@apollo/client";
+import {
+  createApolloAionChatTransport,
+} from "@terminal-research/aion-chat-react/graphql";
+
+const client = useApolloClient();
+const transport = createApolloAionChatTransport({ client });
+```
+
 Run `npm run check` to validate the library and build the example fixture.
