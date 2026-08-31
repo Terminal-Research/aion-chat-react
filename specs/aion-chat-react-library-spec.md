@@ -494,6 +494,8 @@ multiple repositories, use
 
 ### Subtask A — Establish the package and source provenance (status: done)
 
+- Commit ID (aion-chat-react): `ed74476`
+
 - Initialize the React/TypeScript library, build, test, lint, typecheck, and
   package-entry configuration.
 - Declare React and React DOM as peer dependencies and keep backend adapters out
@@ -504,7 +506,7 @@ multiple repositories, use
 - Add an example/test workspace that consumes the packed library through public
   exports rather than source-relative imports.
 
-### Subtask B — Define the Aion chat model (status: not started)
+### Subtask B — Define the Aion chat model (status: done)
 
 - Define stable identifiers and models for agent selection, conversation
   context, turns, messages, typed message parts, task lifecycle, artifacts,
