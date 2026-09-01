@@ -1135,9 +1135,11 @@ When resolving a question, keep the original text and add a short resolution
 note.
 [[/SPEC-INSTRUCTION]]
 
-- [status: open] What npm scope and package name should distinguish this
+- [status: resolved] What npm scope and package name should distinguish this
   browser library from the existing terminal package: for example,
   `@terminal-research/aion-chat-react`, `@aion/chat-react`, or another name?
+  Resolution: use `@terminal-research/aion-chat-react`, matching the repository
+  and current package metadata while keeping the React binding explicit.
 - [status: resolved] Which exact CopilotKit files and style fragments survive
   the first adaptation after Aion contracts are defined, and which should be
   reimplemented more simply? Resolution: Phase 1 adapted the controlled chat
@@ -1383,3 +1385,10 @@ and partial default-prop customization are useful across multiple planned
 surfaces. Implicit class-name strings, Tailwind merging, `any`-typed internals,
 and render-prop versions of every component add coupling and are not part of
 the planned contract.
+
+Q: What npm scope and package name should the React library use?
+
+A: Use `@terminal-research/aion-chat-react`. It matches the repository and
+current package metadata, distinguishes this browser library from the existing
+terminal package, identifies the React binding explicitly, and does not assume
+control of a separate `@aion` npm scope.
