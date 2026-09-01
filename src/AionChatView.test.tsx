@@ -72,6 +72,28 @@ describe("AionChatView", () => {
     ]);
   });
 
+  it("does not submit from Enter while an IME composition is active", async () => {
+    const transport = new FakeAionChatTransport(() => []);
+    render(
+      <AionChatProvider
+        transport={transport}
+        defaultAgent={AGENT}
+        defaultDraft="Composed message"
+        createId={createIds()}
+      >
+        <AionChatView />
+      </AionChatProvider>,
+    );
+    const composer = screen.getByRole("textbox", { name: "Chat message" });
+
+    fireEvent.keyDown(composer, { key: "Enter", isComposing: true });
+    fireEvent.keyDown(composer, { key: "Enter", keyCode: 229 });
+    expect(transport.requests).toHaveLength(0);
+
+    fireEvent.keyDown(composer, { key: "Enter" });
+    await waitFor(() => expect(transport.requests).toHaveLength(1));
+  });
+
   it("offers stop while a response is pending", async () => {
     const transport = new FakeAionChatTransport((request) => [
       {

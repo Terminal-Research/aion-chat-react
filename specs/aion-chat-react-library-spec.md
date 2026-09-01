@@ -739,6 +739,34 @@ multiple repositories, use
 - Pack and install the release candidate in isolated and
   `aion-agent-cloud` fixtures before publishing.
 
+### Review follow-ups discovered after Phase 1
+
+### Subtask T — Make composer submission IME-safe (status: done)
+
+- Prevent Enter from submitting while an input method editor is composing,
+  including the legacy browser key-code fallback.
+- Prove that the same composer submits normally once composition is complete.
+
+### Subtask U — Stabilize transcript derivation (status: not started)
+
+- Resolve transcript references in linear time with stable memoized output.
+- Prevent unrelated provider updates such as draft changes from retriggering
+  transcript scroll work.
+
+### Subtask V — Extend the safe Markdown component map (status: not started)
+
+- Allow hosts to override individual Markdown elements without replacing the
+  default safe parsing and URL-transformation pipeline.
+- Preserve raw-HTML suppression and unsafe-link handling when ordinary
+  element overrides are used.
+
+### Subtask W — Correct CopilotKit source provenance (status: not started)
+
+- Separate sources actually adapted in Phase 1 from candidates reserved for
+  later work.
+- Correct source paths and distinguish code adaptation from conceptual pattern
+  references.
+
 ## 3) Package Hierarchy + Responsibilities
 
 The names below are provisional but establish dependency direction. Modules may
