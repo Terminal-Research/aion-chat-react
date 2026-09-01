@@ -51,6 +51,16 @@ GraphQL HTTP and subscription endpoints. Authenticated file and screenshot
 uploads use Aion's existing Files HTTP API and return a bounded exact-version
 grant URL for the outbound A2A file part.
 
+Recent conversation discovery and history loading will use Aion's published
+[`GetContexts`](https://docs.aion.to/a2a/extensions/aion/context/get-contexts/1.0.0)
+and
+[`GetContext`](https://docs.aion.to/a2a/extensions/aion/context/get-context/1.0.0)
+extensions. `GetContexts` returns context IDs in most-recent-first order and
+`GetContext` hydrates the selected context's messages, artifacts, and status.
+These calls form a separate conversation-directory boundary rather than
+expanding the send/stream transport. The browser conversation store remains a
+safe cache and optimistic local state, not the authoritative remote directory.
+
 The backend work is part of this feature across repositories. `aion-api2`
 already generates `chat-client-schema.graphql` by filtering the full Caliban
 schema to selected root fields for the terminal chat client in
@@ -131,6 +141,9 @@ Reference baseline:
   workspace that navigates from the agent catalog to that agent's recent
   conversations. A conversation is canonically identified by its A2A
   `contextId`.
+- Use Aion's `GetContexts` and `GetContext` extensions as the server-backed
+  conversation-directory contract, with the same directory abstraction
+  available through direct A2A and GraphQL `a2aRpc` adapters.
 - Define an attachment upload boundary that can turn browser files or captured
   screenshots into URL-backed A2A file parts through the existing authenticated
   Aion Files API without coupling the core UI to that adapter.
@@ -215,9 +228,14 @@ Reference baseline:
   compatibility baseline for A2A normalization, task status, artifact updates,
   streaming, cancellation, and unary fallback.
 - The current Playground keeps its conversation list and transcripts in
-  browser-local storage. The initial library can preserve that behavior behind
-  an injected conversation-store boundary without claiming cross-device or
-  server-synchronized history.
+  browser-local storage. The library preserves that behavior behind an
+  injected conversation-store boundary while adding the published Aion
+  context extensions as the authoritative server-backed directory.
+- The published Aion context extensions use offset pagination:
+  `GetContexts` accepts `historyLength` and `historyOffset`, and `GetContext`
+  accepts a required `contextId` plus optional history pagination. The current
+  backend implementations require caller-scoping and contract alignment before
+  browser clients can safely rely on them.
 - React, React DOM, and optional integration libraries such as Apollo Client
   can be declared as peer dependencies to prevent duplicate runtimes.
 
@@ -303,12 +321,25 @@ Reference baseline:
   thread identifiers.
 - Catalog, conversation-list, and conversation-persistence operations must not
   be added to `AionChatTransport`. They belong to optional catalog and
-  conversation-store contracts so fixed-agent/fixed-context consumers can use
-  chat without importing navigation or persistence.
+  conversation-directory/store contracts so fixed-agent/fixed-context
+  consumers can use chat without importing navigation or persistence.
 - The library must not derive a user-visible conversation directory by calling
   an agent-wide `ListTasks` endpoint unless the server contract proves that the
-  result is scoped to the current caller. The initial implementation uses an
-  explicitly scoped local or host-provided store.
+  result is scoped to the current caller. Use the dedicated Aion context
+  extensions instead.
+- `GetContexts` and `GetContext` must scope reads to the selected agent or
+  environment and the exact effective caller. A missing or unauthorized
+  context must not disclose whether another caller owns it.
+- Anonymous public execution must not expose a shared-principal conversation
+  directory. Until Aion has a stable per-caller scope for anonymous clients,
+  public anonymous chat may use fixed/new contexts but remote history listing
+  remains unavailable.
+- The conversation list must not call `GetContext` for every returned ID.
+  Merge `GetContexts` IDs with safe cached summaries, show a non-sensitive
+  fallback for uncached IDs, and hydrate one context only when it is selected.
+- Browser persistence is a cache, not an authorization boundary. Loading or
+  resuming a remote context must re-enter the server directory boundary and
+  must not rely solely on a previously cached snapshot.
 - The UI must be keyboard accessible, preserve focus correctly, expose
   meaningful accessible names, and honor reduced-motion preferences.
 - The core model must not flatten task, artifact, or non-text message-part data
@@ -406,8 +437,19 @@ Reference baseline:
   in-memory store as an implicit default.
 - **Risk: task listing is mistaken for a safe conversation directory.** The
   current agent-environment task list is not a user-facing catalog contract.
-  **Mitigation:** keep server history sync out of the initial release and add it
-  only through a caller-scoped backend projection or another reviewed contract.
+  **Mitigation:** use the dedicated `GetContexts` and `GetContext` extensions,
+  and make their storage queries caller- and agent-scoped before exposing them
+  to browser clients.
+- **Risk: context history leaks between callers.** Existing context storage may
+  be agent-wide or collapse public users into one anonymous principal.
+  **Mitigation:** require exact effective-caller scoping for authenticated
+  history, make missing and unauthorized contexts indistinguishable, and keep
+  anonymous remote history disabled until it has a stable caller boundary.
+- **Risk: the conversation list causes one history request per row.** This
+  would make initial navigation latency grow with the page size.
+  **Mitigation:** list IDs once, enrich from safe local summaries, lazily load
+  only the selected context, and consider a future summary extension only if
+  measured UI needs justify it.
 
 ## 1f) Testing and Validation
 
@@ -463,6 +505,16 @@ Reference baseline:
 - Verify conversations are partitioned by selected agent and host scope,
   sorted by latest activity, keyed by `contextId`, and cannot survive a scope
   change in the wrong user's view.
+- Verify `GetContexts` offset pagination preserves most-recent-first ordering,
+  merges cached summaries without changing server order, and does not issue a
+  `GetContext` request for every list row.
+- Verify selecting a remote context calls `GetContext`, normalizes its ordered
+  messages, artifacts, and status, and safely refreshes the local cache.
+- Verify two callers using the same agent cannot list or retrieve each other's
+  contexts, and that missing and unauthorized context IDs have equivalent
+  observable behavior.
+- Verify unsupported context methods degrade to typed history-unavailable
+  state without preventing fixed-context or new-context chat.
 - Verify snapshot serialization and restore preserve transcript/task/artifact
   meaning while excluding active runs, queued browser files, tokens, uploaded
   bytes, and temporary grant-bearing URLs.
@@ -882,6 +934,39 @@ the historical subtasks below is deferred until a concrete embed requires it.
   updates, and server-side deletion until Aion exposes a reviewed caller-scoped
   conversation-directory contract.
 
+### Subtask AB — Secure the Aion context directory (status: not started)
+
+- In `aion-api2`, implement typed `GetContexts` handling and make the existing
+  `GetContext` path operational through the A2A distribution boundary.
+- Scope both operations to the selected agent environment and exact effective
+  caller. Use persisted job/task ownership as the authority; do not substitute
+  an agent-wide `ListTasks` query or trust a caller-provided organization ID.
+- In `aion-python-sdk`, align the existing context extension handlers and store
+  contracts with the same caller boundary. In-memory and durable stores must
+  not iterate contexts belonging to a different resolved owner.
+- Make missing and unauthorized context IDs indistinguishable. Do not expose
+  remote history for anonymous public callers until they have a stable
+  per-caller ownership scope.
+- Add behavior tests with two callers using the same agent, plus pagination,
+  ordering, history, artifacts, status, and unsupported-method coverage.
+
+### Subtask AC — Add the remote conversation directory (status: not started)
+
+- In `aion-chat-react`, define `AionConversationDirectory` separately from
+  `AionChatTransport` and `AionConversationStore`. It lists remote context IDs
+  and loads one selected context through Aion's context extensions.
+- Implement direct-A2A and GraphQL `a2aRpc` directory adapters that share the
+  same normalization and typed failure behavior.
+- Use `GetContexts` with `historyLength` and `historyOffset` for ordered paging.
+  Do not issue `GetContext` for every visible list row; merge safe cached
+  summaries and hydrate a context only on selection.
+- Treat the local store as a persistence-safe cache and optimistic state for a
+  newly generated context ID. Revalidate remote contexts through the directory
+  instead of treating cached history as authorization evidence.
+- Keep fixed-context and always-new chat usable when the extension is
+  unsupported or remote history is unavailable. Remote rename, archive, and
+  deletion remain outside the version 1.0.0 extension contract.
+
 ## 3) Package Hierarchy + Responsibilities
 
 The names below are provisional but establish dependency direction. Modules may
@@ -904,6 +989,7 @@ aion-chat-react/
 │   │   └── hooks.ts              # headless consumer hooks
 │   ├── conversations/
 │   │   ├── snapshot.ts           # versioned persistence-safe model
+│   │   ├── directory.ts          # remote list/load contract
 │   │   ├── store.ts              # list/load/save/remove contract
 │   │   ├── memoryStore.ts        # implicit session-only default
 │   │   └── browserStore.ts       # explicitly host-scoped persistence
@@ -927,10 +1013,12 @@ aion-chat-react/
 │   │   └── aion-chat.css         # scoped component styles
 │   ├── a2a/
 │   │   ├── agentCard.ts          # discovery and security requirements
+│   │   ├── contextDirectory.ts   # direct A2A context extensions
 │   │   └── directTransport.ts    # direct HTTP/SSE A2A adapter
 │   ├── graphql/
 │   │   ├── operations.ts         # Aion chat GraphQL documents
 │   │   ├── normalize.ts          # GraphQL/A2A to core events
+│   │   ├── contextDirectory.ts   # a2aRpc context extension adapter
 │   │   ├── apolloTransport.ts    # caller-owned Apollo adapter
 │   │   └── standalone.ts         # standalone GraphQL client factory
 │   ├── uploads/
@@ -1052,6 +1140,27 @@ export interface AionCredentialProvider {
 ### Agent and conversation navigation
 
 ```ts
+export interface AionConversationDirectory {
+  list(
+    agent: ChatAgent,
+    options: {
+      historyLength?: number;
+      historyOffset?: number;
+      signal: AbortSignal;
+    },
+  ): Promise<readonly string[]>;
+
+  get(
+    agent: ChatAgent,
+    contextId: string,
+    options: {
+      historyLength?: number;
+      historyOffset?: number;
+      signal: AbortSignal;
+    },
+  ): Promise<AionConversationSnapshot>;
+}
+
 export interface AionConversationStore {
   list(agentId: string): Promise<readonly AionConversationSummary[]>;
   load(
@@ -1065,12 +1174,23 @@ export interface AionConversationStore {
 
 - `contextId` is the conversation/thread identifier used by A2A. A task ID
   identifies one execution within that context and is not a navigation key.
+- The directory is the remote read boundary. Its direct-A2A and GraphQL
+  adapters map `list` to `GetContexts` and `get` to `GetContext`; neither
+  operation belongs on the send/stream transport.
+- `GetContexts` defines the canonical recent order. Cached summaries may add a
+  local title or preview but cannot add an inaccessible remote context to the
+  server result. An uncached ID receives a neutral fallback label until it is
+  selected and hydrated.
 - Starting a new conversation generates a context ID client-side, selects an
   empty local conversation, and sends that same ID with the first message. An
-  unsent empty conversation need not be written to a persistent store.
+  unsent empty conversation need not be written to a persistent store. After
+  the first persisted turn, the server directory becomes authoritative for its
+  remote presence.
 - The initial store is intentionally small: list, load, save, and remove.
   Rename, archive, server-side delete, realtime synchronization, and
-  cross-device history are not implied by this contract.
+  cross-device mutation are not implied by this contract. `remove` only
+  removes the local cached snapshot because version 1.0.0 defines no remote
+  deletion operation.
 - `AionConversationSnapshot` is versioned and serializable. Snapshot creation
   strips transient controller state, `File` objects, queued uploads, bearer
   credentials, and grant-bearing URLs before calling the store. File history
@@ -1082,6 +1202,10 @@ export interface AionConversationStore {
 - `AionChatTransport` remains responsible only for sending, streaming,
   cancelling, and disposing. The controller saves normalized conversation
   state through the store after meaningful changes.
+- A directory adapter is optional. When present, the workspace pages remote
+  IDs and lazily refreshes a selected context before treating cached history as
+  current. When unsupported, the workspace exposes a typed history-unavailable
+  state and may continue with local, fixed, or newly created contexts.
 - `AionChatNavigator` is controlled presentation over normalized agents,
   conversation summaries, selection, loading, and errors. Headless hooks join
   the catalog and store for consumers that render different navigation.
@@ -1097,10 +1221,9 @@ export interface AionConversationStore {
   simultaneously instead of using the one-panel transition. Popup and sidebar
   shells reuse the same controlled navigator rather than inventing another
   selection model.
-- The initial GraphQL adapter does not use agent-wide `ListTasks` to discover
-  contexts. A future server-backed store requires a caller-scoped conversation
-  directory and can replace the local store without changing chat transport or
-  presentation contracts.
+- Neither GraphQL nor direct A2A uses agent-wide `ListTasks` to discover
+  contexts. Both use the dedicated Aion context extensions after their server
+  implementation enforces the caller boundary described above.
 
 ### Shared theme boundary
 
@@ -1365,6 +1488,13 @@ note.
   default, and an explicitly scoped browser store. Remote synchronization and
   richer lifecycle operations remain deferred until Aion has a caller-scoped
   server contract.
+- [status: resolved] Should server-backed thread discovery and history use the
+  Aion `GetContexts` and `GetContext` extensions? Resolution: yes. Add a remote
+  `AionConversationDirectory` that uses those methods through direct A2A or
+  GraphQL `a2aRpc`, while retaining `AionConversationStore` as the safe local
+  cache. The backend must enforce exact caller and agent/environment scoping
+  before the directory is enabled; anonymous public history remains disabled
+  without a stable per-caller scope.
 - [status: open] Which React versions must be supported by the first published
   release?
 - [status: resolved] Should examples use Storybook, a small Vite application,
@@ -1688,3 +1818,36 @@ files and temporary grant URLs are excluded. This preserves the current
 Playground's local-history behavior without claiming cross-device sync. A
 server-backed implementation waits for a caller-scoped Aion directory; an
 agent-environment-wide task list is not a safe substitute for that contract.
+
+Q: Which Aion contract supplies the server-backed conversation directory?
+
+A: Use the published `GetContexts` and `GetContext` A2A extensions.
+`GetContexts` pages most-recent context IDs with `historyLength` and
+`historyOffset`. `GetContext` lazily loads the selected context's ordered
+messages, artifacts, and current status. Both direct A2A and GraphQL `a2aRpc`
+adapters implement one `AionConversationDirectory`; the send/stream transport
+does not gain history methods.
+
+Q: Does the new directory replace browser conversation storage?
+
+A: No. It supersedes the earlier decision to defer all remote synchronization,
+but not the separate store boundary. `AionConversationStore` remains a
+persistence-safe cache for summaries, restored display state, and optimistic
+new contexts. Remote IDs and selected-context history come from the directory,
+and cached state cannot bypass a fresh server authorization decision.
+
+Q: How does the conversation list avoid fetching every transcript?
+
+A: `GetContexts` establishes the ordered list of IDs. The navigator joins those
+IDs to safe locally cached summaries and shows a neutral fallback for unknown
+IDs. It calls `GetContext` only when the user selects a context. If richer
+server-provided titles or previews become necessary, add them in a separately
+versioned summary contract instead of creating an N-plus-one list flow.
+
+Q: Can an anonymous public caller browse prior contexts?
+
+A: Not initially. Public A2A execution may collapse anonymous callers into one
+effective principal, which is not a safe history-ownership boundary. Remote
+history is available only when the server can scope both extension methods to
+the exact effective caller and selected agent/environment. Anonymous clients
+can still use fixed or newly generated context IDs without directory access.
