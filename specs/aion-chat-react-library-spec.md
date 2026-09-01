@@ -3,7 +3,7 @@ name: Aion Chat React Library
 date_created: 2026-08-31
 date_started: 2026-08-31
 date_completed: <incomplete>
-date_updated: 2026-08-31
+date_updated: 2026-09-01
 ---
 
 # Aion Chat React Library
@@ -47,7 +47,7 @@ the caller already has an Agent Card or A2A address. The adapter will discover
 the target's advertised security requirements and request a bearer credential
 only when required. A separately imported standalone GraphQL adapter may provide
 an Aion-specific agent catalog, upload operations, and the same A2A RPC stream
-through a dedicated, optionally authenticated chat-client GraphQL surface.
+through Aion's existing GraphQL HTTP and subscription endpoints.
 
 The backend work is part of this feature across repositories. `aion-api2`
 already generates `chat-client-schema.graphql` by filtering the full Caliban
@@ -55,9 +55,10 @@ schema to selected root fields for the terminal chat client in
 `aion-python-sdk`. That existing schema will become the shared GraphQL contract
 for both chat clients instead of introducing a second Aion chat schema. It is
 currently only an SDL/codegen projection, so the backend still needs to evolve
-its allowlist and mount the shared schema as a runtime API whose optional
-authentication, catalog projection, and A2A routing are safe for anonymous and
-authenticated callers.
+its allowlist, make the existing GraphQL controllers optionally authenticated,
+and add catalog projection and A2A routing that are safe for anonymous and
+authenticated callers. The complete runtime schema remains mounted; the shared
+chat-client schema is only a client code-generation subset.
 
 ### CopilotKit source baseline
 
@@ -121,9 +122,9 @@ Reference baseline:
 - Evolve the existing `chat-client-schema.graphql` as one shared contract for
   the Python SDK chat client and this React library, adding the public-safe
   catalog and approved upload operations without creating a parallel schema.
-- Mount the shared chat-client schema through a dedicated backend route that
-  supports anonymous callers and optional Aion bearer authentication without
-  exposing the full application GraphQL schema.
+- Make the existing GraphQL HTTP and subscription routes accept anonymous or
+  authenticated callers while preserving subject annotations and
+  operation-level authorization across the complete runtime schema.
 - Return catalog entries according to distribution visibility policy and
   expose whether an entry is anonymously invokable, requires any Aion member,
   or requires membership in its owning organization.
@@ -146,8 +147,9 @@ Reference baseline:
 - Maintaining a general-purpose fork of the full CopilotKit repository.
 - Replacing Aion's A2A protocol or backend GraphQL API.
 - Replacing server-side agent orchestration, authorization, or storage systems.
-  This feature may add a narrowly scoped GraphQL projection, optional-auth route,
-  catalog read model, CORS handling, and upload boundary in `aion-api2`.
+  This feature may add a public-safe catalog read model, optional authentication
+  on the existing GraphQL routes, CORS handling, and an upload boundary in
+  `aion-api2`.
 - Replacing the terminal/Ink-based package currently named
   `@terminal-research/aion` in `aion-python-sdk`.
 - Shipping a framework-independent Web Component, iframe, or script-tag embed
@@ -169,16 +171,16 @@ Reference baseline:
 - `aion-agent-cloud` continues to own an authenticated Apollo client whose
   WebSocket lifecycle, retry policy, and access-token refresh behavior should
   remain authoritative inside that application.
-- Standalone consumers can supply an Agent Card/A2A address or scoped GraphQL
+- Standalone consumers can supply an Agent Card/A2A address or GraphQL
   endpoint plus an asynchronous bearer-token callback when authentication is
   required.
-- The full `POST /api/graphql` and `GET /ws/graphql` routes currently require a
-  JWT before GraphQL execution and cannot become anonymous merely because an
-  individual resolver targets a public distribution.
+- The `POST /api/graphql` and `GET /ws/graphql` controllers currently require a
+  JWT before GraphQL execution and must be changed so absent credentials create
+  an anonymous caller while invalid supplied credentials remain rejected.
 - `aion-api2` already contains a scoped-schema generator based on approved root
-  fields and Caliban field exclusion. The existing chat-client projection can
-  be extended for both consumers, but schema generation alone does not create
-  or secure a runtime endpoint.
+  fields and Caliban field exclusion. The existing chat-client projection is a
+  code-generation contract for both consumers and neither creates nor restricts
+  the runtime endpoint.
 - The current terminal `chat-client-schema.graphql` includes authenticated
   `user`, `agentIdentityDetails`, `agentIdentityDetail`, `healthCheckAgent`, and
   `a2aRpc` fields. Sharing this schema does not make those existing fields
@@ -221,15 +223,14 @@ Reference baseline:
   Network ownership begins only when the consumer calls an explicit factory or
   supplies an existing client to an adapter.
 - Generated SDL is a client/codegen contract, not an authorization boundary.
-  The dedicated runtime route must mount only the shared chat-client GraphQL
-  API.
+  The existing GraphQL routes continue to mount the complete runtime schema.
 - `chat-client-schema.graphql` is the single generated chat-client contract.
   Do not introduce a React-specific schema artifact; evolve the shared
   root-field allowlist compatibly for both the Python SDK and React clients.
 - Inclusion in the shared schema does not imply anonymous access. Existing
-  authenticated fields must retain field-level authorization when mounted on
-  the optional-auth chat route.
-- The optional-auth route must distinguish missing credentials from invalid
+  authenticated fields must retain their field- and operation-level
+  authorization when the existing routes become optionally authenticated.
+- The GraphQL routes must distinguish missing credentials from invalid
   credentials. Missing credentials create an anonymous caller; supplied but
   invalid credentials must be rejected and must never downgrade to anonymous.
 - Anonymous GraphQL and direct A2A calls may address only distribution-backed
@@ -309,10 +310,10 @@ Reference baseline:
   application. Prefer direct A2A when catalog/control-plane GraphQL is not
   needed.
 - **Risk: a generated subset is mistaken for a server security boundary.** The
-  existing generator only produces SDL and does not restrict the full runtime
-  interpreter. **Mitigation:** build and mount a distinct runtime GraphQL value
-  from the same approved root contract and test that excluded operations fail
-  schema validation on the dedicated route.
+  generator only produces client SDL and does not restrict the full runtime
+  interpreter. **Mitigation:** keep the complete runtime schema explicit and
+  test that subject annotations and operation-level authorization reject
+  anonymous use of representative protected operations.
 - **Risk: anonymous catalog responses leak private identities or organization
   membership.** **Mitigation:** create a public-safe catalog projection and
   query path built from live distribution ingress policy; do not reuse the
@@ -409,16 +410,16 @@ Reference baseline:
 - Verify authentication failures are surfaced as typed transport failures and
   do not expose token values in messages, logs, or errors.
 - Verify the shared chat-client GraphQL schema contains only fields approved for
-  either chat client and that its generated SDL matches the mounted runtime
-  schema.
+  either chat client and that its generated operation types compile against the
+  complete runtime schema.
 - Verify both `aion-python-sdk` and `aion-chat-react` generate operations from
   the same shared schema artifact, and that adding the React client does not
   remove or change existing Python SDK chat operations unintentionally.
-- Verify anonymous callers are rejected from existing authenticated
-  chat-client fields even though those fields are present in the shared runtime
-  schema.
-- Verify the full GraphQL route remains authenticated and unchanged while the
-  dedicated chat route accepts a truly credentialless request.
+- Verify anonymous callers are rejected from representative authenticated
+  fields on the complete runtime schema even though the routes themselves allow
+  credentialless requests.
+- Verify both existing GraphQL routes accept a truly credentialless request
+  without weakening protected operations.
 - Verify missing credentials remain anonymous, invalid supplied credentials
   receive an authentication failure, and token values do not appear in request
   logs or GraphQL errors.
@@ -434,7 +435,7 @@ Reference baseline:
   capability, or organization-only targets by changing GraphQL input fields.
 - Verify public RPC uses the anonymous principal even when a bearer token is
   present, matching the canonical direct A2A ingress behavior.
-- Verify direct A2A execution routes and the dedicated GraphQL route have the
+- Verify direct A2A execution routes and the existing GraphQL routes have the
   CORS/preflight behavior required by ordinary browser embeds without allowing
   credentialed origins more broadly than intended.
 - Verify upload success produces a URL-backed A2A file part with correct media
@@ -670,8 +671,8 @@ multiple repositories, use
 
 ### Subtask N — Implement the standalone GraphQL gateway adapter (status: not started)
 
-- In `aion-chat-react`, add a separate standalone export for the dedicated Aion
-  chat GraphQL route with explicit HTTP/subscription URLs, an optional
+- In `aion-chat-react`, add a separate standalone export for Aion's existing
+  GraphQL routes with explicit HTTP/subscription URLs, an optional
   asynchronous bearer-token getter, and transport lifecycle options.
 - Reuse catalog/RPC operation documents and GraphQL-to-core normalization with
   the injected adapter while owning only the minimal standalone connection.
@@ -839,7 +840,7 @@ aion-chat-react/
 │   │   ├── operations.ts         # Aion chat GraphQL documents
 │   │   ├── normalize.ts          # GraphQL/A2A to core events
 │   │   ├── apolloTransport.ts    # caller-owned Apollo adapter
-│   │   └── standalone.ts         # scoped chat gateway factory
+│   │   └── standalone.ts         # standalone GraphQL client factory
 │   ├── uploads/
 │   │   └── uploader.ts           # optional backend upload adapter
 │   └── testing/
@@ -863,8 +864,8 @@ Planned entry points:
 - `./a2a`: Agent Card discovery and direct A2A streaming transport.
 - `./graphql`: GraphQL documents, normalization, and caller-owned Apollo
   adapter. Importing it performs no connection setup.
-- `./graphql/standalone`: explicit standalone transport/client factory for the
-  dedicated Aion chat GraphQL route.
+- `./graphql/standalone`: explicit standalone transport/client factory for
+  Aion's existing GraphQL routes.
 - `./uploads`: optional upload adapter contracts and implementations.
 - `./testing`: fake transport and transport conformance helpers.
 
@@ -878,15 +879,15 @@ The related backend ownership is expected to remain in `aion-api2`:
 ```text
 aion-api2/
 ├── graphql/.../GraphQLGenerator.scala    # scoped SDL allowlist/generation
-├── src/main/.../graphql/chat/            # public-safe catalog and RPC API
-├── src/main/.../controllers/             # optional-auth chat GraphQL routes
+├── src/main/.../graphql/                 # public-safe catalog and RPC fields
+├── src/main/.../controllers/             # existing optional-auth GraphQL routes
 └── src/main/resources/static/
     └── chat-client-schema.graphql        # shared generated client contract
 ```
 
-The final backend package names and route paths may follow local conventions,
-but generated schema and mounted runtime schema must come from the same approved
-root-field contract.
+The generated schema remains a manually synchronized client contract. It does
+not select which fields the existing runtime endpoints mount or replace
+resolver-level authorization.
 
 ## 4) Configuration Model (key decisions)
 
@@ -1073,7 +1074,7 @@ const transport = createDirectAionA2ATransport({
 - This is the smallest standalone path when the host already knows the target
   and does not need Aion catalog or upload operations.
 
-### Standalone scoped GraphQL integration
+### Standalone GraphQL integration
 
 ```ts
 const client = createStandaloneAionChatGraphQLClient({
@@ -1087,9 +1088,10 @@ await client.dispose();
 ```
 
 - Standalone creation is explicit and lives in an optional subpath.
-- The factory targets only the shared chat-client GraphQL schema and owns the
-  minimal query/subscription connection needed for catalog, chat, and approved
-  upload operations. It does not target or reproduce the full
+- The factory sends only operations generated from the shared chat-client
+  schema to Aion's existing complete-schema endpoints and owns the minimal
+  query/subscription connection needed for catalog, chat, and approved upload
+  operations. It does not reproduce the full
   `aion-agent-cloud` GraphQL provider, global cache policies, or application
   reconnect coordinator.
 - The token getter is called when authorization is needed so refreshed tokens
@@ -1100,9 +1102,9 @@ await client.dispose();
 - The consumer owns the client instance and must dispose it when its
   long-lived embed or extension context is destroyed.
 
-### Dedicated GraphQL backend behavior
+### Existing GraphQL backend behavior
 
-- The chat GraphQL HTTP and subscription routes accept requests without
+- The existing GraphQL HTTP and subscription routes accept requests without
   credentials.
 - If a bearer credential is supplied, the route verifies it before GraphQL
   execution. Invalid supplied credentials return an authentication failure and
@@ -1112,11 +1114,11 @@ await client.dispose();
   authorization evidence.
 - The RPC resolver supports only distribution-backed public chat targets and
   delegates authorization to the same policy used by direct A2A ingress.
-- The route's runtime schema exposes only the fields in the generated shared
-  `chat-client-schema.graphql`. Existing authenticated fields retain their
-  resolver authorization on the optional-auth route, while public-safe fields
-  can use the optional caller context. The full application GraphQL schema
-  stays behind its existing mandatory-auth routes.
+- The complete runtime schema remains exposed. Existing authenticated fields
+  retain their subject annotations and operation-level authorization, while
+  public-safe fields can use optional caller context. The generated
+  `chat-client-schema.graphql` only constrains the operations shipped by chat
+  clients.
 
 ### Attachment upload integration
 
