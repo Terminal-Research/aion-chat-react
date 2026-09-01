@@ -45,20 +45,20 @@ WebSocket links, token lifecycle, reconnect policy, and connection.
 For independent embeds, direct A2A will be the canonical chat transport when
 the caller already has an Agent Card or A2A address. The adapter will discover
 the target's advertised security requirements and request a bearer credential
-only when required. A separately imported standalone GraphQL adapter may provide
-an Aion-specific agent catalog, upload operations, and the same A2A RPC stream
-through Aion's existing GraphQL HTTP and subscription endpoints.
+only when required. An authenticated standalone GraphQL adapter may reuse the
+existing identity catalog and A2A RPC operations through Aion's existing
+GraphQL HTTP and subscription endpoints.
 
 The backend work is part of this feature across repositories. `aion-api2`
 already generates `chat-client-schema.graphql` by filtering the full Caliban
 schema to selected root fields for the terminal chat client in
 `aion-python-sdk`. That existing schema will become the shared GraphQL contract
 for both chat clients instead of introducing a second Aion chat schema. It is
-currently only an SDL/codegen projection, so the backend still needs to evolve
-its allowlist, make the existing GraphQL controllers optionally authenticated,
-and add catalog projection and A2A routing that are safe for anonymous and
-authenticated callers. The complete runtime schema remains mounted; the shared
-chat-client schema is only a client code-generation subset.
+an SDL/codegen projection whose current fields already include the authenticated
+`agentIdentityDetails` and A2A RPC operations needed by the initial React
+integration. A developer will copy the generated schema into this repository
+when it changes. The initial catalog integration requires no new GraphQL field,
+public catalog projection, or optional-authentication change in `aion-api2`.
 
 ### CopilotKit source baseline
 
@@ -117,19 +117,14 @@ Reference baseline:
   does not create another authenticated GraphQL connection.
 - Provide a direct A2A adapter that discovers interfaces, streaming support,
   and authentication requirements from an Agent Card.
-- Provide an explicit standalone GraphQL factory for independently deployed
-  embeds and browser extensions that need Aion catalog or upload operations.
-- Evolve the existing `chat-client-schema.graphql` as one shared contract for
-  the Python SDK chat client and this React library, adding the public-safe
-  catalog and approved upload operations without creating a parallel schema.
-- Make the existing GraphQL HTTP and subscription routes accept anonymous or
-  authenticated callers while preserving subject annotations and
-  operation-level authorization across the complete runtime schema.
-- Return catalog entries according to distribution visibility policy and
-  expose whether an entry is anonymously invokable, requires any Aion member,
-  or requires membership in its owning organization.
-- Keep catalog discovery policy and RPC authorization policy aligned while
-  preserving the distinction between discoverability and permission to invoke.
+- Provide an explicit standalone GraphQL factory for authenticated consumers
+  that need Aion catalog or upload operations.
+- Reuse the existing `chat-client-schema.graphql` as one shared contract for
+  the Python SDK chat client and this React library without creating a parallel
+  schema.
+- Reuse the existing authenticated `agentIdentityDetails` operation for initial
+  agent selection, with the organization ID and user JWT supplied by the host
+  application or standalone configuration.
 - Define an attachment upload boundary that can turn browser files or captured
   screenshots into URL-backed A2A file parts without coupling the core UI to a
   specific upload endpoint.
@@ -147,9 +142,9 @@ Reference baseline:
 - Maintaining a general-purpose fork of the full CopilotKit repository.
 - Replacing Aion's A2A protocol or backend GraphQL API.
 - Replacing server-side agent orchestration, authorization, or storage systems.
-  This feature may add a public-safe catalog read model, optional authentication
-  on the existing GraphQL routes, CORS handling, and an upload boundary in
-  `aion-api2`.
+  The initial catalog integration does not add a new public catalog or change
+  GraphQL authentication. Future upload work may add a bounded backend upload
+  boundary after that contract is approved.
 - Replacing the terminal/Ink-based package currently named
   `@terminal-research/aion` in `aion-python-sdk`.
 - Shipping a framework-independent Web Component, iframe, or script-tag embed
@@ -171,21 +166,20 @@ Reference baseline:
 - `aion-agent-cloud` continues to own an authenticated Apollo client whose
   WebSocket lifecycle, retry policy, and access-token refresh behavior should
   remain authoritative inside that application.
-- Standalone consumers can supply an Agent Card/A2A address or GraphQL
-  endpoint plus an asynchronous bearer-token callback when authentication is
-  required.
-- The `POST /api/graphql` and `GET /ws/graphql` controllers currently require a
-  JWT before GraphQL execution and must be changed so absent credentials create
-  an anonymous caller while invalid supplied credentials remain rejected.
+- The host can supply its selected organization ID and authenticated user
+  context to the library. Standalone GraphQL consumers can supply an
+  organization ID, endpoint URLs, and an asynchronous bearer-token callback.
+- The existing `POST /api/graphql` and `GET /ws/graphql` authentication behavior
+  remains unchanged for the initial integration: GraphQL catalog and RPC use
+  require a valid user JWT.
 - `aion-api2` already contains a scoped-schema generator based on approved root
   fields and Caliban field exclusion. The existing chat-client projection is a
   code-generation contract for both consumers and neither creates nor restricts
   the runtime endpoint.
 - The current terminal `chat-client-schema.graphql` includes authenticated
   `user`, `agentIdentityDetails`, `agentIdentityDetail`, `healthCheckAgent`, and
-  `a2aRpc` fields. Sharing this schema does not make those existing fields
-  anonymous; their resolver authorization must remain intact while new
-  public-safe operations apply optional caller context.
+  `a2aRpc` fields. The React library can use the existing
+  `agentIdentityDetails` contract without changing the backend schema.
 - A2A distributions currently support three access modes:
   `Public`, `AionAnyMember`, and `AionSameOrgMember`.
 - `Public` and `AionAnyMember` are globally catalog-visible under the current
@@ -228,19 +222,14 @@ Reference baseline:
   Do not introduce a React-specific schema artifact; evolve the shared
   root-field allowlist compatibly for both the Python SDK and React clients.
 - Inclusion in the shared schema does not imply anonymous access. Existing
-  authenticated fields must retain their field- and operation-level
-  authorization when the existing routes become optionally authenticated.
-- The GraphQL routes must distinguish missing credentials from invalid
-  credentials. Missing credentials create an anonymous caller; supplied but
-  invalid credentials must be rejected and must never downgrade to anonymous.
-- Anonymous GraphQL and direct A2A calls may address only distribution-backed
-  public chat targets. Environment, deployment, system, keyed capability, and
-  other internal target forms must remain on authenticated APIs unless
-  separately reviewed.
-- Catalog organization scope must be derived from verified authentication and
-  membership, never accepted as an authoritative caller-supplied organization.
-- Public catalog models must exclude internal notes, role keys, private usage
-  records, and other fields from the authenticated identity-detail model.
+  authenticated fields retain their existing field- and operation-level
+  authorization.
+- The catalog operation requires a valid user JWT and an explicit organization
+  ID. The organization ID scopes the query but is not authorization evidence;
+  the server must continue to authorize it against the authenticated caller.
+- The checked-in catalog operation must select only fields the React client
+  needs. It must not request internal notes, role keys, email, system keys,
+  private usage records, or unrelated administrative identity fields.
 - RPC authorization must be re-evaluated by the server at request time even
   when a cached catalog entry or Agent Card says the target is accessible.
 - A provided credential must be acquired just in time through a callback. The
@@ -314,20 +303,13 @@ Reference baseline:
   interpreter. **Mitigation:** keep the complete runtime schema explicit and
   test that subject annotations and operation-level authorization reject
   anonymous use of representative protected operations.
-- **Risk: anonymous catalog responses leak private identities or organization
-  membership.** **Mitigation:** create a public-safe catalog projection and
-  query path built from live distribution ingress policy; do not reuse the
-  authenticated `AgentIdentityDetail` resolver or accept an organization ID as
-  anonymous authority.
-- **Risk: optional authentication silently downgrades bad credentials.** This
-  could make failures confusing and accidentally execute under the public
-  principal. **Mitigation:** treat no credentials as anonymous, reject invalid
-  supplied credentials, and return a typed authentication-required result when
-  a selected target cannot be invoked anonymously.
-- **Risk: catalog visibility is confused with RPC permission.** An
-  `AionAnyMember` entry is globally discoverable but not anonymously
-  executable. **Mitigation:** return explicit access metadata and calculate
-  `canInvoke` for the current optional caller independently of visibility.
+- **Risk: the broad identity-detail type encourages clients to request
+  administrative profile fields.** **Mitigation:** keep one checked-in catalog
+  operation that selects only the identity and A2A addressing fields needed by
+  the chat UI, and test the generated operation shape.
+- **Risk: a configured organization ID is mistaken for authorization.**
+  **Mitigation:** continue requiring a valid user JWT and rely on the existing
+  resolver authorization to validate visibility within that organization.
 - **Risk: an authenticated standalone WebSocket retains an expired token.**
   **Mitigation:** obtain tokens through a callback, reconnect deliberately when
   the credential changes, and make the resulting catalog/RPC streams resume or
@@ -415,29 +397,16 @@ Reference baseline:
 - Verify both `aion-python-sdk` and `aion-chat-react` generate operations from
   the same shared schema artifact, and that adding the React client does not
   remove or change existing Python SDK chat operations unintentionally.
-- Verify anonymous callers are rejected from representative authenticated
-  fields on the complete runtime schema even though the routes themselves allow
-  credentialless requests.
-- Verify both existing GraphQL routes accept a truly credentialless request
-  without weakening protected operations.
-- Verify missing credentials remain anonymous, invalid supplied credentials
-  receive an authentication failure, and token values do not appear in request
-  logs or GraphQL errors.
-- Verify catalog and RPC behavior for every access mode:
-  `Public`, `AionAnyMember`, and `AionSameOrgMember`, with anonymous, same-org,
-  other-org, and relevant non-user authenticated callers.
-- Verify globally visible but authentication-required catalog entries are
-  clearly distinguishable from anonymously invokable entries.
-- Verify anonymous catalog results cannot expose internal notes, role keys,
-  private identities, organization-only entries, or disabled/non-A2A
-  distributions.
-- Verify anonymous RPC cannot address environment, deployment, system, keyed
-  capability, or organization-only targets by changing GraphQL input fields.
-- Verify public RPC uses the anonymous principal even when a bearer token is
-  present, matching the canonical direct A2A ingress behavior.
-- Verify direct A2A execution routes and the existing GraphQL routes have the
-  CORS/preflight behavior required by ordinary browser embeds without allowing
-  credentialed origins more broadly than intended.
+- Verify the authenticated catalog operation forwards the configured
+  organization ID, filters to the required identity and A2A network types, and
+  normalizes only identities with usable A2A addressing.
+- Verify missing or invalid JWTs fail instead of producing catalog results, and
+  a user without visibility into the supplied organization is denied.
+- Verify the catalog operation does not select notes, role keys, email, system
+  keys, private usage records, or unrelated administrative fields.
+- Verify public direct-A2A execution independently against the access modes
+  supported by the selected Agent Card; it does not depend on the authenticated
+  GraphQL catalog contract.
 - Verify upload success produces a URL-backed A2A file part with correct media
   metadata, while rejected type, oversized content, cancellation, and failed
   upload leave the composer recoverable.
@@ -611,7 +580,11 @@ multiple repositories, use
 
 ### Phase 3 — Standalone and optional-auth integration
 
-### Subtask J — Define the public-safe chat catalog contract (status: not started)
+The initial catalog scope now remains authenticated and uses the existing
+identity-detail operation. Public catalog and optional-authentication work in
+the historical subtasks below is deferred until a concrete embed requires it.
+
+### Subtask J — Define the public-safe chat catalog contract (status: deferred)
 
 - In `aion-api2`, define a catalog read model specifically for chat clients
   rather than reusing authenticated `AgentIdentityDetail` payloads.
@@ -623,7 +596,7 @@ multiple repositories, use
 - Cover `Public`, `AionAnyMember`, and `AionSameOrgMember` behavior for
   anonymous, same-org, and other-org viewers.
 
-### Subtask K — Evolve the shared chat-client GraphQL schema (status: not started)
+### Subtask K — Evolve the shared chat-client GraphQL schema (status: deferred)
 
 - In `aion-api2`, reuse the current `RootOperationFields` and Caliban
   `Transformer.ExcludeField` mechanism and retain
@@ -786,7 +759,7 @@ multiple repositories, use
   rendering, Tailwind merging, or universal render-prop composition. Add only
   the behavior exercised by at least two Aion surfaces.
 
-### Subtask Y — Make GraphQL authentication optional (status: not started)
+### Subtask Y — Make GraphQL authentication optional (status: deferred)
 
 - In `aion-api2`, allow `POST /api/graphql` and `GET /ws/graphql` to establish
   an anonymous caller when credentials are absent, while preserving verified
@@ -798,6 +771,19 @@ multiple repositories, use
 - Verify representative authenticated operations remain inaccessible to an
   anonymous caller and public catalog/RPC operations can execute without a
   separate GraphQL controller or route pair.
+
+### Subtask Z — Reuse the authenticated identity catalog (status: not started)
+
+- In `aion-chat-react`, add a checked-in `agentIdentityDetails` operation based
+  on the existing Python chat-client catalog query.
+- Require the caller to provide an organization ID and authenticated user JWT,
+  either through the host-owned Apollo client or standalone GraphQL
+  configuration.
+- Filter to chat-selectable personal and principal identities with active A2A
+  distributions, and normalize only the identity, presentation, and A2A
+  addressing fields required by the React client.
+- Keep organization authorization server-owned and prove the client query does
+  not request administrative identity fields it does not use.
 
 ## 3) Package Hierarchy + Responsibilities
 
@@ -879,15 +865,14 @@ The related backend ownership is expected to remain in `aion-api2`:
 ```text
 aion-api2/
 ├── graphql/.../GraphQLGenerator.scala    # scoped SDL allowlist/generation
-├── src/main/.../graphql/                 # public-safe catalog and RPC fields
-├── src/main/.../controllers/             # existing optional-auth GraphQL routes
 └── src/main/resources/static/
     └── chat-client-schema.graphql        # shared generated client contract
 ```
 
 The generated schema remains a manually synchronized client contract. It does
 not select which fields the existing runtime endpoints mount or replace
-resolver-level authorization.
+resolver-level authorization. No initial backend catalog or authentication
+change is required.
 
 ## 4) Configuration Model (key decisions)
 
@@ -930,9 +915,9 @@ export interface AionCredentialProvider {
 
 - The provider is optional because public distributions accept anonymous
   requests.
-- The adapter calls the provider only when an Agent Card or selected catalog
-  entry requires authentication, or when opening an explicitly authenticated
-  GraphQL connection.
+- Direct A2A calls request a token only when the Agent Card requires one.
+  GraphQL catalog and RPC calls always use an authenticated connection and
+  therefore require a token provider or a host-owned authenticated client.
 - `null` means no credential is currently available; it does not authorize a
   fallback after a supplied credential was rejected.
 - A static token convenience may exist for tests, but application documentation
@@ -940,20 +925,19 @@ export interface AionCredentialProvider {
 - Credential values never enter conversation state, error payloads, analytics,
   or logs.
 
-### Distribution access matrix
+### Authenticated catalog selection
 
-The server remains authoritative. The client uses this information for catalog
-presentation and preflight UX only.
-
-| Access mode | Anonymous catalog | Authenticated catalog | Anonymous RPC | Authenticated RPC |
-| --- | --- | --- | --- | --- |
-| `Public` | Globally visible | Globally visible | Allowed as public principal | Allowed as public principal |
-| `AionAnyMember` | Globally visible, marked login-required | Globally visible | Rejected as authentication-required | Allowed for any authenticated Aion member |
-| `AionSameOrgMember` | Hidden | Visible only to owning-organization members | Rejected | Allowed only for owning-organization members |
-
-Catalog entries must expose a safe access presentation such as
-`requiresAuthentication` and `canInvoke` rather than requiring the React
-library to reproduce server policy from enum names.
+- The initial agent picker queries `agentIdentityDetails` with a host-supplied
+  organization ID, `types: [Principal, Personal]`, `networkTypes: [A2A]`, and
+  `includePersonalSelf: true`, matching the existing Python chat client.
+- The GraphQL connection carries a valid user JWT. The server remains
+  authoritative for organization and identity visibility.
+- The catalog model exposes the selected identity's display and A2A addressing
+  information. It does not attempt to mirror distribution access policy or
+  predict authorization for a later RPC request.
+- A future anonymous or cross-organization directory will define its own safe
+  projection only when an embed requires one. Known public targets should
+  prefer direct A2A discovery through their configured Agent Card.
 
 ### Shared theme boundary
 
@@ -1080,6 +1064,7 @@ const transport = createDirectAionA2ATransport({
 const client = createStandaloneAionChatGraphQLClient({
   httpUrl,
   websocketUrl,
+  organizationId,
   getBearerToken: async () => extensionAuth.getAccessToken(),
 });
 
@@ -1096,29 +1081,21 @@ await client.dispose();
   reconnect coordinator.
 - The token getter is called when authorization is needed so refreshed tokens
   do not require rebuilding UI state.
-- The connection may begin anonymously. Moving from anonymous to authenticated,
-  or changing credentials, requires an explicit reconnect because GraphQL
-  WebSocket authentication is established for the connection.
+- The initial standalone GraphQL client requires an organization ID and a
+  bearer token. Changing credentials requires an explicit reconnect because
+  GraphQL WebSocket authentication is established for the connection.
 - The consumer owns the client instance and must dispose it when its
   long-lived embed or extension context is destroyed.
 
 ### Existing GraphQL backend behavior
 
-- The existing GraphQL HTTP and subscription routes accept requests without
-  credentials.
-- If a bearer credential is supplied, the route verifies it before GraphQL
-  execution. Invalid supplied credentials return an authentication failure and
-  never create an anonymous environment.
-- The catalog resolver derives optional viewer identity and organization from
-  verified authentication. It does not accept an organization selector as
-  authorization evidence.
-- The RPC resolver supports only distribution-backed public chat targets and
-  delegates authorization to the same policy used by direct A2A ingress.
-- The complete runtime schema remains exposed. Existing authenticated fields
-  retain their subject annotations and operation-level authorization, while
-  public-safe fields can use optional caller context. The generated
+- The existing GraphQL HTTP and subscription routes continue to require valid
+  authentication.
+- The `agentIdentityDetails` resolver requires a user and authorizes visibility
+  for the supplied organization ID before returning identities.
+- The complete runtime schema remains exposed. The generated
   `chat-client-schema.graphql` only constrains the operations shipped by chat
-  clients.
+  clients and does not replace resolver-level authorization.
 
 ### Attachment upload integration
 
@@ -1176,12 +1153,17 @@ note.
   dedicated optional-auth Aion chat GraphQL API? Resolution: do not add
   dedicated chat paths. Reuse `POST /api/graphql` and `GET /ws/graphql`, make
   missing credentials anonymous, and retain schema annotations plus
-  operation-level authorization as the security boundary.
-- [status: open] What exact public-safe fields, filters, pagination model, and
-  access presentation should the new `agentCatalog` query expose?
-- [status: open] Should a standalone private embed obtain an ordinary short-lived
-  Aion JWT from the host, or should the backend issue a narrower audience- and
-  agent-scoped embed token?
+  operation-level authorization as the security boundary. Superseded for the
+  initial release: the existing routes retain required authentication.
+- [status: deferred] What exact public-safe fields, filters, pagination model,
+  and access presentation should the new `agentCatalog` query expose?
+  Deferral: reuse authenticated `agentIdentityDetails` for now and reconsider a
+  public-safe catalog only when a concrete embed requires one.
+- [status: deferred] Should a standalone private embed obtain an ordinary
+  short-lived Aion JWT from the host, or should the backend issue a narrower
+  audience- and agent-scoped embed token? Deferral: the initial GraphQL
+  integration accepts a host-supplied user JWT; embed-specific credentials will
+  be designed with the first concrete embed.
 - [status: open] What server endpoint, authorization scope, retention policy,
   size limit, and media-type policy will back screenshot/file uploads?
 - [status: open] Should catalog-backed agent selection ship as a default library
@@ -1446,3 +1428,19 @@ valid credentials, and reject invalid supplied credentials. The complete
 schema remains mounted, with its subject annotations and operation-level
 authorization protecting non-public operations. This supersedes the earlier
 plan for a dedicated optional-auth chat route and runtime schema.
+
+Q: Does the initial React agent catalog require a new GraphQL field?
+
+A: No. Reuse the existing authenticated `agentIdentityDetails` field, matching
+the catalog approach already used by the Python chat client. The host or
+standalone configuration supplies a user JWT and organization ID. The React
+operation selects only the presentation and A2A addressing fields it needs;
+the server continues to authorize organization visibility.
+
+Q: When should anonymous or public catalog discovery be reconsidered?
+
+A: When a concrete embed cannot provide authenticated GraphQL context. A known
+public agent should prefer direct A2A discovery through a configured Agent Card.
+If a future embed needs directory browsing, define its public-safe projection,
+organization scoping, and credential model from that use case instead of adding
+them preemptively.
