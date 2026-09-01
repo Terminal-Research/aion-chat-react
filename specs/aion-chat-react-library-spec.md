@@ -759,12 +759,14 @@ multiple repositories, use
 
 ### Subtask V — Extend the safe Markdown component map (status: done)
 
+- Commit ID (aion-chat-react): `2a8e49c`
+
 - Allow hosts to override individual Markdown elements without replacing the
   default safe parsing and URL-transformation pipeline.
 - Preserve raw-HTML suppression and unsafe-link handling when ordinary
   element overrides are used.
 
-### Subtask W — Correct CopilotKit source provenance (status: not started)
+### Subtask W — Correct CopilotKit source provenance (status: done)
 
 - Separate sources actually adapted in Phase 1 from candidates reserved for
   later work.

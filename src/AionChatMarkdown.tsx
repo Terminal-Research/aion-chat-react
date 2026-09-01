@@ -1,3 +1,8 @@
+/*
+ * Component-map composition adapted from CopilotKit's Markdown renderer:
+ * packages/react-ui/src/components/chat/Markdown.tsx
+ * pinned at 65bd05e3682ced8f424023f75627f8f833e52745 (MIT).
+ */
 import type { ComponentType } from "react";
 import { useMemo } from "react";
 import ReactMarkdown, {
