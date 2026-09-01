@@ -768,10 +768,22 @@ multiple repositories, use
 
 ### Subtask W — Correct CopilotKit source provenance (status: done)
 
+- Commit ID (aion-chat-react): `34f3c6f`
+
 - Separate sources actually adapted in Phase 1 from candidates reserved for
   later work.
 - Correct source paths and distinguish code adaptation from conceptual pattern
   references.
+
+### Subtask X — Define reusable typed slot values (status: not started)
+
+- Introduce a small Aion-owned slot-value contract for recurring component
+  replacement and partial default-prop customization across the composer,
+  message/activity renderers, and popup/sidebar shells.
+- Update the pre-release slot APIs directly without a compatibility layer.
+- Do not copy CopilotKit's implicit string-to-class behavior, `any`-based
+  rendering, Tailwind merging, or universal render-prop composition. Add only
+  the behavior exercised by at least two Aion surfaces.
 
 ## 3) Package Hierarchy + Responsibilities
 
@@ -1126,9 +1138,12 @@ note.
 - [status: open] What npm scope and package name should distinguish this
   browser library from the existing terminal package: for example,
   `@terminal-research/aion-chat-react`, `@aion/chat-react`, or another name?
-- [status: open] Which exact CopilotKit files and style fragments survive the
-  first adaptation after Aion contracts are defined, and which should be
-  reimplemented more simply?
+- [status: resolved] Which exact CopilotKit files and style fragments survive
+  the first adaptation after Aion contracts are defined, and which should be
+  reimplemented more simply? Resolution: Phase 1 adapted the controlled chat
+  view, input, message-view, and Markdown component-map patterns listed in
+  `THIRD_PARTY_NOTICES.md`. No CopilotKit styles, runtime, AG-UI model,
+  configuration provider, branding, or license-gating code was adopted.
 - [status: open] Should `aion-api2` publish the shared
   `chat-client-schema.graphql` as a versioned artifact/package, or should both
   `aion-python-sdk` and `aion-chat-react` synchronize pinned copies and verify
@@ -1160,6 +1175,12 @@ note.
 - [status: open] Does the first browser-extension target use a popup, side
   panel, content-script overlay, or more than one of these surfaces, and which
   manifest/CSP constraints follow from that choice?
+- [status: open] What measured transcript length and streaming update rate
+  should trigger message windowing, and can `content-visibility` satisfy the
+  same browser, accessibility, search, and scroll requirements more simply?
+- [status: open] Should the popup behave as a modal dialog with focus
+  containment, or as a non-modal chat surface that permits interaction with
+  the host page while open?
 
 ## 6) Q&A (Design Decisions Log)
 
@@ -1318,3 +1339,47 @@ shared CSS-variable theme boundary, a Bootstrap-based Vite example, and the
 host-injected authenticated Apollo transport. Popup and sidebar shells are
 deliberately deferred until the inline view, controller, and styling contract
 have been exercised.
+
+Q: Which CopilotKit implementation details should Subtask G carry into the
+composer?
+
+A: Selectively carry over controlled textarea autosizing, IME-safe measurement,
+explicit opt-in autofocus, focus restoration after discrete actions, and clear
+attachment-queue presentation. Keep attachment state and upload behavior on
+Aion contracts. Do not adopt CopilotKit audio/transcription modes, tool menus,
+interrupt-pill state, configuration providers, or Tailwind layout machinery.
+
+Q: Should Aion copy CopilotKit's message memoization and virtualization now?
+
+A: No wholesale copy is justified. Subtask U removes the currently proven
+quadratic lookup and draft-triggered scroll work by stabilizing transcript
+derivation. Subtasks H and I will first memoize stable Aion leaf renderers and
+measure realistic large, streaming histories. Windowing or
+`content-visibility` is added only after that fixture demonstrates a material
+problem and establishes a behavior threshold.
+
+Q: How should CopilotKit's tool-call and activity composition influence Aion
+message rendering?
+
+A: Subtask H will retain the useful idea of composable specialized renderers,
+but dispatch through Aion typed-part and activity discriminants. Unknown data
+must remain visible and diagnosable. CopilotKit message roles, tool runtime,
+inspector, feedback system, and agent-state snapshots do not enter the Aion
+model.
+
+Q: Which popup and sidebar behavior is worth adapting?
+
+A: Subtask Q should reuse the behavioral ideas of normalized dimensions,
+dynamic viewport and safe-area sizing, Escape and outside-pointer cleanup,
+focus entry/restoration, responsive overlay behavior, and optional left/right
+sidebar docking. The default sidebar must not mutate host body layout; docking
+is an explicit opt-in. Popup focus containment remains open until its modal
+semantics are selected.
+
+Q: Should Aion adopt CopilotKit's generic slot utility?
+
+A: Only in a smaller Aion-owned form under Subtask X. Component replacement
+and partial default-prop customization are useful across multiple planned
+surfaces. Implicit class-name strings, Tailwind merging, `any`-typed internals,
+and render-prop versions of every component add coupling and are not part of
+the planned contract.
