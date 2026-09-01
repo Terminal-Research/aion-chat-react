@@ -743,11 +743,13 @@ multiple repositories, use
 
 ### Subtask T — Make composer submission IME-safe (status: done)
 
+- Commit ID (aion-chat-react): `ed56711`
+
 - Prevent Enter from submitting while an input method editor is composing,
   including the legacy browser key-code fallback.
 - Prove that the same composer submits normally once composition is complete.
 
-### Subtask U — Stabilize transcript derivation (status: not started)
+### Subtask U — Stabilize transcript derivation (status: done)
 
 - Resolve transcript references in linear time with stable memoized output.
 - Prevent unrelated provider updates such as draft changes from retriggering

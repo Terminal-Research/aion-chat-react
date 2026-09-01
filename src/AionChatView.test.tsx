@@ -184,4 +184,43 @@ describe("AionChatView", () => {
 
     expect(screen.getByText("unsafe.txt").tagName).toBe("SPAN");
   });
+
+  it("does not repeat transcript scroll work when only the draft changes", () => {
+    const descriptor = Object.getOwnPropertyDescriptor(
+      HTMLDivElement.prototype,
+      "scrollTop",
+    );
+    let scrollWrites = 0;
+    Object.defineProperty(HTMLDivElement.prototype, "scrollTop", {
+      configurable: true,
+      get: () => 0,
+      set: () => {
+        scrollWrites += 1;
+      },
+    });
+
+    const transport = new FakeAionChatTransport(() => []);
+    const view = render(
+      <AionChatProvider transport={transport} defaultAgent={AGENT}>
+        <AionChatView />
+      </AionChatProvider>,
+    );
+
+    try {
+      const initialScrollWrites = scrollWrites;
+      expect(initialScrollWrites).toBeGreaterThan(0);
+      fireEvent.change(screen.getByRole("textbox", { name: "Chat message" }), {
+        target: { value: "Draft only" },
+      });
+
+      expect(scrollWrites).toBe(initialScrollWrites);
+    } finally {
+      view.unmount();
+      if (descriptor) {
+        Object.defineProperty(HTMLDivElement.prototype, "scrollTop", descriptor);
+      } else {
+        Reflect.deleteProperty(HTMLDivElement.prototype, "scrollTop");
+      }
+    }
+  });
 });

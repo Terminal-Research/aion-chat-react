@@ -3,7 +3,7 @@
  * packages/react-core/src/v2/components/chat/CopilotChatView.tsx
  * pinned at 65bd05e3682ced8f424023f75627f8f833e52745 (MIT).
  */
-import type { ComponentType, HTMLAttributes } from "react";
+import { type ComponentType, type HTMLAttributes, useMemo } from "react";
 
 import {
   AionChatComposer,
@@ -44,18 +44,25 @@ export function AionChatView({
   const Composer = slots.composer ?? AionChatComposer;
   const runStatus = state.conversation.activeRun?.status;
   const error = state.conversation.activeRun?.error;
-  const transcriptEntries = state.conversation.transcript.flatMap<
-    AionChatTranscriptEntry
-  >((item) => {
-    if (item.type === "message") {
-      const message = state.conversation.messages.find(
-        (candidate) => candidate.id === item.id,
-      );
-      return message ? [{ type: "message" as const, message }] : [];
-    }
-    const artifact = state.conversation.artifacts[item.id];
-    return artifact ? [{ type: "artifact" as const, artifact }] : [];
-  });
+  const transcriptEntries = useMemo(() => {
+    const messagesById = new Map(
+      state.conversation.messages.map((message) => [message.id, message]),
+    );
+    return state.conversation.transcript.flatMap<AionChatTranscriptEntry>(
+      (item) => {
+        if (item.type === "message") {
+          const message = messagesById.get(item.id);
+          return message ? [{ type: "message" as const, message }] : [];
+        }
+        const artifact = state.conversation.artifacts[item.id];
+        return artifact ? [{ type: "artifact" as const, artifact }] : [];
+      },
+    );
+  }, [
+    state.conversation.artifacts,
+    state.conversation.messages,
+    state.conversation.transcript,
+  ]);
 
   return (
     <section
