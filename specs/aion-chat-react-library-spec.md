@@ -640,7 +640,7 @@ multiple repositories, use
 - Define how the same generated artifact is synchronized or published to both
   `aion-python-sdk` and `aion-chat-react` for code generation and drift checks.
 
-### Subtask L — Mount an optional-auth chat GraphQL runtime (status: not started)
+### Subtask L — Mount an optional-auth chat GraphQL runtime (status: deferred)
 
 - In `aion-api2`, build a distinct runtime GraphQL API from the same approved
   shared chat-client root contract rather than serving the full `GraphQLApi`
@@ -784,6 +784,19 @@ multiple repositories, use
 - Do not copy CopilotKit's implicit string-to-class behavior, `any`-based
   rendering, Tailwind merging, or universal render-prop composition. Add only
   the behavior exercised by at least two Aion surfaces.
+
+### Subtask Y — Make GraphQL authentication optional (status: not started)
+
+- In `aion-api2`, allow `POST /api/graphql` and `GET /ws/graphql` to establish
+  an anonymous caller when credentials are absent, while preserving verified
+  caller context for valid credentials and rejecting invalid supplied
+  credentials.
+- Keep the complete runtime schema on those routes. Continue enforcing schema
+  subject annotations and operation-level authorization for protected fields;
+  the generated chat-client schema remains a client code-generation subset.
+- Verify representative authenticated operations remain inaccessible to an
+  anonymous caller and public catalog/RPC operations can execute without a
+  separate GraphQL controller or route pair.
 
 ## 3) Package Hierarchy + Responsibilities
 
@@ -1157,8 +1170,11 @@ note.
   client to reduce extension bundle size? Resolution: use native `fetch` for
   HTTP operations and `graphql-ws` for subscriptions. Keep Apollo limited to
   the caller-owned client adapter used by host applications.
-- [status: open] What stable HTTP and subscription paths should host the
-  dedicated optional-auth Aion chat GraphQL API?
+- [status: resolved] What stable HTTP and subscription paths should host the
+  dedicated optional-auth Aion chat GraphQL API? Resolution: do not add
+  dedicated chat paths. Reuse `POST /api/graphql` and `GET /ws/graphql`, make
+  missing credentials anonymous, and retain schema annotations plus
+  operation-level authorization as the security boundary.
 - [status: open] What exact public-safe fields, filters, pagination model, and
   access presentation should the new `agentCatalog` query expose?
 - [status: open] Should a standalone private embed obtain an ordinary short-lived
@@ -1416,3 +1432,15 @@ operations and `graphql-ws` for lazy streamed subscriptions, asynchronous
 connection authentication, retries, cancellation, and disposal. Apollo remains
 an optional integration dependency only for hosts that inject an existing
 client.
+
+Q: Does the chat-client GraphQL schema subset require dedicated server
+endpoints?
+
+A: No. The subset exists for client code generation and does not need a
+separate runtime interpreter. Standalone clients use the existing
+`POST /api/graphql` and `GET /ws/graphql` endpoints. Those controllers must
+treat absent credentials as an anonymous caller, preserve verified context for
+valid credentials, and reject invalid supplied credentials. The complete
+schema remains mounted, with its subject annotations and operation-level
+authorization protecting non-public operations. This supersedes the earlier
+plan for a dedicated optional-auth chat route and runtime schema.
