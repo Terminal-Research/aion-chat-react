@@ -70,6 +70,15 @@ These calls form a separate conversation-directory boundary rather than
 expanding the send/stream transport. The browser conversation store remains a
 safe cache and optimistic local state, not the authoritative remote directory.
 
+Agent interactions will use a small Aion-owned motion vocabulary inspired by
+Transitions.dev's shimmer text, streaming text, and spinner-to-check examples.
+Shimmer communicates an explicit active thinking/reasoning title. A waiting
+indicator occupies the agent-response position after send and resolves when
+meaningful agent output begins. Newly appended streaming text receives a soft
+entrance without replaying already visible content. These are presentation
+effects driven by normalized Aion lifecycle state, not timers that invent
+protocol progress.
+
 The backend work is part of this feature across repositories. `aion-api2`
 already generates `chat-client-schema.graphql` by filtering the full Caliban
 schema to selected root fields for the terminal chat client in
@@ -111,6 +120,12 @@ Reference baseline:
 - [CopilotSidebarView](https://github.com/CopilotKit/CopilotKit/blob/65bd05e3682ced8f424023f75627f8f833e52745/packages/react-core/src/v2/components/chat/CopilotSidebarView.tsx)
 - [CopilotKit headless entry point](https://github.com/CopilotKit/CopilotKit/blob/65bd05e3682ced8f424023f75627f8f833e52745/packages/react-core/src/v2/headless.ts)
 
+Interaction motion references:
+
+- [Shimmer text](https://transitions.dev/detail.html?t=shimmer-text)
+- [Streaming text](https://transitions.dev/detail.html?t=streaming-text)
+- [Spinner to check morph](https://transitions.dev/detail.html?t=spinner-to-check-morph)
+
 ## 1a) Goals
 
 - Publish an Aion-owned React library with a stable, documented public API.
@@ -126,6 +141,9 @@ Reference baseline:
 - Render assistant Markdown conveniently and safely, including GitHub-flavored
   Markdown and replaceable element renderers, without parsing raw HTML or
   permitting executable URL schemes.
+- Provide restrained, state-driven motion for waiting, thinking, first
+  response, streamed deltas, and completed/failed agent activities without
+  changing the underlying message or task semantics.
 - Represent Aion/A2A concepts directly, including contexts, messages, message
   parts, tasks, task status, artifacts, streaming deltas, errors, and
   attachments.
@@ -251,6 +269,8 @@ Reference baseline:
   accepts a required `contextId` plus optional history pagination. The current
   backend implementations require caller-scoping and contract alignment before
   browser clients can safely rely on them.
+- `aion-agent-cloud` currently uses `@phosphor-icons/react` `^2.1.10`. The chat
+  library will align with that package for default status and activity icons.
 - React, React DOM, and optional integration libraries such as Apollo Client
   can be declared as peer dependencies to prevent duplicate runtimes.
 
@@ -317,6 +337,39 @@ Reference baseline:
 - All default component styling must consume semantic `--aion-chat-*` CSS
   custom properties from one theme boundary. Do not add a parallel JavaScript
   theme object, per-component color props, or shell-specific theme system.
+- Motion timing, blur, and shimmer colors must consume semantic
+  `--aion-chat-motion-*` custom properties with usable defaults. Do not add a
+  second JavaScript motion-theme object.
+- Default icons must use named imports from `@phosphor-icons/react`, inherit
+  `currentColor`, and remain replaceable through the applicable component slot.
+  Do not copy custom icon SVG paths from animation references.
+- The initial motion layer must use CSS transitions/keyframes plus small React
+  state adapters. Do not add a general-purpose animation runtime until a
+  concrete interaction requires capabilities CSS cannot provide.
+- A shimmer may run only while its associated thinking/reasoning state is
+  active. A spinner may resolve to a check only after meaningful agent output
+  or an explicitly successful activity; request admission or transport
+  acceptance alone is insufficient.
+- The default response placeholder must not combine an indefinitely rotating
+  spinner and indefinitely shimmering label. Use the spinner with plain text
+  for generic waiting, and reserve shimmer for an explicit thinking/activity
+  title.
+- Streaming motion must apply only to newly appended assistant content. It
+  must not replay the existing message, delay canonical content behind an
+  animation queue, or animate contexts restored from history.
+- Streaming animation must preserve safe Markdown parsing and text selection.
+  If a newly appended Markdown range cannot be isolated without changing its
+  syntax or semantics, render that range immediately without motion.
+- `prefers-reduced-motion: reduce` must disable shimmer, rotation, blur, scale,
+  and icon-transition effects. State changes and accessible status text remain
+  immediate and complete without animation.
+- Motion is never the only status signal. Decorative icons are hidden from the
+  accessibility tree, while waiting, responding, completed, and failed states
+  expose concise text without duplicate announcements for visual-only layers.
+- Transitions.dev is a behavioral reference, not a source dependency. No
+  repository license was declared when this decision was recorded, and the
+  spinner/check recipe is a Pro example, so implement these effects
+  independently and do not copy its Pro source or obfuscated preview code.
 - The theme boundary must provide complete usable defaults and accept normal
   `className` and `style` overrides for its custom properties. Its existing
   portal container may remain as future-ready infrastructure, but the current
@@ -417,6 +470,24 @@ Reference baseline:
   behavior.** **Mitigation:** preserve message memoization, threshold-based
   virtualization, batched event reduction, and explicit pinned/manual scroll
   modes; validate with long and rapidly streaming transcripts.
+- **Risk: delta motion accumulates behind a fast stream.** A word-by-word demo
+  can queue more visual delay than a real model stream can tolerate.
+  **Mitigation:** animate actual appended batches from their current state,
+  coalesce rapid updates, and drop presentation animation before delaying
+  canonical text.
+- **Risk: decorative progress implies a protocol state that has not occurred.**
+  A success check after request admission could be mistaken for an agent
+  response or completed task. **Mitigation:** derive indicator phases from the
+  normalized turn/activity state, distinguish response-started from task
+  completed, and map failure/input-required/auth-required explicitly.
+- **Risk: streaming animation breaks Markdown or selection.** Splitting raw
+  Markdown into independently rendered delta fragments can change parsing.
+  **Mitigation:** retain one canonical source string, mark only safely isolated
+  newly rendered text nodes, and fall back to immediate rendering otherwise.
+- **Risk: continuous motion distracts or harms motion-sensitive users.**
+  **Mitigation:** keep effects local and short, avoid simultaneous indefinite
+  effects, stop them with their lifecycle state, and provide a complete
+  reduced-motion path.
 - **Risk: copied UI becomes an unmaintainable partial fork.** **Mitigation:**
   keep a small source inventory, rewrite runtime-facing seams to Aion APIs,
   document provenance, and only port upstream fixes deliberately.
@@ -488,6 +559,23 @@ Reference baseline:
 - Verify message rendering covers Markdown, plain text, reasoning/status
   presentation, A2A artifacts, non-text parts, tool/activity placeholders,
   errors, copy, and retry/regenerate hooks where supported.
+- Verify the waiting indicator begins with an active request, does not resolve
+  on transport acceptance alone, transitions to a check with the first
+  meaningful assistant message, artifact output, or successful terminal state,
+  and transitions to attention or failure without showing a success check for
+  input-required, auth-required, failed, rejected, or cancelled states. An
+  ordinary working status keeps the indicator pending.
+- Verify thinking shimmer starts and stops with explicit activity state, uses
+  actual visible text as the accessible label, and does not run beside the
+  default waiting spinner.
+- Verify streaming motion affects only newly appended assistant text, does not
+  reanimate existing text or restored history, does not delay fast deltas, and
+  preserves Markdown output, selection, copy, and scroll pinning.
+- Verify reduced motion shows immediate static text and icon states with no
+  shimmer, rotation, blur, scale, or icon-transition animation.
+- Verify default status icons are Phosphor icons, inherit theme color and size,
+  remain tree-shakeable named imports, and can be replaced through public
+  component slots.
 - Verify GitHub-flavored Markdown renders headings, lists, tables, links,
   blockquotes, inline code, and fenced code while raw HTML and executable URL
   payloads cannot create active DOM or navigation targets.
@@ -996,6 +1084,30 @@ the contained workspace from Subtask AA and without completing Subtasks Q or R.
   unsupported or remote history is unavailable. Remote rename, archive, and
   deletion remain outside the version 1.0.0 extension contract.
 
+### Subtask AD — Add agent interaction motion (status: not started)
+
+- Add Aion-owned shimmer, streamed-content entrance, and lifecycle indicator
+  components based on the referenced interaction behavior, without copying
+  Transitions.dev Pro source or custom SVG paths.
+- Add `@phosphor-icons/react` aligned with the frontend's `^2.1.10` range. Use
+  named imports such as `SpinnerGapIcon`, `CheckCircleIcon`,
+  `WarningCircleIcon` for attention, and `XCircleIcon` for failure; expose
+  component slots instead of leaking Phosphor types into the core transport
+  model.
+- Drive the response placeholder from normalized turn state. Keep it pending
+  through admission and ordinary working status, resolve it when meaningful
+  agent output begins, and show failure/input-required/auth-required states
+  without falsely presenting success.
+- Display streamed output immediately and animate only safely isolated newly
+  appended text. Coalesce rapid visual updates and fall back to unanimated
+  rendering where Markdown structure prevents a safe delta boundary.
+- Add semantic `--aion-chat-motion-*` tokens for the initial 2-second shimmer,
+  350-millisecond streamed-text entrance with at most 1px blur, and roughly
+  900-millisecond spinner cycle. Hosts may tune or disable them without a
+  JavaScript theme API.
+- Implement reduced-motion, hydration/history, cancellation, failure,
+  unmount/timer cleanup, accessibility, and fast-stream performance coverage.
+
 ## 3) Package Hierarchy + Responsibilities
 
 The names below are provisional but establish dependency direction. Modules may
@@ -1022,6 +1134,10 @@ aion-chat-react/
 │   │   ├── store.ts              # list/load/save/remove contract
 │   │   ├── memoryStore.ts        # implicit session-only default
 │   │   └── browserStore.ts       # explicitly host-scoped persistence
+│   ├── motion/
+│   │   ├── AionShimmerText.tsx   # active thinking/activity title
+│   │   ├── AionStreamingText.tsx # appended-content entrance
+│   │   └── AionActivityIndicator.tsx # pending/success/failure motion
 │   ├── components/
 │   │   ├── AionChatTheme.tsx     # CSS-variable and portal boundary
 │   │   ├── AionChatView.tsx      # controlled inline chat surface
@@ -1311,6 +1427,30 @@ const themeStyle = {
   content are not required for the walking skeleton. They require separate
   dependency and security review before becoming defaults.
 
+### Agent interaction motion
+
+- `AionActivityIndicator` has explicit pending, succeeded, requires-action, and
+  failed visual phases. It renders Phosphor icons and receives its label and
+  phase from the normalized UI/controller state; it does not inspect transport
+  payloads or decide when work is complete.
+- The generic post-send placeholder uses a rotating `SpinnerGapIcon` and plain
+  waiting label. First meaningful agent output may transition the icon to a
+  `CheckCircleIcon` while the actual content appears immediately; the check is
+  a brief acknowledgement that waiting ended, not a claim that the A2A task
+  completed.
+- Explicit thinking or reasoning titles may use `AionShimmerText`. The visible
+  text remains the canonical accessible text and the masked highlight layer is
+  decorative.
+- `AionStreamingText` adapts the soft opacity/1px-blur entrance to actual
+  appended model deltas. Arrival cadence supplies the stagger; the library does
+  not replay the reference's synthetic per-word timer or hold later content to
+  preserve a visual sequence.
+- Initial defaults are a 2-second linear shimmer, a 350-millisecond smooth
+  streamed-content entrance, and a roughly 900-millisecond linear spinner
+  cycle. These values are CSS-variable defaults rather than protocol timing.
+- A reduced-motion media query produces static, immediately resolved visual
+  states. It does not require a React-side media-query listener for correctness.
+
 ### React composition
 
 ```tsx
@@ -1547,6 +1687,12 @@ note.
   containment, or as a non-modal chat surface that permits interaction with
   the host page while open? Deferral: decide this only when a concrete popup or
   popover shell becomes active work.
+- [status: resolved] Which agent interactions should receive default motion,
+  and which icon system should they use? Resolution: add thinking-title shimmer,
+  new-delta soft entrances, and pending-to-success/failure activity indicators.
+  Use Phosphor icons consistently, drive every transition from normalized
+  lifecycle state, avoid simultaneous indefinite effects, and provide an
+  immediate reduced-motion path.
 
 ## 6) Q&A (Design Decisions Log)
 
@@ -1912,3 +2058,30 @@ should preserve clean imports, scoped styling, and injected transport/auth
 boundaries that make that possible, but it will not design or ship the loader,
 custom element, iframe, positioning system, or shell behavior without a
 concrete customer integration.
+
+Q: Which agent interaction animations are part of the chat workspace?
+
+A: Three restrained effects: shimmer for an explicit active thinking or
+reasoning title, a soft entrance for newly appended streamed text, and a
+pending-to-success/failure indicator for response waits and other agent
+activities. Existing text, restored history, and inactive statuses remain
+static.
+
+Q: When does the waiting spinner become a check?
+
+A: Not when the request is merely admitted or accepted by the transport. For
+the response placeholder, it resolves when meaningful agent output begins,
+such as assistant content or an artifact. A state that requires user action
+resolves to an attention icon instead. Content appears immediately while the
+decorative transition finishes. A task or tool activity may use the same
+component with actual completion semantics, but its label must make that
+distinction clear; failures never pass through a success check.
+
+Q: How are animation references and icons incorporated?
+
+A: Recreate the referenced motion behavior in Aion-owned CSS and React code.
+Do not copy Transitions.dev's Pro implementation or its custom SVG paths. Use
+tree-shakeable named imports from `@phosphor-icons/react` for default spinner,
+check, and failure visuals, matching the icon system already used by
+`aion-agent-cloud`. All motion values flow through semantic CSS variables and
+all default effects stop under `prefers-reduced-motion: reduce`.
