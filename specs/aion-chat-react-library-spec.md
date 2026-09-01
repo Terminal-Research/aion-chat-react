@@ -11,25 +11,34 @@ date_updated: 2026-09-01
 ## 1) Description
 
 Build an importable React chat library in the `aion-chat-react` repository for
-interactive conversations with Aion agents. The library will provide a shared
-chat view plus popup and sidebar shells that can be used by:
+interactive conversations with Aion agents. The current library scope is a
+contained chat workspace with:
 
-- the Playground in `aion-agent-cloud`;
-- browser-extension popup and sidebar experiences; and
-- other first-party websites that want to embed an Aion agent chat.
+- an agent catalog and agent-selection panel;
+- the selected agent's conversation/context list; and
+- the active conversation's chat panel.
+
+The workspace will first be consumed by the Playground in `aion-agent-cloud`
+and may be mounted inside other host-owned page layouts. A future integration
+may ask a customer to include an Aion JavaScript entry that mounts the same
+workspace inside a popover, overlay, or sidebar, but that bootstrap and shell
+behavior is outside the current implementation scope.
 
 The visual starting point will be selected MIT-licensed CopilotKit chat source,
 pinned initially to CopilotKit commit
 `65bd05e3682ced8f424023f75627f8f833e52745`. We will adapt the useful view,
-composer, message, popup, sidebar, scrolling, and slot patterns into Aion-owned
-components. We will not carry over CopilotKit runtime, AG-UI, hosted-service,
-license-gating, or branding dependencies.
+composer, message, scrolling, and slot patterns into Aion-owned components. We
+will not carry over CopilotKit runtime, AG-UI, hosted-service, license-gating,
+or branding dependencies. CopilotKit's popup and sidebar sources remain future
+interaction references rather than current implementation inputs.
 
 The first working milestone is intentionally narrower than the complete
 library: an inline chat interface with fake streaming, safe Markdown, one
 CSS-variable theme boundary, a Bootstrap-based example, and the injected
-Apollo transport used by `aion-agent-cloud`. Popup and sidebar shells follow in
-a later phase after the inline chat contract has been exercised.
+Apollo transport used by `aion-agent-cloud`. The next UI milestone completes
+the agent catalog, agent panel, conversation list, and chat panel as one
+contained workspace. Popup, popover, sidebar, and script-loader shells are
+deferred.
 
 The runtime architecture will have three distinct layers:
 
@@ -42,7 +51,7 @@ host such as `aion-agent-cloud`, the GraphQL adapter will receive the host's
 existing authenticated `ApolloClient`. This shares the host's cache, HTTP and
 WebSocket links, token lifecycle, reconnect policy, and connection.
 
-For independent embeds, direct A2A will be the canonical chat transport when
+For independent hosts, direct A2A will be the canonical chat transport when
 the caller already has an Agent Card or A2A address. The adapter will discover
 the target's advertised security requirements and request a bearer credential
 only when required. An authenticated standalone GraphQL adapter may reuse the
@@ -80,9 +89,10 @@ source areas rather than copying the complete `@copilotkit/react-core` package:
 - `CopilotChatView` for the controlled chat surface and scroll behavior;
 - `CopilotChatInput` for composer interactions and attachment affordances;
 - `CopilotChatMessageView` and its default message renderers;
-- `CopilotPopupView` for responsive popover behavior;
-- `CopilotSidebarView` for docked and mobile sidebar behavior;
 - the slot-based customization pattern and relevant scoped styles.
+
+`CopilotPopupView` and `CopilotSidebarView` remain pinned future references,
+but their shell behavior is not part of the current source-adoption pass.
 
 The stateful `CopilotChat` component, CopilotKit providers, CopilotKit runtime,
 AG-UI agents, license checks, and unrelated UI systems are outside the source
@@ -104,12 +114,12 @@ Reference baseline:
 ## 1a) Goals
 
 - Publish an Aion-owned React library with a stable, documented public API.
-- Provide reusable inline chat, popup, and left/right sidebar surfaces that all
-  compose the same controlled chat view.
+- Provide a reusable contained workspace that composes the chat panel, agent
+  catalog, agent-selection panel, and selected agent's conversation list.
 - Preserve the strongest CopilotKit UI behavior where it provides material
-  value, including responsive shells, accessibility, focus management,
-  auto-scroll behavior, streaming-friendly rendering, composer states,
-  attachment affordances, and replaceable render slots.
+  value, including accessibility, focus management, auto-scroll behavior,
+  streaming-friendly rendering, composer states, attachment affordances, and
+  replaceable render slots.
 - Use one styling contract for every surface: scoped component CSS consuming
   documented semantic `--aion-chat-*` custom properties from a shared theme
   boundary.
@@ -168,6 +178,9 @@ Reference baseline:
   `@terminal-research/aion` in `aion-python-sdk`.
 - Shipping a framework-independent Web Component, iframe, or script-tag embed
   in the initial release.
+- Shipping a library-owned popup, popover, sidebar, page overlay, or JavaScript
+  bootstrap loader in the current release. Hosts own placement of the contained
+  workspace until one of those shells is designed as a later feature.
 - Owning application routing, organization selection, agent authorization, or
   agent administration. The library may render its normalized chat catalog and
   conversation navigator without becoming the source of those records.
@@ -304,10 +317,10 @@ Reference baseline:
 - All default component styling must consume semantic `--aion-chat-*` CSS
   custom properties from one theme boundary. Do not add a parallel JavaScript
   theme object, per-component color props, or shell-specific theme system.
-- The theme boundary must provide complete usable defaults, accept normal
-  `className` and `style` overrides for its custom properties, and expose or
-  own the portal container used by later popup surfaces so portaled content
-  remains inside the same CSS-variable inheritance boundary.
+- The theme boundary must provide complete usable defaults and accept normal
+  `className` and `style` overrides for its custom properties. Its existing
+  portal container may remain as future-ready infrastructure, but the current
+  workspace must not depend on a popup or sidebar shell.
 - The package must not require a host-wide Tailwind, Bootstrap, React-Bootstrap,
   or CopilotKit CSS configuration and must not leak global resets. Bootstrap
   and React-Bootstrap are example-only development dependencies.
@@ -425,10 +438,10 @@ Reference baseline:
   **Mitigation:** associate initial uploads with the selected Aion identity or
   distribution, use the existing one-hour `MessagingMedia` retention, and mint
   a grant whose lifetime does not exceed that retention.
-- **Risk: browser-extension security policies differ from normal web apps.**
-  **Mitigation:** keep endpoints and token acquisition injectable, avoid dynamic
-  code execution, document required extension permissions, and validate the
-  standalone adapter under the target extension manifest/CSP before release.
+- **Risk: future script-loaded embeds need a different mounting and security
+  boundary.** **Mitigation:** keep the current workspace importable and
+  controlled, but defer loader, CSP, custom-element, positioning, and page
+  isolation decisions until a concrete customer embed is selected.
 - **Risk: the new component diverges from Playground behavior during
   migration.** **Mitigation:** build a transport conformance suite from current
   Playground cases, migrate behind a temporary application-level switch if
@@ -469,9 +482,9 @@ Reference baseline:
   file selection.
 - Verify auto-scroll remains pinned during normal streaming, respects manual
   user scrolling, recovers predictably, and remains usable with large histories.
-- Verify popup and sidebar shells support controlled and uncontrolled open
-  state, Escape, outside interaction where appropriate, focus restoration,
-  mobile layout, safe areas, left/right placement, and reduced motion.
+- Verify the contained workspace composes agent catalog, agent selection,
+  conversation selection, and chat without requiring a popup/sidebar shell or
+  taking ownership of host-page layout.
 - Verify message rendering covers Markdown, plain text, reasoning/status
   presentation, A2A artifacts, non-text parts, tool/activity placeholders,
   errors, copy, and retry/regenerate hooks where supported.
@@ -541,10 +554,10 @@ Reference baseline:
   only the grant URL in the A2A file part, never the protected create URL.
 - Verify the 20 MiB preflight, one-hour maximum grant, upload cancellation,
   idempotent retry, expired grant, and grant-redaction behavior.
-- Run accessibility checks plus keyboard-only interaction tests for inline,
-  popup, and sidebar fixtures.
-- Exercise visual fixtures at desktop, narrow/mobile, and extension-popup
-  dimensions with long text, code, attachments, task states, and streaming.
+- Run accessibility checks plus keyboard-only interaction tests for the inline
+  chat and contained workspace fixtures.
+- Exercise visual fixtures at desktop and narrow/mobile workspace dimensions
+  with long text, code, attachments, task states, and streaming.
 - Integrate into `aion-agent-cloud` and rerun its existing Playground tests,
   adding parity coverage for streaming, unary fallback, status, artifacts,
   agent changes, thread changes, and authentication/reconnection behavior.
@@ -787,6 +800,9 @@ the historical subtasks below is deferred until a concrete embed requires it.
   idempotent.
 - Document browser-extension CSP, origin, token-refresh, login transition, and
   permission requirements.
+- Deferral: browser-extension-specific documentation is not part of the current
+  workspace scope. Retain the general standalone-client lifecycle work for a
+  later host that needs it.
 
 ### Subtask O — Implement upload integration (status: not started)
 
@@ -817,7 +833,10 @@ the historical subtasks below is deferred until a concrete embed requires it.
 
 ### Phase 5 — Popup/sidebar shells and release
 
-### Subtask Q — Adapt popup and sidebar shells (status: not started)
+Popup/sidebar shell work is deferred. The initial library may be released with
+the contained workspace from Subtask AA and without completing Subtasks Q or R.
+
+### Subtask Q — Adapt popup and sidebar shells (status: deferred)
 
 - Adapt responsive popup and left/right sidebar shells around the established
   shared chat view.
@@ -828,8 +847,10 @@ the historical subtasks below is deferred until a concrete embed requires it.
   boundary so popup content inherits the same CSS variables without a second
   shell theme API.
 - Ensure shell-specific code does not own transport or conversation state.
+- Deferral: wait for a concrete host or customer embed to establish whether a
+  popover, overlay, sidebar, or another mounting model is actually required.
 
-### Subtask R — Add popup and sidebar integration examples (status: not started)
+### Subtask R — Add popup and sidebar integration examples (status: deferred)
 
 - Provide examples for a host-owned Apollo connection and a standalone browser
   extension/embed connection.
@@ -837,6 +858,8 @@ the historical subtasks below is deferred until a concrete embed requires it.
   screenshot/file attachment, cleanup, and auth-error handling.
 - Validate that multiple visual instances can share one host transport without
   accidentally creating multiple backend clients.
+- Deferral: add these examples only with the corresponding concrete shell
+  requirement. They are not release blockers for the contained workspace.
 
 ### Subtask S — Publish the initial library release (status: not started)
 
@@ -1008,8 +1031,8 @@ aion-chat-react/
 │   │   ├── AionConversationList.tsx # controlled context presentation
 │   │   ├── AionChatComposer.tsx  # draft, send, stop, attachment UI
 │   │   ├── AionChatTranscript.tsx
-│   │   ├── AionChatPopup.tsx
-│   │   ├── AionChatSidebar.tsx
+│   │   ├── AionChatPopup.tsx     # deferred future shell
+│   │   ├── AionChatSidebar.tsx   # deferred future shell
 │   │   ├── renderers/
 │   │   │   ├── MarkdownRenderer.tsx # safe Markdown-to-React rendering
 │   │   │   └── ...               # message/part/activity renderers
@@ -1035,7 +1058,7 @@ aion-chat-react/
 ├── examples/
 │   ├── inline-bootstrap/
 │   ├── host-apollo/
-│   └── standalone-embed/
+│   └── standalone-embed/         # future customer-embed fixture
 ├── specs/
 │   └── aion-chat-react-library-spec.md
 └── THIRD_PARTY_NOTICES
@@ -1043,9 +1066,10 @@ aion-chat-react/
 
 Planned entry points:
 
-- Package root: models, controller/hooks, inline/popup/sidebar/workspace
-  components, conversation-store contracts, and transport interfaces,
-  including the shared theme boundary and safe Markdown renderer.
+- Package root: models, controller/hooks, inline chat/workspace components,
+  conversation-store contracts, and transport interfaces, including the shared
+  theme boundary and safe Markdown renderer. Popup/sidebar exports are
+  deferred.
 - `./styles.css`: opt-in base styles and variables.
 - `./a2a`: Agent Card discovery and direct A2A streaming transport.
 - `./graphql`: GraphQL documents, normalization, and caller-owned Apollo
@@ -1224,8 +1248,8 @@ export interface AionConversationStore {
   fixed context, and fixed agent with a fresh context per mounted workspace.
   Hiding a navigation level is composition, not a separate transport mode.
 - A wider host may render `AionAgentList` and `AionConversationList`
-  simultaneously instead of using the one-panel transition. Popup and sidebar
-  shells reuse the same controlled navigator rather than inventing another
+  simultaneously instead of using the one-panel transition. A future shell
+  must reuse the same controlled navigator rather than inventing another
   selection model.
 - Neither GraphQL nor direct A2A uses agent-wide `ListTasks` to discover
   contexts. Both use the dedicated Aion context extensions after their server
@@ -1258,9 +1282,9 @@ const themeStyle = {
   Hosts customize them through a class, stylesheet, or the root element's
   `style` prop; all three set the same CSS variables rather than invoking
   separate theme systems.
-- The theme boundary provides the default portal container for later popup
-  shells. A custom portal container is allowed, but it must be placed under a
-  theme boundary rather than receiving copied computed styles.
+- The theme boundary's existing portal container remains future-ready
+  infrastructure; no current workspace behavior depends on it. A future shell
+  can define its portal behavior when that work is resumed.
 - The Bootstrap example maps Aion tokens to the host's Bootstrap custom
   properties. It may use Bootstrap and React-Bootstrap for page chrome, but no
   library component emits Bootstrap class names or imports Bootstrap code.
@@ -1299,11 +1323,11 @@ const themeStyle = {
 
 - The provider owns normalized conversation/controller state, not global
   authentication or navigation.
-- Inline, popup, and sidebar variants consume the same provider and can also be
-  driven through controlled headless hooks.
-- The walking skeleton implements `AionChatView` first. Popup and sidebar
-  compose this established view in Phase 5 rather than defining the initial
-  controller or styling contract.
+- The inline chat and contained workspace consume the same provider and can
+  also be driven through controlled headless hooks.
+- A future popup, popover, sidebar, or script-loaded embed must compose this
+  established view rather than defining another controller, transport, or
+  styling contract.
 - Hosts may control agent/context selection and inject their own conversation
   store. Consumers that do not need persistence receive an in-memory store and
   may omit the navigator entirely for a fixed context.
@@ -1511,15 +1535,18 @@ note.
   begin with a small Vite application using Bootstrap 5.3 and React-Bootstrap
   as example-only dependencies. Add Storybook later only if the component
   inventory makes it materially useful.
-- [status: open] Does the first browser-extension target use a popup, side
+- [status: deferred] Does the first browser-extension target use a popup, side
   panel, content-script overlay, or more than one of these surfaces, and which
-  manifest/CSP constraints follow from that choice?
+  manifest/CSP constraints follow from that choice? Deferral: browser-extension
+  and customer-page shell selection is outside the current workspace scope.
+  Revisit it with a concrete host and delivery model.
 - [status: open] What measured transcript length and streaming update rate
   should trigger message windowing, and can `content-visibility` satisfy the
   same browser, accessibility, search, and scroll requirements more simply?
-- [status: open] Should the popup behave as a modal dialog with focus
+- [status: deferred] Should the popup behave as a modal dialog with focus
   containment, or as a non-modal chat surface that permits interaction with
-  the host page while open?
+  the host page while open? Deferral: decide this only when a concrete popup or
+  popover shell becomes active work.
 
 ## 6) Q&A (Design Decisions Log)
 
@@ -1868,3 +1895,20 @@ frontend and the peer dependency range already declared by
 `@terminal-research/aion-chat-react`. The initial release does not promise
 React 18 compatibility; that range can be broadened later when a concrete host
 requires it and the library has a corresponding validation fixture.
+
+Q: Which UI surfaces are in scope for the current library release?
+
+A: The contained `AionChatWorkspace`: an agent catalog, an agent-selection
+panel, the selected agent's conversation/context list, and the active chat
+panel. It is an importable React surface that the Playground or another host
+places inside its own page layout. This supersedes the earlier plan to make
+popup and sidebar shells part of the initial release.
+
+Q: How should a future customer-page embed relate to the workspace?
+
+A: A future JavaScript bootstrap may mount the same controlled workspace into
+a popover, overlay, sidebar, or another host-page container. The current work
+should preserve clean imports, scoped styling, and injected transport/auth
+boundaries that make that possible, but it will not design or ship the loader,
+custom element, iframe, positioning system, or shell behavior without a
+concrete customer integration.
