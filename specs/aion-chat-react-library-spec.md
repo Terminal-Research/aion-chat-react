@@ -751,11 +751,13 @@ multiple repositories, use
 
 ### Subtask U — Stabilize transcript derivation (status: done)
 
+- Commit ID (aion-chat-react): `cca8683`
+
 - Resolve transcript references in linear time with stable memoized output.
 - Prevent unrelated provider updates such as draft changes from retriggering
   transcript scroll work.
 
-### Subtask V — Extend the safe Markdown component map (status: not started)
+### Subtask V — Extend the safe Markdown component map (status: done)
 
 - Allow hosts to override individual Markdown elements without replacing the
   default safe parsing and URL-transformation pipeline.

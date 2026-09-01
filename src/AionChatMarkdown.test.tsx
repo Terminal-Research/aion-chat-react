@@ -42,6 +42,23 @@ describe("AionChatMarkdown", () => {
     });
   });
 
+  it("merges element overrides into the safe Markdown pipeline", () => {
+    const { container } = render(
+      <AionChatMarkdown
+        text={'**custom**\n\n<iframe src="https://example.com"></iframe>\n\n[unsafe](javascript:alert(1))'}
+        components={{
+          strong: ({ children }) => (
+            <strong data-testid="custom-strong">{children}</strong>
+          ),
+        }}
+      />,
+    );
+
+    expect(screen.getByTestId("custom-strong").textContent).toBe("custom");
+    expect(container.querySelector("iframe")).toBeNull();
+    expect(screen.getByText("unsafe").closest("a")).toBeNull();
+  });
+
   it("keeps user-authored Markdown syntax as plain text", () => {
     const message: ChatMessage = {
       id: "message-1",

@@ -1,4 +1,5 @@
 import type { ComponentType } from "react";
+import { useMemo } from "react";
 import ReactMarkdown, {
   defaultUrlTransform,
   type Components,
@@ -8,6 +9,7 @@ import remarkGfm from "remark-gfm";
 /** Props supplied to the replaceable Markdown renderer slot. */
 export interface AionChatMarkdownProps {
   readonly text: string;
+  readonly components?: Components;
 }
 
 /** Component type accepted by message and artifact Markdown slots. */
@@ -19,7 +21,7 @@ function domProps<T extends { node?: unknown }>(props: T): Omit<T, "node"> {
   return result;
 }
 
-const MARKDOWN_COMPONENTS: Components = {
+const DEFAULT_MARKDOWN_COMPONENTS: Components = {
   a({ href, children, ...props }) {
     if (!href) {
       return <span>{children}</span>;
@@ -105,11 +107,19 @@ const MARKDOWN_COMPONENTS: Components = {
 };
 
 /** Safely renders untrusted assistant Markdown as React elements. */
-export function AionChatMarkdown({ text }: AionChatMarkdownProps) {
+export function AionChatMarkdown({
+  text,
+  components,
+}: AionChatMarkdownProps) {
+  const markdownComponents = useMemo<Components>(
+    () => ({ ...DEFAULT_MARKDOWN_COMPONENTS, ...components }),
+    [components],
+  );
+
   return (
     <div className="aion-chat__markdown">
       <ReactMarkdown
-        components={MARKDOWN_COMPONENTS}
+        components={markdownComponents}
         remarkPlugins={[remarkGfm]}
         skipHtml
         urlTransform={defaultUrlTransform}
