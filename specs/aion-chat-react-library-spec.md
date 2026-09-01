@@ -47,7 +47,9 @@ the caller already has an Agent Card or A2A address. The adapter will discover
 the target's advertised security requirements and request a bearer credential
 only when required. An authenticated standalone GraphQL adapter may reuse the
 existing identity catalog and A2A RPC operations through Aion's existing
-GraphQL HTTP and subscription endpoints.
+GraphQL HTTP and subscription endpoints. Authenticated file and screenshot
+uploads use Aion's existing Files HTTP API and return a bounded exact-version
+grant URL for the outbound A2A file part.
 
 The backend work is part of this feature across repositories. `aion-api2`
 already generates `chat-client-schema.graphql` by filtering the full Caliban
@@ -118,7 +120,7 @@ Reference baseline:
 - Provide a direct A2A adapter that discovers interfaces, streaming support,
   and authentication requirements from an Agent Card.
 - Provide an explicit standalone GraphQL factory for authenticated consumers
-  that need Aion catalog or upload operations.
+  that need Aion catalog or RPC operations.
 - Reuse the existing `chat-client-schema.graphql` as one shared contract for
   the Python SDK chat client and this React library without creating a parallel
   schema.
@@ -126,8 +128,8 @@ Reference baseline:
   agent selection, with the organization ID and user JWT supplied by the host
   application or standalone configuration.
 - Define an attachment upload boundary that can turn browser files or captured
-  screenshots into URL-backed A2A file parts without coupling the core UI to a
-  specific upload endpoint.
+  screenshots into URL-backed A2A file parts through the existing authenticated
+  Aion Files API without coupling the core UI to that adapter.
 - Migrate the existing `aion-agent-cloud` Playground chat without losing its
   current task, artifact, status, unary-fallback, or streaming behavior.
 - Keep the root bundle tree-shakeable and free of optional GraphQL dependencies
@@ -143,8 +145,8 @@ Reference baseline:
 - Replacing Aion's A2A protocol or backend GraphQL API.
 - Replacing server-side agent orchestration, authorization, or storage systems.
   The initial catalog integration does not add a new public catalog or change
-  GraphQL authentication. Future upload work may add a bounded backend upload
-  boundary after that contract is approved.
+  GraphQL authentication, and the initial upload integration reuses the
+  existing Files boundary.
 - Replacing the terminal/Ink-based package currently named
   `@terminal-research/aion` in `aion-python-sdk`.
 - Shipping a framework-independent Web Component, iframe, or script-tag embed
@@ -190,8 +192,9 @@ Reference baseline:
   require Aion authentication.
 - URL-backed A2A file parts remain an acceptable way to deliver uploaded files
   and screenshots to an agent.
-- The upload service will return stable file metadata including at least a URL,
-  media type, and display name.
+- The existing Files API accepts authenticated multipart uploads, returns
+  stable file/version metadata, and can mint a bounded exact-version read-grant
+  URL suitable for an A2A file part.
 - CopilotKit's referenced source remains available under the MIT license. Any
   copied or materially adapted files will retain appropriate attribution.
 - CopilotKit's pinned v2 assistant message uses a replaceable Markdown renderer,
@@ -230,6 +233,21 @@ Reference baseline:
 - The checked-in catalog operation must select only fields the React client
   needs. It must not request internal notes, role keys, email, system keys,
   private usage records, or unrelated administrative identity fields.
+- The default Aion uploader requires a valid user JWT and organization ID. It
+  uploads with `purpose=MessagingMedia`, uses a caller-stable operation ID, and
+  associates the file with the selected Aion agent identity or distribution.
+- One uploaded file is limited by the existing 20 MiB Files ingest maximum.
+  `MessagingMedia` retention is one hour, and the exact-version read grant sent
+  to the agent must not exceed that one-hour lifetime.
+- The ordinary File create URL remains protected and must not be placed in the
+  A2A message. The uploader must mint and use the exact-version grant URL.
+- Grant-bearing URLs are temporary credentials. They may appear only where
+  required for the A2A file part and must not enter logs, analytics, or durable
+  UI state beyond the associated message lifecycle.
+- Attachment `accept` configuration is presentation and preflight behavior,
+  not a server security boundary. The initial integration keeps the Files
+  API's existing media-type validation rather than adding a chat-specific
+  server allowlist.
 - RPC authorization must be re-evaluated by the server at request time even
   when a cached catalog entry or Agent Card says the target is accessible.
 - A provided credential must be acquired just in time through a callback. The
@@ -341,8 +359,13 @@ Reference baseline:
   payloads.
 - **Risk: attachment uploads expose sensitive screenshots or stale URLs.**
   **Mitigation:** make capture and upload user-initiated, show an attachment
-  preview before send, delegate authorization and retention to the upload
-  service, validate size/type, and avoid retaining file contents after upload.
+  preview before send, use protected `MessagingMedia` storage and a bounded
+  exact-version grant, avoid logging the grant URL, and discard browser file
+  contents after upload.
+- **Risk: an uploaded File is cleaned up before the agent reads it.**
+  **Mitigation:** associate initial uploads with the selected Aion identity or
+  distribution, use the existing one-hour `MessagingMedia` retention, and mint
+  a grant whose lifetime does not exceed that retention.
 - **Risk: browser-extension security policies differ from normal web apps.**
   **Mitigation:** keep endpoints and token acquisition injectable, avoid dynamic
   code execution, document required extension permissions, and validate the
@@ -410,6 +433,13 @@ Reference baseline:
 - Verify upload success produces a URL-backed A2A file part with correct media
   metadata, while rejected type, oversized content, cancellation, and failed
   upload leave the composer recoverable.
+- Verify the Files adapter sends the configured JWT and organization ID,
+  `purpose=MessagingMedia`, a stable operation ID, declared byte size, and the
+  selected target association through `POST /files`.
+- Verify the adapter mints an exact-version read grant after upload and sends
+  only the grant URL in the A2A file part, never the protected create URL.
+- Verify the 20 MiB preflight, one-hour maximum grant, upload cancellation,
+  idempotent retry, expired grant, and grant-redaction behavior.
 - Run accessibility checks plus keyboard-only interaction tests for inline,
   popup, and sidebar fixtures.
 - Exercise visual fixtures at desktop, narrow/mobile, and extension-popup
@@ -828,7 +858,7 @@ aion-chat-react/
 │   │   ├── apolloTransport.ts    # caller-owned Apollo adapter
 │   │   └── standalone.ts         # standalone GraphQL client factory
 │   ├── uploads/
-│   │   └── uploader.ts           # optional backend upload adapter
+│   │   └── uploader.ts           # Aion Files and injected upload adapters
 │   └── testing/
 │       ├── fakeTransport.ts
 │       └── transportContract.ts
@@ -852,7 +882,7 @@ Planned entry points:
   adapter. Importing it performs no connection setup.
 - `./graphql/standalone`: explicit standalone transport/client factory for
   Aion's existing GraphQL routes.
-- `./uploads`: optional upload adapter contracts and implementations.
+- `./uploads`: upload contracts plus the authenticated Aion Files adapter.
 - `./testing`: fake transport and transport conformance helpers.
 
 `aion-agent-cloud` remains responsible for application concerns around the
@@ -865,6 +895,7 @@ The related backend ownership is expected to remain in `aion-api2`:
 ```text
 aion-api2/
 ├── graphql/.../GraphQLGenerator.scala    # scoped SDL allowlist/generation
+├── src/main/.../controllers/FileController.scala # upload and grant HTTP API
 └── src/main/resources/static/
     └── chat-client-schema.graphql        # shared generated client contract
 ```
@@ -1075,8 +1106,8 @@ await client.dispose();
 - Standalone creation is explicit and lives in an optional subpath.
 - The factory sends only operations generated from the shared chat-client
   schema to Aion's existing complete-schema endpoints and owns the minimal
-  query/subscription connection needed for catalog, chat, and approved upload
-  operations. It does not reproduce the full
+  query/subscription connection needed for catalog and chat. It does not
+  reproduce the full
   `aion-agent-cloud` GraphQL provider, global cache policies, or application
   reconnect coordinator.
 - The token getter is called when authorization is needed so refreshed tokens
@@ -1115,6 +1146,23 @@ export interface AionAttachmentUploader {
   before calling the chat transport.
 - Hosts may inject a custom uploader even when using the standard GraphQL chat
   adapter.
+- The default Aion adapter sends an authenticated multipart `POST /files` with
+  a stable `operationId`, the configured `organizationId`, the exact
+  `byteSize`, `purpose=MessagingMedia`, and an `AgentIdentity` or
+  `Distribution` association for the selected Aion target.
+- The adapter uses the returned file and version IDs to call
+  `POST /files/{fileId}/versions/{versionId}/grants` with a grant lifetime of at
+  most one hour. `AionUploadedAttachment.url` is the returned exact-version
+  grant URL, not the protected current-head URL from File creation.
+- The adapter exposes the current 20 MiB server limit for client preflight and
+  preserves the Files service's one-hour `MessagingMedia` retention. It does
+  not introduce a new `ChatAttachment` purpose until chat needs materially
+  different storage policy.
+- Screenshot capture normally produces PNG. Hosts may narrow accepted file
+  types through attachment configuration, while the server retains its current
+  generic media-type validation.
+- The uploader treats grant URLs as temporary credentials and redacts them
+  from errors, logs, analytics, and diagnostic summaries.
 
 ## 5) Open Questions
 
@@ -1164,8 +1212,13 @@ note.
   audience- and agent-scoped embed token? Deferral: the initial GraphQL
   integration accepts a host-supplied user JWT; embed-specific credentials will
   be designed with the first concrete embed.
-- [status: open] What server endpoint, authorization scope, retention policy,
-  size limit, and media-type policy will back screenshot/file uploads?
+- [status: resolved] What server endpoint, authorization scope, retention
+  policy, size limit, and media-type policy will back screenshot/file uploads?
+  Resolution: reuse the authenticated Aion Files API with the caller's JWT and
+  organization ID, `MessagingMedia`, a selected target association, the
+  existing 20 MiB ingest limit and one-hour retention, and an exact-version
+  read grant of at most one hour. Keep media-type selection configurable in the
+  client and retain existing server validation.
 - [status: open] Should catalog-backed agent selection ship as a default library
   component or only as a headless query/controller plus a replaceable picker
   slot?
@@ -1444,3 +1497,14 @@ public agent should prefer direct A2A discovery through a configured Agent Card.
 If a future embed needs directory browsing, define its public-safe projection,
 organization scoping, and credential model from that use case instead of adding
 them preemptively.
+
+Q: How will the initial chat library upload screenshots and files?
+
+A: Reuse Aion's authenticated Files HTTP API rather than adding a GraphQL or
+chat-specific upload endpoint. Upload multipart content through `POST /files`
+with the user JWT, organization ID, `purpose=MessagingMedia`, a stable operation
+ID, exact byte size, and an association to the selected Aion identity or
+distribution. Then mint an exact-version read grant for at most one hour and
+place that grant-bearing URL in the A2A file part. The initial contract keeps
+the existing 20 MiB ingest limit, one-hour retention, and generic server
+media-type validation; hosts may narrow selectable types in the UI.
