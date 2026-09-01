@@ -1152,9 +1152,11 @@ note.
   them against the backend in CI? Resolution: do neither. Keep the generated
   `aion-api2` schema canonical and manually copy it into each client repository
   that needs it, currently `aion-chat-react`, when the contract changes.
-- [status: open] Should the minimal standalone GraphQL transport use Apollo
+- [status: resolved] Should the minimal standalone GraphQL transport use Apollo
   Client for maximum code reuse or use `graphql-ws` plus a smaller request
-  client to reduce extension bundle size?
+  client to reduce extension bundle size? Resolution: use native `fetch` for
+  HTTP operations and `graphql-ws` for subscriptions. Keep Apollo limited to
+  the caller-owned client adapter used by host applications.
 - [status: open] What stable HTTP and subscription paths should host the
   dedicated optional-auth Aion chat GraphQL API?
 - [status: open] What exact public-safe fields, filters, pagination model, and
@@ -1404,3 +1406,13 @@ copies it into each client repository that needs the schema, currently
 `aion-chat-react`. Do not add a versioned schema package, source manifest,
 checksum, or automated cross-repository synchronization system. Each client
 may still run its normal local code-generation and build checks after the copy.
+
+Q: Should the standalone GraphQL adapter create its own Apollo Client?
+
+A: No. Apollo supports subscriptions through `GraphQLWsLink`, which itself
+wraps a `graphql-ws` client, but the standalone adapter does not need Apollo's
+cache or link infrastructure. Use native `fetch` for ordinary HTTP GraphQL
+operations and `graphql-ws` for lazy streamed subscriptions, asynchronous
+connection authentication, retries, cancellation, and disposal. Apollo remains
+an optional integration dependency only for hosts that inject an existing
+client.
