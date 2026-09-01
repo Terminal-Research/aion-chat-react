@@ -181,6 +181,8 @@ Reference baseline:
 
 - The initial consumers use React and can install the library as a normal npm
   dependency or workspace package.
+- The first published release targets the same React baseline as
+  `aion-agent-cloud`: React and React DOM `^19.2.0`.
 - Aion's current GraphQL API exposes the A2A request and streaming behavior
   required by the existing `aion-agent-cloud` Playground transport.
 - `aion-agent-cloud` continues to own an authenticated Apollo client whose
@@ -296,8 +298,9 @@ Reference baseline:
   host and standalone configuration must fail fast during development.
 - Access tokens must be requested just in time through a caller callback and
   must not be stored in React state, browser storage, logs, or public models.
-- React and React DOM must be peer dependencies. Apollo Client and its GraphQL
-  transport dependencies must remain optional and isolated to adapter exports.
+- React and React DOM must be peer dependencies at `^19.2.0`, matching the
+  initial `aion-agent-cloud` consumer. Apollo Client and its GraphQL transport
+  dependencies must remain optional and isolated to adapter exports.
 - All default component styling must consume semantic `--aion-chat-*` CSS
   custom properties from one theme boundary. Do not add a parallel JavaScript
   theme object, per-component color props, or shell-specific theme system.
@@ -548,6 +551,9 @@ Reference baseline:
 - Build the packed npm artifact, install it into an isolated fixture, validate
   ESM/types/style exports, check for duplicate React copies, and record bundle
   sizes before setting release budgets.
+- Verify the packed artifact against React and React DOM 19.2, including the
+  `aion-agent-cloud` host integration. Broader React-version compatibility is
+  not part of the initial release contract.
 - Confirm copied or adapted files and distributed artifacts carry the required
   third-party notices and do not contain CopilotKit license gating or branding.
 
@@ -1495,8 +1501,11 @@ note.
   cache. The backend must enforce exact caller and agent/environment scoping
   before the directory is enabled; anonymous public history remains disabled
   without a stable per-caller scope.
-- [status: open] Which React versions must be supported by the first published
-  release?
+- [status: resolved] Which React versions must be supported by the first
+  published release? Resolution: target React and React DOM `^19.2.0`, matching
+  the versions currently used by `aion-agent-cloud`. Do not add a React 18
+  compatibility promise or validation matrix until a concrete consumer needs
+  it.
 - [status: resolved] Should examples use Storybook, a small Vite application,
   or both for visual development and packed-package validation? Resolution:
   begin with a small Vite application using Bootstrap 5.3 and React-Bootstrap
@@ -1851,3 +1860,11 @@ effective principal, which is not a safe history-ownership boundary. Remote
 history is available only when the server can scope both extension methods to
 the exact effective caller and selected agent/environment. Anonymous clients
 can still use fixed or newly generated context IDs without directory access.
+
+Q: Which React versions does the first library release support?
+
+A: React and React DOM `^19.2.0`, matching the current `aion-agent-cloud`
+frontend and the peer dependency range already declared by
+`@terminal-research/aion-chat-react`. The initial release does not promise
+React 18 compatibility; that range can be broadened later when a concrete host
+requires it and the library has a corresponding validation fixture.
