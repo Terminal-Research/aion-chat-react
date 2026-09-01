@@ -127,6 +127,10 @@ Reference baseline:
 - Reuse the existing authenticated `agentIdentityDetails` operation for initial
   agent selection, with the organization ID and user JWT supplied by the host
   application or standalone configuration.
+- Provide both headless agent/conversation selection and an Aion-owned default
+  workspace that navigates from the agent catalog to that agent's recent
+  conversations. A conversation is canonically identified by its A2A
+  `contextId`.
 - Define an attachment upload boundary that can turn browser files or captured
   screenshots into URL-backed A2A file parts through the existing authenticated
   Aion Files API without coupling the core UI to that adapter.
@@ -151,8 +155,9 @@ Reference baseline:
   `@terminal-research/aion` in `aion-python-sdk`.
 - Shipping a framework-independent Web Component, iframe, or script-tag embed
   in the initial release.
-- Owning application navigation, organization selection, agent authorization,
-  or the full agent-catalog experience.
+- Owning application routing, organization selection, agent authorization, or
+  agent administration. The library may render its normalized chat catalog and
+  conversation navigator without becoming the source of those records.
 - Persisting credentials, refresh tokens, or access tokens in the library.
 - Adding voice input, transcription, or real-time voice chat in the initial
   implementation unless it is explicitly added as a later subtask.
@@ -209,6 +214,10 @@ Reference baseline:
 - The current `aion-agent-cloud` Playground implementation is the behavioral
   compatibility baseline for A2A normalization, task status, artifact updates,
   streaming, cancellation, and unary fallback.
+- The current Playground keeps its conversation list and transcripts in
+  browser-local storage. The initial library can preserve that behavior behind
+  an injected conversation-store boundary without claiming cross-device or
+  server-synchronized history.
 - React, React DOM, and optional integration libraries such as Apollo Client
   can be declared as peer dependencies to prevent duplicate runtimes.
 
@@ -244,6 +253,10 @@ Reference baseline:
 - Grant-bearing URLs are temporary credentials. They may appear only where
   required for the A2A file part and must not enter logs, analytics, or durable
   UI state beyond the associated message lifecycle.
+- Conversation persistence must use a versioned, persistence-safe snapshot
+  rather than raw `ChatConversationState`. It excludes browser `File` objects,
+  active runs, queued uploads, credentials, and temporary grant-bearing URLs;
+  retained attachment history is limited to non-secret display metadata.
 - Attachment `accept` configuration is presentation and preflight behavior,
   not a server security boundary. The initial integration keeps the Files
   API's existing media-type validation rather than adding a chat-specific
@@ -284,6 +297,18 @@ Reference baseline:
   boundary.
 - Components must support controlled state where host applications need to own
   open/closed state, selected agent, draft, thread, and lifecycle callbacks.
+- The canonical persisted conversation key is the selected agent plus A2A
+  `contextId`. A new conversation receives a context ID before its first send;
+  transport task IDs remain turn/execution identifiers and must not become
+  thread identifiers.
+- Catalog, conversation-list, and conversation-persistence operations must not
+  be added to `AionChatTransport`. They belong to optional catalog and
+  conversation-store contracts so fixed-agent/fixed-context consumers can use
+  chat without importing navigation or persistence.
+- The library must not derive a user-visible conversation directory by calling
+  an agent-wide `ListTasks` endpoint unless the server contract proves that the
+  result is scoped to the current caller. The initial implementation uses an
+  explicitly scoped local or host-provided store.
 - The UI must be keyboard accessible, preserve focus correctly, expose
   meaningful accessible names, and honor reduced-motion preferences.
 - The core model must not flatten task, artifact, or non-text message-part data
@@ -374,6 +399,15 @@ Reference baseline:
   migration.** **Mitigation:** build a transport conformance suite from current
   Playground cases, migrate behind a temporary application-level switch if
   useful, and remove the old implementation only after parity checks pass.
+- **Risk: browser-local conversation history leaks across users or
+  organizations on a shared browser.** **Mitigation:** require persistent store
+  adapters to receive an opaque host-defined scope key, never derive that key
+  from a JWT, clear cached state when the scope changes, and ship only an
+  in-memory store as an implicit default.
+- **Risk: task listing is mistaken for a safe conversation directory.** The
+  current agent-environment task list is not a user-facing catalog contract.
+  **Mitigation:** keep server history sync out of the initial release and add it
+  only through a caller-scoped backend projection or another reviewed contract.
 
 ## 1f) Testing and Validation
 
@@ -423,6 +457,18 @@ Reference baseline:
 - Verify the authenticated catalog operation forwards the configured
   organization ID, filters to the required identity and A2A network types, and
   normalizes only identities with usable A2A addressing.
+- Verify the default navigator moves from agent list to that agent's recent
+  conversations, supports Back, New conversation, selection, deletion, empty
+  and error states, keyboard navigation, focus restoration, and reduced motion.
+- Verify conversations are partitioned by selected agent and host scope,
+  sorted by latest activity, keyed by `contextId`, and cannot survive a scope
+  change in the wrong user's view.
+- Verify snapshot serialization and restore preserve transcript/task/artifact
+  meaning while excluding active runs, queued browser files, tokens, uploaded
+  bytes, and temporary grant-bearing URLs.
+- Verify fixed-agent, fixed-context, and always-new configurations can omit the
+  corresponding navigation levels without creating a second transport or
+  persistence implementation.
 - Verify missing or invalid JWTs fail instead of producing catalog results, and
   a user without visibility into the supplied organization is denied.
 - Verify the catalog operation does not select notes, role keys, email, system
@@ -815,6 +861,27 @@ the historical subtasks below is deferred until a concrete embed requires it.
 - Keep organization authorization server-owned and prove the client query does
   not request administrative identity fields it does not use.
 
+### Subtask AA — Add agent and conversation navigation (status: not started)
+
+- Define an Aion-owned `AionConversationStore` separate from
+  `AionChatTransport`. Its initial operations list, load, save, and remove
+  versioned safe snapshots keyed by selected agent and A2A `contextId`.
+- Ship an in-memory implementation and a browser-storage implementation that
+  requires an opaque host-supplied scope key. Adapt the existing
+  `aion-agent-cloud` Playground storage through this contract during migration.
+- Add headless catalog/conversation hooks plus a controlled
+  `AionChatNavigator` and a convenience `AionChatWorkspace` composition.
+- In the default navigator, show the agent catalog first. Selecting an agent
+  slides the same navigation panel to that agent's recent conversations; Back
+  returns to the catalog, New conversation creates and selects a fresh context,
+  and selecting a context restores its transcript.
+- Keep the navigator responsive and composable. A host may show both lists in
+  a wider custom layout, hide the catalog for a fixed agent, hide all
+  navigation for a fixed context, or always begin with a new context.
+- Defer remote history synchronization, thread rename, archive, cross-device
+  updates, and server-side deletion until Aion exposes a reviewed caller-scoped
+  conversation-directory contract.
+
 ## 3) Package Hierarchy + Responsibilities
 
 The names below are provisional but establish dependency direction. Modules may
@@ -835,9 +902,18 @@ aion-chat-react/
 │   ├── controller/
 │   │   ├── AionChatProvider.tsx  # React lifecycle and shared controller
 │   │   └── hooks.ts              # headless consumer hooks
+│   ├── conversations/
+│   │   ├── snapshot.ts           # versioned persistence-safe model
+│   │   ├── store.ts              # list/load/save/remove contract
+│   │   ├── memoryStore.ts        # implicit session-only default
+│   │   └── browserStore.ts       # explicitly host-scoped persistence
 │   ├── components/
 │   │   ├── AionChatTheme.tsx     # CSS-variable and portal boundary
 │   │   ├── AionChatView.tsx      # controlled inline chat surface
+│   │   ├── AionChatWorkspace.tsx # default navigator and chat
+│   │   ├── AionChatNavigator.tsx # agent/context navigation panel
+│   │   ├── AionAgentList.tsx     # controlled catalog presentation
+│   │   ├── AionConversationList.tsx # controlled context presentation
 │   │   ├── AionChatComposer.tsx  # draft, send, stop, attachment UI
 │   │   ├── AionChatTranscript.tsx
 │   │   ├── AionChatPopup.tsx
@@ -873,9 +949,9 @@ aion-chat-react/
 
 Planned entry points:
 
-- Package root: models, controller/hooks, inline/popup/sidebar components, and
-  transport interfaces, including the shared theme boundary and safe Markdown
-  renderer.
+- Package root: models, controller/hooks, inline/popup/sidebar/workspace
+  components, conversation-store contracts, and transport interfaces,
+  including the shared theme boundary and safe Markdown renderer.
 - `./styles.css`: opt-in base styles and variables.
 - `./a2a`: Agent Card discovery and direct A2A streaming transport.
 - `./graphql`: GraphQL documents, normalization, and caller-owned Apollo
@@ -883,12 +959,15 @@ Planned entry points:
 - `./graphql/standalone`: explicit standalone transport/client factory for
   Aion's existing GraphQL routes.
 - `./uploads`: upload contracts plus the authenticated Aion Files adapter.
+- `./storage/browser`: explicit host-scoped browser conversation store. Its
+  import and construction perform no storage reads until the consumer uses it.
 - `./testing`: fake transport and transport conformance helpers.
 
 `aion-agent-cloud` remains responsible for application concerns around the
 library: obtaining its Apollo client from the existing provider, selecting the
-organization and agent, authorizing access, routing, and deciding when the
-Playground is visible.
+organization, authorizing access, routing, defining the browser-history scope,
+and deciding when the Playground is visible. It may control agent/context
+selection itself or use the library's default workspace navigator.
 
 The related backend ownership is expected to remain in `aion-api2`:
 
@@ -970,6 +1049,59 @@ export interface AionCredentialProvider {
   projection only when an embed requires one. Known public targets should
   prefer direct A2A discovery through their configured Agent Card.
 
+### Agent and conversation navigation
+
+```ts
+export interface AionConversationStore {
+  list(agentId: string): Promise<readonly AionConversationSummary[]>;
+  load(
+    agentId: string,
+    contextId: string,
+  ): Promise<AionConversationSnapshot | null>;
+  save(agentId: string, snapshot: AionConversationSnapshot): Promise<void>;
+  remove(agentId: string, contextId: string): Promise<void>;
+}
+```
+
+- `contextId` is the conversation/thread identifier used by A2A. A task ID
+  identifies one execution within that context and is not a navigation key.
+- Starting a new conversation generates a context ID client-side, selects an
+  empty local conversation, and sends that same ID with the first message. An
+  unsent empty conversation need not be written to a persistent store.
+- The initial store is intentionally small: list, load, save, and remove.
+  Rename, archive, server-side delete, realtime synchronization, and
+  cross-device history are not implied by this contract.
+- `AionConversationSnapshot` is versioned and serializable. Snapshot creation
+  strips transient controller state, `File` objects, queued uploads, bearer
+  credentials, and grant-bearing URLs before calling the store. File history
+  may retain a safe name, media type, and size for display.
+- The implicit default is in-memory and lasts for the provider lifetime. The
+  optional browser store requires an opaque host-provided scope key such as a
+  stable user/organization/application tuple; it never receives or persists a
+  bearer token.
+- `AionChatTransport` remains responsible only for sending, streaming,
+  cancelling, and disposing. The controller saves normalized conversation
+  state through the store after meaningful changes.
+- `AionChatNavigator` is controlled presentation over normalized agents,
+  conversation summaries, selection, loading, and errors. Headless hooks join
+  the catalog and store for consumers that render different navigation.
+- `AionChatWorkspace` is the default composition. Its navigation panel begins
+  on the agent list, slides to recent conversations after agent selection, and
+  provides Back and New conversation actions. The transition honors reduced
+  motion and preserves focus on the corresponding trigger.
+- The same contracts support four initial host policies: catalog plus
+  conversations (default), fixed agent plus conversations, fixed agent plus
+  fixed context, and fixed agent with a fresh context per mounted workspace.
+  Hiding a navigation level is composition, not a separate transport mode.
+- A wider host may render `AionAgentList` and `AionConversationList`
+  simultaneously instead of using the one-panel transition. Popup and sidebar
+  shells reuse the same controlled navigator rather than inventing another
+  selection model.
+- The initial GraphQL adapter does not use agent-wide `ListTasks` to discover
+  contexts. A future server-backed store requires a caller-scoped conversation
+  directory and can replace the local store without changing chat transport or
+  presentation contracts.
+
 ### Shared theme boundary
 
 ```tsx
@@ -1043,8 +1175,9 @@ const themeStyle = {
 - The walking skeleton implements `AionChatView` first. Popup and sidebar
   compose this established view in Phase 5 rather than defining the initial
   controller or styling contract.
-- Hosts may own thread/context state and persist it externally through
-  callbacks rather than a mandatory library store.
+- Hosts may control agent/context selection and inject their own conversation
+  store. Consumers that do not need persistence receive an in-memory store and
+  may omit the navigator entirely for a fixed context.
 
 ### Host-owned Apollo integration
 
@@ -1219,11 +1352,19 @@ note.
   existing 20 MiB ingest limit and one-hour retention, and an exact-version
   read grant of at most one hour. Keep media-type selection configurable in the
   client and retain existing server validation.
-- [status: open] Should catalog-backed agent selection ship as a default library
-  component or only as a headless query/controller plus a replaceable picker
-  slot?
-- [status: open] Which thread-history operations belong in the initial
-  transport contract versus remaining entirely host-managed?
+- [status: resolved] Should catalog-backed agent selection ship as a default
+  library component or only as a headless query/controller plus a replaceable
+  picker slot? Resolution: ship both headless hooks/controlled lists and a
+  default `AionChatWorkspace`. Its one-panel navigator moves from agent catalog
+  to that agent's recent conversations, while fixed-agent and custom layouts
+  can omit or replace either level.
+- [status: resolved] Which thread-history operations belong in the initial
+  transport contract versus remaining entirely host-managed? Resolution: none
+  belong in `AionChatTransport`. Add a separate `AionConversationStore` with
+  list, load, save, and remove over versioned safe snapshots, an in-memory
+  default, and an explicitly scoped browser store. Remote synchronization and
+  richer lifecycle operations remain deferred until Aion has a caller-scoped
+  server contract.
 - [status: open] Which React versions must be supported by the first published
   release?
 - [status: resolved] Should examples use Storybook, a small Vite application,
@@ -1508,3 +1649,42 @@ distribution. Then mint an exact-version read grant for at most one hour and
 place that grant-bearing URL in the A2A file part. The initial contract keeps
 the existing 20 MiB ingest limit, one-hour retention, and generic server
 media-type validation; hosts may narrow selectable types in the UI.
+
+Q: What does CopilotKit's current thread UI contribute to Aion's design?
+
+A: Its useful separation is a headless thread collection plus controlled chat
+selection, with a convenience drawer that handles recent ordering, New
+conversation, responsive collapse/off-canvas behavior, focus, pagination, and
+host callbacks. The supplied `CopilotThreadsDrawer` and `useThreads` persistence
+depend on CopilotKit Intelligence and a license key, so Aion will use those as
+interaction references rather than dependencies or source-of-truth storage.
+
+Q: How should the default Aion agent and conversation selector behave?
+
+A: `AionChatWorkspace` owns a one-panel side navigator. It starts with the
+authenticated agent catalog, slides to recent conversations for the selected
+agent, and offers Back, New conversation, and context selection. This is a more
+compact form of the current Playground's entry-plus-thread sidebar. Controlled
+`AionAgentList` and `AionConversationList` components also allow a wide host to
+show both lists, a fixed-agent host to omit the catalog, and a fixed-context or
+always-new host to omit history navigation entirely. This supersedes the
+earlier decision that agent selection must always remain host-rendered; the
+host still owns organization/authentication context and may control selection.
+
+Q: Is an Aion chat thread a task or a context?
+
+A: It is an A2A context. The stable conversation key is the selected agent plus
+`contextId`; task IDs represent individual executions within that context. A
+new conversation receives its context ID before the first send so navigation,
+persistence, and the outbound A2A message use one identity from the start.
+
+Q: Where does initial conversation history come from?
+
+A: From an `AionConversationStore`, not `AionChatTransport`. The initial release
+provides provider-lifetime memory and an optional browser store requiring a
+host-defined user/organization/application scope. Stores receive a versioned,
+persistence-safe snapshot rather than raw live state, so in-flight browser
+files and temporary grant URLs are excluded. This preserves the current
+Playground's local-history behavior without claiming cross-device sync. A
+server-backed implementation waits for a caller-scoped Aion directory; an
+agent-environment-wide task list is not a safe substitute for that contract.
