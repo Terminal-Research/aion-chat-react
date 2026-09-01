@@ -1146,10 +1146,12 @@ note.
   view, input, message-view, and Markdown component-map patterns listed in
   `THIRD_PARTY_NOTICES.md`. No CopilotKit styles, runtime, AG-UI model,
   configuration provider, branding, or license-gating code was adopted.
-- [status: open] Should `aion-api2` publish the shared
+- [status: resolved] Should `aion-api2` publish the shared
   `chat-client-schema.graphql` as a versioned artifact/package, or should both
   `aion-python-sdk` and `aion-chat-react` synchronize pinned copies and verify
-  them against the backend in CI?
+  them against the backend in CI? Resolution: do neither. Keep the generated
+  `aion-api2` schema canonical and manually copy it into each client repository
+  that needs it, currently `aion-chat-react`, when the contract changes.
 - [status: open] Should the minimal standalone GraphQL transport use Apollo
   Client for maximum code reuse or use `graphql-ws` plus a smaller request
   client to reduce extension bundle size?
@@ -1392,3 +1394,13 @@ A: Use `@terminal-research/aion-chat-react`. It matches the repository and
 current package metadata, distinguishes this browser library from the existing
 terminal package, identifies the React binding explicitly, and does not assume
 control of a separate `@aion` npm scope.
+
+Q: How should the generated chat-client GraphQL schema reach client
+repositories?
+
+A: Keep the generated `aion-api2` `chat-client-schema.graphql` as the canonical
+source. When its contract changes, a developer manually regenerates it and
+copies it into each client repository that needs the schema, currently
+`aion-chat-react`. Do not add a versioned schema package, source manifest,
+checksum, or automated cross-repository synchronization system. Each client
+may still run its normal local code-generation and build checks after the copy.
