@@ -1,11 +1,13 @@
 {
   "name": "@terminal-research/aion-chat-react",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
+  "description": "Aion React components and transports for agent chat.",
+  "license": "UNLICENSED",
   "type": "module",
   "files": [
     "dist",
     "README.md",
+    "CHANGELOG.md",
     "BUNDLE_BUDGETS.md",
     "THIRD_PARTY_NOTICES.md",
     "LICENSES"
@@ -13,6 +15,9 @@
   "sideEffects": [
     "**/*.css"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -56,6 +61,7 @@
     "example:build": "npm run build --workspaces --if-present",
     "lint": "eslint .",
     "package:check": "node scripts/validate-package.mjs",
+    "prepublishOnly": "npm run check",
     "test": "vitest run --passWithNoTests",
     "typecheck": "tsc --noEmit"
   },
@@ -99,7 +105,7 @@
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
-    "graphql-ws": "^6.2.1",
+    "graphql-ws": "^6.0.6",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1"
   }

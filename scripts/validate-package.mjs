@@ -109,7 +109,13 @@ const temporaryRoot = await mkdtemp(join(tmpdir(), "aion-chat-react-"));
 try {
   const packOutput = execFileSync(
     "npm",
-    ["pack", "--json", "--pack-destination", temporaryRoot],
+    [
+      "pack",
+      "--json",
+      "--dry-run=false",
+      "--pack-destination",
+      temporaryRoot,
+    ],
     { cwd: root, encoding: "utf8" },
   );
   const packResult = JSON.parse(packOutput)[0];
@@ -128,6 +134,8 @@ try {
         dependencies: {
           "@apollo/client": "3.14.0",
           [packageName]: `file:${tarballPath}`,
+          "@types/react": "19.2.2",
+          "@types/react-dom": "19.2.5",
           graphql: "16.14.2",
           react: "19.2.0",
           "react-dom": "19.2.0",
@@ -141,6 +149,7 @@ try {
     "npm",
     [
       "install",
+      "--dry-run=false",
       "--ignore-scripts",
       "--no-audit",
       "--no-fund",
@@ -239,6 +248,70 @@ try {
     stdio: "pipe",
   });
 
+  const typeValidationPath = join(consumerRoot, "validate.ts");
+  await writeFile(
+    typeValidationPath,
+    `
+      import type {
+        AionAgentCatalog,
+        AionChatTransport,
+        AionConversationDirectory,
+      } from "${packageName}";
+      import type {
+        DirectAionA2ATransportOptions,
+      } from "${packageName}/a2a";
+      import type {
+        ApolloAionChatTransportOptions,
+      } from "${packageName}/graphql";
+      import type {
+        AionStandaloneGraphQLClientOptions,
+      } from "${packageName}/graphql/standalone";
+      import type {
+        BrowserAionConversationStoreOptions,
+      } from "${packageName}/storage/browser";
+      import type {
+        AionFilesAttachmentUploaderOptions,
+      } from "${packageName}/uploads";
+
+      declare const catalog: AionAgentCatalog;
+      declare const transport: AionChatTransport;
+      declare const directory: AionConversationDirectory;
+      declare const directOptions: DirectAionA2ATransportOptions;
+      declare const apolloOptions: ApolloAionChatTransportOptions;
+      declare const standaloneOptions: AionStandaloneGraphQLClientOptions;
+      declare const browserOptions: BrowserAionConversationStoreOptions;
+      declare const uploadOptions: AionFilesAttachmentUploaderOptions;
+      void [
+        catalog,
+        transport,
+        directory,
+        directOptions,
+        apolloOptions,
+        standaloneOptions,
+        browserOptions,
+        uploadOptions,
+      ];
+    `,
+  );
+  execFileSync(
+    process.execPath,
+    [
+      join(root, "node_modules", "typescript", "bin", "tsc"),
+      "--noEmit",
+      "--strict",
+      "--target",
+      "ES2022",
+      "--module",
+      "ESNext",
+      "--moduleResolution",
+      "Bundler",
+      "--lib",
+      "ES2022,DOM,DOM.Iterable",
+      typeValidationPath,
+    ],
+    { cwd: consumerRoot, stdio: "pipe" },
+  );
+
   const installedPackage = join(
     consumerRoot,
     "node_modules",
@@ -247,6 +320,7 @@ try {
   );
   await Promise.all([
     access(join(installedPackage, "BUNDLE_BUDGETS.md")),
+    access(join(installedPackage, "CHANGELOG.md")),
     access(join(installedPackage, "THIRD_PARTY_NOTICES.md")),
     access(join(installedPackage, "LICENSES", "CopilotKit-MIT.txt")),
     access(join(installedPackage, "dist", "index.d.ts")),

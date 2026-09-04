@@ -972,7 +972,7 @@ the contained workspace from Subtask AA and without completing Subtasks Q or R.
 - Deferral: add these examples only with the corresponding concrete shell
   requirement. They are not release blockers for the contained workspace.
 
-### Subtask S — Publish the initial library release (status: not started)
+### Subtask S — Publish the initial library release (status: in progress)
 
 - Finalize package name, semantic versioning, supported React versions, public
   exports, generated declarations, styles, license notices, and changelog.

@@ -2,9 +2,10 @@
 
 An Aion-owned React component library for transport-neutral agent chat.
 
-The package is under active development and is not yet published. It provides
-an inline chat surface with fake, direct A2A, caller-owned Apollo, and
-standalone GraphQL transports.
+Version 0.1 is an ESM-only, pre-1.0 release. It provides an inline chat surface
+and a contained agent/conversation workspace with fake, direct A2A,
+caller-owned Apollo, and standalone GraphQL transports. React and React DOM
+19.2 are the supported peer versions for this initial release.
 
 See the living
 [feature specification](./specs/aion-chat-react-library-spec.md) for scope,
@@ -78,6 +79,41 @@ owned by the chat view.
 />;
 ```
 
+## Workspace, catalog, and conversations
+
+`AionChatWorkspace` composes the default agent picker, the selected agent's
+conversation list, and the active chat view. A host may instead compose the
+exported headless hooks and controlled lists, or omit navigation by supplying a
+fixed agent and optional fixed context.
+
+```tsx
+import {
+  AionChatTheme,
+  AionChatWorkspace,
+  createInMemoryAionConversationStore,
+} from "@terminal-research/aion-chat-react";
+
+<AionChatTheme>
+  <AionChatWorkspace
+    catalog={catalog}
+    transport={transport}
+    conversationDirectory={conversationDirectory}
+    conversationStore={createInMemoryAionConversationStore()}
+  />
+</AionChatTheme>;
+```
+
+The catalog lists caller-visible A2A distributions. The optional conversation
+directory remotely pages A2A context IDs with `GetContexts` and hydrates only a
+selected context with `GetContext`. The separate store is a safe local cache;
+use the in-memory implementation by default or import the browser store from
+`@terminal-research/aion-chat-react/storage/browser` with an opaque,
+user-scoped key. Never use a bearer token as that key.
+
+The workspace also supports `fixedAgent`, `fixedContextId`, and
+`startNewConversation`. A remote directory is intentionally optional so known
+public agents can chat without exposing anonymous conversation history.
+
 To enable the default attachment picker, inject an `AionAttachmentUploader`
 into `AionChatProvider`. The controller uploads selected files through that
 transport-independent boundary, blocks submission while a draft is uploading
@@ -128,6 +164,21 @@ const client = useApolloClient();
 const transport = createApolloAionChatTransport({ client });
 ```
 
+The same host client can create an authenticated agent catalog and remote
+conversation directory without opening another HTTP or WebSocket connection:
+
+```tsx
+import {
+  createApolloAionAgentCatalog,
+  createApolloAionConversationDirectory,
+} from "@terminal-research/aion-chat-react/graphql";
+
+const catalog = createApolloAionAgentCatalog({ client, organizationId });
+const conversationDirectory = createApolloAionConversationDirectory({
+  client,
+});
+```
+
 ## Standalone GraphQL integration
 
 Use the standalone client when a host does not already own an Apollo client.
@@ -137,7 +188,9 @@ other checked-in GraphQL operations without creating duplicate sockets.
 
 ```tsx
 import {
+  createStandaloneAionAgentCatalog,
   createStandaloneAionChatTransport,
+  createStandaloneAionConversationDirectory,
   createStandaloneAionGraphQLClient,
 } from "@terminal-research/aion-chat-react/graphql/standalone";
 
@@ -148,6 +201,10 @@ const client = createStandaloneAionGraphQLClient({
   getBearerToken: async () => getCurrentUserJwt(),
 });
 const transport = createStandaloneAionChatTransport({ client });
+const catalog = createStandaloneAionAgentCatalog({ client });
+const conversationDirectory = createStandaloneAionConversationDirectory({
+  client,
+});
 ```
 
 The client sends no cookies. Aion's current WebSocket authentication requires
@@ -162,6 +219,14 @@ Call `await client.dispose()` when the owning integration unmounts; repeated
 disposal is safe. Automatic reconnect attempts also re-read the token. Browser
 extension CSP, permissions, and content-script mounting remain deferred until
 there is a concrete extension host.
+
+Authentication is owned at the adapter boundary. Core components and stores
+never receive credentials. Direct A2A requests call a credential provider only
+when the Agent Card requires bearer authentication. The Apollo adapter inherits
+the host client's authenticated links. The standalone GraphQL client requires
+an organization ID and asynchronous user-JWT callback for the current Aion
+GraphQL catalog and RPC operations. A supplied credential failure is never
+downgraded to anonymous access.
 
 ## Aion Files uploads
 
@@ -199,6 +264,20 @@ uploader preserves an operation ID for repeated attempts with the same browser
 temporary credentials: do not log or persist them beyond the active message
 lifecycle. File selection, screenshot capture, previews, confirmation, and
 narrower accepted media types remain host concerns.
+
+## Migrating an existing chat surface
+
+Keep authentication, organization/project selection, and GraphQL lifecycle in
+the host. Replace the existing view/controller with `AionChatWorkspace`, then
+adapt the host's existing client to one of the transport exports. Map the
+existing agent selector to `AionAgentCatalog`; inject an explicitly scoped
+conversation store only when browser persistence is required.
+
+Migrate event behavior before deleting the old implementation: streamed text,
+unary fallback, task and status updates, artifacts, cancellation, typed errors,
+and reconnect behavior should all pass through the shared transport event
+model. There are no legacy-state compatibility shims in version 0.1; staging
+consumers should start with a clean conversation cache when adopting it.
 
 Run `npm run check` to validate the library, packed artifact, and both example
 fixtures. The fixtures can also be run independently:
