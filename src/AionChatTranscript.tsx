@@ -11,19 +11,32 @@ import {
   useState,
 } from "react";
 
-import { AionChatMessage, type AionChatMessageProps } from "./AionChatMessage";
-import { AionChatArtifact, type AionChatArtifactProps } from "./AionChatArtifact";
+import {
+  AionChatMessage,
+  type AionChatDataPartRenderers,
+  type AionChatMessageProps,
+} from "./AionChatMessage";
+import {
+  AionChatArtifact,
+  type AionChatArtifactProps,
+} from "./AionChatArtifact";
+import {
+  AionChatTaskActivity,
+  type AionChatTaskActivityProps,
+} from "./AionChatActivity";
 import type { AionChatMarkdownComponent } from "./AionChatMarkdown";
-import type { ChatArtifact, ChatMessage } from "./model";
+import type { ChatArtifact, ChatMessage, ChatTask } from "./model";
 import type { AionSlotValue } from "./slots";
 
 /** One fully resolved item rendered by the transcript. */
 export type AionChatTranscriptEntry =
   | { readonly type: "message"; readonly message: ChatMessage }
-  | { readonly type: "artifact"; readonly artifact: ChatArtifact };
+  | { readonly type: "artifact"; readonly artifact: ChatArtifact }
+  | { readonly type: "task"; readonly task: ChatTask };
 
 /** Props supplied to the transcript empty-state slot. */
-export interface AionChatEmptyStateProps extends HTMLAttributes<HTMLDivElement> {
+export interface AionChatEmptyStateProps
+  extends HTMLAttributes<HTMLDivElement> {
   readonly agentTitle?: string;
 }
 
@@ -31,14 +44,16 @@ export interface AionChatEmptyStateProps extends HTMLAttributes<HTMLDivElement> 
 export interface AionChatTranscriptSlots {
   readonly message?: AionSlotValue<
     AionChatMessageProps,
-    "message" | "markdownComponent"
+    "message" | "markdownComponent" | "dataRenderers"
   >;
   readonly artifact?: AionSlotValue<
     AionChatArtifactProps,
-    "artifact" | "markdownComponent"
+    "artifact" | "markdownComponent" | "dataRenderers"
   >;
+  readonly taskActivity?: AionSlotValue<AionChatTaskActivityProps, "task">;
   readonly emptyState?: AionSlotValue<AionChatEmptyStateProps, "agentTitle">;
   readonly markdown?: AionChatMarkdownComponent;
+  readonly dataRenderers?: AionChatDataPartRenderers;
 }
 
 /** Props for the scrollable transcript component. */
@@ -60,7 +75,11 @@ export function AionChatEmptyState({
       className={["aion-chat__empty", className].filter(Boolean).join(" ")}
       {...props}
     >
-      <p>{agentTitle ? `Start a conversation with ${agentTitle}.` : "Select an agent to begin."}</p>
+      <p>
+        {agentTitle
+          ? `Start a conversation with ${agentTitle}.`
+          : "Select an agent to begin."}
+      </p>
     </div>
   );
 }
@@ -78,7 +97,10 @@ export function AionChatTranscript({
 }: AionChatTranscriptProps) {
   const MessageComponent = slots.message?.component ?? AionChatMessage;
   const ArtifactComponent = slots.artifact?.component ?? AionChatArtifact;
-  const EmptyStateComponent = slots.emptyState?.component ?? AionChatEmptyState;
+  const TaskActivityComponent =
+    slots.taskActivity?.component ?? AionChatTaskActivity;
+  const EmptyStateComponent =
+    slots.emptyState?.component ?? AionChatEmptyState;
   const scrollRef = useRef<HTMLDivElement>(null);
   const pinnedRef = useRef(true);
   const [isPinned, setIsPinned] = useState(true);
@@ -104,7 +126,8 @@ export function AionChatTranscript({
     if (!element) {
       return;
     }
-    const distance = element.scrollHeight - element.scrollTop - element.clientHeight;
+    const distance =
+      element.scrollHeight - element.scrollTop - element.clientHeight;
     const nextPinned = distance <= 24;
     pinnedRef.current = nextPinned;
     setIsPinned(nextPinned);
@@ -129,23 +152,37 @@ export function AionChatTranscript({
             agentTitle={agentTitle}
           />
         ) : (
-          entries.map((entry) =>
-            entry.type === "message" ? (
-              <MessageComponent
-                {...slots.message?.props}
-                key={`message:${entry.message.id}`}
-                message={entry.message}
-                markdownComponent={slots.markdown}
+          entries.map((entry) => {
+            if (entry.type === "message") {
+              return (
+                <MessageComponent
+                  {...slots.message?.props}
+                  key={`message:${entry.message.id}`}
+                  message={entry.message}
+                  markdownComponent={slots.markdown}
+                  dataRenderers={slots.dataRenderers}
+                />
+              );
+            }
+            if (entry.type === "artifact") {
+              return (
+                <ArtifactComponent
+                  {...slots.artifact?.props}
+                  key={`artifact:${entry.artifact.id}`}
+                  artifact={entry.artifact}
+                  markdownComponent={slots.markdown}
+                  dataRenderers={slots.dataRenderers}
+                />
+              );
+            }
+            return (
+              <TaskActivityComponent
+                {...slots.taskActivity?.props}
+                key={`task:${entry.task.id}`}
+                task={entry.task}
               />
-            ) : (
-              <ArtifactComponent
-                {...slots.artifact?.props}
-                key={`artifact:${entry.artifact.id}`}
-                artifact={entry.artifact}
-                markdownComponent={slots.markdown}
-              />
-            ),
-          )
+            );
+          })
         )}
       </div>
       {!isPinned && (

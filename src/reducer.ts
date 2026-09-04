@@ -341,12 +341,16 @@ export function reduceChatConversation(
       const taskMessages = event.task.status.message
         ? [...event.task.history, event.task.status.message]
         : event.task.history;
+      const transcript = appendTranscriptItem(
+        appendMessageItems(next.transcript, taskMessages),
+        { type: "task", id: event.task.id },
+      );
       next = {
         ...next,
         contextId: event.task.contextId || next.contextId,
         tasks: { ...next.tasks, [event.task.id]: event.task },
         messages: upsertManyById(next.messages, taskMessages),
-        transcript: appendMessageItems(next.transcript, taskMessages),
+        transcript,
         turns: updateTurn(next.turns, event.turnId, (turn) => {
           const withTask = addTask(
             turn,
@@ -390,6 +394,15 @@ export function reduceChatConversation(
             artifactIds: [],
           };
 
+      const transcript = appendTranscriptItem(
+        event.message
+          ? appendTranscriptItem(next.transcript, {
+              type: "message",
+              id: event.message.id,
+            })
+          : next.transcript,
+        { type: "task", id: event.taskId },
+      );
       next = {
         ...next,
         contextId: event.contextId || next.contextId,
@@ -397,12 +410,7 @@ export function reduceChatConversation(
         messages: event.message
           ? upsertById(next.messages, event.message)
           : next.messages,
-        transcript: event.message
-          ? appendTranscriptItem(next.transcript, {
-              type: "message",
-              id: event.message.id,
-            })
-          : next.transcript,
+        transcript,
         turns: updateTurn(next.turns, event.turnId, (turn) => {
           const withTask = addTask(
             turn,

@@ -31,6 +31,7 @@
 }
 
 .aion-chat,
+.aion-chat__activity,
 .aion-chat__composer,
 .aion-chat__composer-attachment,
 .aion-chat__composer-controls,
@@ -83,7 +84,8 @@
 }
 
 .aion-chat__message,
-.aion-chat__artifact {
+.aion-chat__artifact,
+.aion-chat__activity {
   width: fit-content;
   max-width: var(--aion-chat-max-message-width);
   margin-block: var(--aion-chat-space-3);
@@ -111,6 +113,61 @@
   color: var(--aion-chat-color-muted);
   font-size: 0.875em;
   font-weight: 600;
+}
+
+.aion-chat__artifact-description,
+.aion-chat__activity-description,
+.aion-chat__activity-id,
+.aion-chat__file-detail,
+.aion-chat__data-status {
+  color: var(--aion-chat-color-muted);
+  font-size: 0.875em;
+}
+
+.aion-chat__artifact--thinking {
+  color: var(--aion-chat-color-muted);
+}
+
+.aion-chat__artifact--thinking summary,
+.aion-chat__data summary {
+  cursor: pointer;
+}
+
+.aion-chat__artifact--thinking .aion-chat__artifact-content,
+.aion-chat__data > pre {
+  margin-top: var(--aion-chat-space-2);
+}
+
+.aion-chat__activity {
+  padding: var(--aion-chat-space-3) var(--aion-chat-space-4);
+  background: var(--aion-chat-color-surface);
+  border: 1px solid var(--aion-chat-color-border);
+  border-radius: var(--aion-chat-radius-small);
+}
+
+.aion-chat__activity-title {
+  font-weight: 600;
+}
+
+.aion-chat__activity[data-task-state="failed"],
+.aion-chat__activity[data-task-state="rejected"] {
+  border-color: var(--aion-chat-color-danger);
+}
+
+.aion-chat__file {
+  display: inline-flex;
+  flex-direction: column;
+  margin-right: var(--aion-chat-space-2);
+}
+
+.aion-chat__data {
+  margin-block: var(--aion-chat-space-2);
+}
+
+.aion-chat__data summary {
+  display: flex;
+  gap: var(--aion-chat-space-2);
+  align-items: baseline;
 }
 
 .aion-chat__markdown > :first-child {

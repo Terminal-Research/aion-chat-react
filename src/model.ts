@@ -176,7 +176,8 @@ export interface ChatRun {
 /** Ordered reference to one renderer-visible conversation item. */
 export type ChatTranscriptItem =
   | { readonly type: "message"; readonly id: MessageId }
-  | { readonly type: "artifact"; readonly id: ArtifactRecordId };
+  | { readonly type: "artifact"; readonly id: ArtifactRecordId }
+  | { readonly type: "task"; readonly id: TaskId };
 
 /** Normalized state consumed by headless hooks and view components. */
 export interface ChatConversationState {

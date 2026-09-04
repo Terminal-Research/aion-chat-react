@@ -805,7 +805,7 @@ multiple repositories, use
 - Preserve the simple send/stop path established by the walking skeleton and
   avoid copying CopilotKit's full action/runtime system.
 
-### Subtask H — Build Aion message and activity renderers (status: not started)
+### Subtask H — Build Aion message and activity renderers (status: done)
 
 - Implement default renderers for task status, reasoning/status disclosure,
   errors, typed parts, artifacts, file attachments, and extensible

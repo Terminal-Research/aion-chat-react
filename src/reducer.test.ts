@@ -121,6 +121,10 @@ describe("reduceChatConversation", () => {
       state: "input-required",
       message: assistantMessage,
     });
+    expect(result.transcript.slice(-2)).toEqual([
+      { type: "message", id: "message-assistant-1" },
+      { type: "task", id: "task-1" },
+    ]);
   });
 
   it("derives the assistant transcript from a unary task snapshot", () => {

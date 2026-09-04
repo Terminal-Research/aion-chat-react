@@ -9,6 +9,7 @@ import {
   AionChatComposer,
   type AionChatComposerProps,
 } from "./AionChatComposer";
+import { AionChatError, type AionChatErrorProps } from "./AionChatActivity";
 import type {
   AionChatTranscriptEntry,
   AionChatTranscriptSlots,
@@ -31,6 +32,7 @@ type ComposerOwnedProps =
 /** Typed replacement components accepted by the inline chat view. */
 export interface AionChatViewSlots extends AionChatTranscriptSlots {
   readonly composer?: AionSlotValue<AionChatComposerProps, ComposerOwnedProps>;
+  readonly error?: AionSlotValue<AionChatErrorProps, "error">;
 }
 
 /** Props for the transport-backed inline chat surface. */
@@ -47,7 +49,7 @@ export function AionChatView({
 }: AionChatViewProps) {
   const { state, actions, meta } = useAionChat();
   const Composer = slots.composer?.component ?? AionChatComposer;
-  const runStatus = state.conversation.activeRun?.status;
+  const ErrorComponent = slots.error?.component ?? AionChatError;
   const error = state.conversation.activeRun?.error;
   const composerStatus = meta.isRunning
     ? "running"
@@ -64,13 +66,18 @@ export function AionChatView({
           const message = messagesById.get(item.id);
           return message ? [{ type: "message" as const, message }] : [];
         }
-        const artifact = state.conversation.artifacts[item.id];
-        return artifact ? [{ type: "artifact" as const, artifact }] : [];
+        if (item.type === "artifact") {
+          const artifact = state.conversation.artifacts[item.id];
+          return artifact ? [{ type: "artifact" as const, artifact }] : [];
+        }
+        const task = state.conversation.tasks[item.id];
+        return task ? [{ type: "task" as const, task }] : [];
       },
     );
   }, [
     state.conversation.artifacts,
     state.conversation.messages,
+    state.conversation.tasks,
     state.conversation.transcript,
   ]);
 
@@ -85,20 +92,8 @@ export function AionChatView({
         agentTitle={state.agent?.title}
         slots={slots}
       />
-      {runStatus === "input-required" && (
-        <p className="aion-chat__status" role="status">
-          The agent needs more information.
-        </p>
-      )}
-      {runStatus === "auth-required" && (
-        <p className="aion-chat__status" role="status">
-          Authentication is required to continue.
-        </p>
-      )}
       {error && (
-        <p className="aion-chat__error" role="alert">
-          {error.message}
-        </p>
+        <ErrorComponent {...slots.error?.props} error={error} />
       )}
       <Composer
         {...slots.composer?.props}

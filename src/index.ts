@@ -73,10 +73,27 @@ export { AionChatComposer } from "./AionChatComposer";
 export type { AionChatArtifactProps } from "./AionChatArtifact";
 export { AionChatArtifact } from "./AionChatArtifact";
 export type {
+  AionChatDataPartProps,
+  AionChatDataPartRenderer,
+  AionChatDataPartRenderers,
+  AionChatFilePartProps,
   AionChatMessageProps,
   AionChatPartsProps,
 } from "./AionChatMessage";
-export { AionChatMessage, AionChatParts } from "./AionChatMessage";
+export {
+  AionChatDataPart,
+  AionChatFilePart,
+  AionChatMessage,
+  AionChatParts,
+} from "./AionChatMessage";
+export type {
+  AionChatErrorProps,
+  AionChatTaskActivityProps,
+} from "./AionChatActivity";
+export {
+  AionChatError,
+  AionChatTaskActivity,
+} from "./AionChatActivity";
 export type {
   AionChatEmptyStateProps,
   AionChatTranscriptEntry,
