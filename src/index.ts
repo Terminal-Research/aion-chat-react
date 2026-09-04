@@ -72,6 +72,7 @@ export type {
   AionChatEmptyStateProps,
   AionChatTranscriptEntry,
   AionChatTranscriptProps,
+  AionChatTranscriptSlots,
 } from "./AionChatTranscript";
 export { AionChatEmptyState, AionChatTranscript } from "./AionChatTranscript";
 export type { AionChatViewProps, AionChatViewSlots } from "./AionChatView";
@@ -87,3 +88,4 @@ export type {
 } from "./AionChatTheme";
 export { AionChatTheme } from "./AionChatTheme";
 export { useAionChatPortalContainer } from "./useAionChatTheme";
+export type { AionSlotValue } from "./slots";

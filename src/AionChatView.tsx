@@ -3,29 +3,31 @@
  * packages/react-core/src/v2/components/chat/CopilotChatView.tsx
  * pinned at 65bd05e3682ced8f424023f75627f8f833e52745 (MIT).
  */
-import { type ComponentType, type HTMLAttributes, useMemo } from "react";
+import { type HTMLAttributes, useMemo } from "react";
 
 import {
   AionChatComposer,
   type AionChatComposerProps,
 } from "./AionChatComposer";
 import type {
-  AionChatEmptyStateProps,
   AionChatTranscriptEntry,
+  AionChatTranscriptSlots,
 } from "./AionChatTranscript";
 import { AionChatTranscript } from "./AionChatTranscript";
-import type { AionChatMessageProps } from "./AionChatMessage";
-import type { AionChatArtifactProps } from "./AionChatArtifact";
-import type { AionChatMarkdownComponent } from "./AionChatMarkdown";
 import { useAionChat } from "./hooks";
+import type { AionSlotValue } from "./slots";
+
+type ComposerOwnedProps =
+  | "value"
+  | "isRunning"
+  | "canSend"
+  | "onChange"
+  | "onSend"
+  | "onStop";
 
 /** Typed replacement components accepted by the inline chat view. */
-export interface AionChatViewSlots {
-  readonly message?: ComponentType<AionChatMessageProps>;
-  readonly artifact?: ComponentType<AionChatArtifactProps>;
-  readonly emptyState?: ComponentType<AionChatEmptyStateProps>;
-  readonly composer?: ComponentType<AionChatComposerProps>;
-  readonly markdown?: AionChatMarkdownComponent;
+export interface AionChatViewSlots extends AionChatTranscriptSlots {
+  readonly composer?: AionSlotValue<AionChatComposerProps, ComposerOwnedProps>;
 }
 
 /** Props for the transport-backed inline chat surface. */
@@ -41,7 +43,7 @@ export function AionChatView({
   ...props
 }: AionChatViewProps) {
   const { state, actions, meta } = useAionChat();
-  const Composer = slots.composer ?? AionChatComposer;
+  const Composer = slots.composer?.component ?? AionChatComposer;
   const runStatus = state.conversation.activeRun?.status;
   const error = state.conversation.activeRun?.error;
   const transcriptEntries = useMemo(() => {
@@ -73,10 +75,7 @@ export function AionChatView({
       <AionChatTranscript
         entries={transcriptEntries}
         agentTitle={state.agent?.title}
-        messageComponent={slots.message}
-        artifactComponent={slots.artifact}
-        emptyStateComponent={slots.emptyState}
-        markdownComponent={slots.markdown}
+        slots={slots}
       />
       {runStatus === "input-required" && (
         <p className="aion-chat__status" role="status">
@@ -94,6 +93,7 @@ export function AionChatView({
         </p>
       )}
       <Composer
+        {...slots.composer?.props}
         value={state.draft}
         isRunning={meta.isRunning}
         canSend={meta.canSend}

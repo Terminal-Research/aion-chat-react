@@ -1005,7 +1005,7 @@ the contained workspace from Subtask AA and without completing Subtasks Q or R.
 - Correct source paths and distinguish code adaptation from conceptual pattern
   references.
 
-### Subtask X — Define reusable typed slot values (status: not started)
+### Subtask X — Define reusable typed slot values (status: done)
 
 - Introduce a small Aion-owned slot-value contract for recurring component
   replacement and partial default-prop customization across the composer,

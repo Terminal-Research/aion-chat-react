@@ -43,6 +43,19 @@ renderer. Raw HTML and remote Markdown images are not rendered, unsafe URL
 protocols are removed, and external links use opener isolation. A host can
 replace the Markdown slot when it intentionally needs a different policy.
 
+Component slots accept an optional replacement component and default props.
+Controller-owned values such as the current draft and send handlers remain
+owned by the chat view.
+
+```tsx
+<AionChatView
+  slots={{
+    composer: { props: { placeholder: "Ask the agent" } },
+    message: { component: CustomMessage },
+  }}
+/>;
+```
+
 ## Host Apollo integration
 
 The optional Apollo adapter wraps a client that the host already configured

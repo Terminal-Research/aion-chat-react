@@ -11,6 +11,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { AionChatProvider } from "./AionChatProvider";
 import { AionChatTranscript } from "./AionChatTranscript";
 import { AionChatView } from "./AionChatView";
+import type { AionChatMessageProps } from "./AionChatMessage";
 import type { ChatMessage } from "./model";
 import { FakeAionChatTransport } from "./testing/fake-transport";
 
@@ -183,6 +184,52 @@ describe("AionChatView", () => {
     );
 
     expect(screen.getByText("unsafe.txt").tagName).toBe("SPAN");
+  });
+
+  it("supports component replacement and default props through slots", () => {
+    const message: ChatMessage = {
+      id: "message-1",
+      role: "assistant",
+      parts: [{ type: "text", text: "Original response" }],
+      createdAt: "2026-08-31T12:00:00.000Z",
+    };
+    const CustomMessage = ({
+      message: currentMessage,
+      className,
+    }: AionChatMessageProps) => (
+      <article className={className}>{`Custom ${currentMessage.id}`}</article>
+    );
+
+    render(
+      <AionChatTranscript
+        entries={[{ type: "message", message }]}
+        slots={{
+          message: {
+            component: CustomMessage,
+            props: { className: "host-message" },
+          },
+        }}
+      />,
+    );
+
+    expect(screen.getByText("Custom message-1").className).toBe("host-message");
+  });
+
+  it("customizes default composer props without replacing its behavior", () => {
+    const transport = new FakeAionChatTransport(() => []);
+    render(
+      <AionChatProvider transport={transport} defaultAgent={AGENT}>
+        <AionChatView
+          slots={{
+            composer: { props: { placeholder: "Ask the status agent" } },
+          }}
+        />
+      </AionChatProvider>,
+    );
+
+    expect(
+      screen.getByPlaceholderText("Ask the status agent"),
+    ).toBeTruthy();
   });
 
   it("does not repeat transcript scroll work when only the draft changes", () => {

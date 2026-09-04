@@ -4,7 +4,6 @@
  * pinned at 65bd05e3682ced8f424023f75627f8f833e52745 (MIT).
  */
 import {
-  type ComponentType,
   type HTMLAttributes,
   useCallback,
   useEffect,
@@ -16,6 +15,7 @@ import { AionChatMessage, type AionChatMessageProps } from "./AionChatMessage";
 import { AionChatArtifact, type AionChatArtifactProps } from "./AionChatArtifact";
 import type { AionChatMarkdownComponent } from "./AionChatMarkdown";
 import type { ChatArtifact, ChatMessage } from "./model";
+import type { AionSlotValue } from "./slots";
 
 /** One fully resolved item rendered by the transcript. */
 export type AionChatTranscriptEntry =
@@ -27,15 +27,26 @@ export interface AionChatEmptyStateProps extends HTMLAttributes<HTMLDivElement> 
   readonly agentTitle?: string;
 }
 
+/** Typed replacement components accepted by the transcript. */
+export interface AionChatTranscriptSlots {
+  readonly message?: AionSlotValue<
+    AionChatMessageProps,
+    "message" | "markdownComponent"
+  >;
+  readonly artifact?: AionSlotValue<
+    AionChatArtifactProps,
+    "artifact" | "markdownComponent"
+  >;
+  readonly emptyState?: AionSlotValue<AionChatEmptyStateProps, "agentTitle">;
+  readonly markdown?: AionChatMarkdownComponent;
+}
+
 /** Props for the scrollable transcript component. */
 export interface AionChatTranscriptProps
   extends Omit<HTMLAttributes<HTMLDivElement>, "children"> {
   readonly entries: readonly AionChatTranscriptEntry[];
   readonly agentTitle?: string;
-  readonly messageComponent?: ComponentType<AionChatMessageProps>;
-  readonly artifactComponent?: ComponentType<AionChatArtifactProps>;
-  readonly emptyStateComponent?: ComponentType<AionChatEmptyStateProps>;
-  readonly markdownComponent?: AionChatMarkdownComponent;
+  readonly slots?: AionChatTranscriptSlots;
 }
 
 /** Default empty state shown before a conversation begins. */
@@ -61,13 +72,13 @@ export function AionChatEmptyState({
 export function AionChatTranscript({
   entries,
   agentTitle,
-  messageComponent: MessageComponent = AionChatMessage,
-  artifactComponent: ArtifactComponent = AionChatArtifact,
-  emptyStateComponent: EmptyStateComponent = AionChatEmptyState,
-  markdownComponent,
+  slots = {},
   className,
   ...props
 }: AionChatTranscriptProps) {
+  const MessageComponent = slots.message?.component ?? AionChatMessage;
+  const ArtifactComponent = slots.artifact?.component ?? AionChatArtifact;
+  const EmptyStateComponent = slots.emptyState?.component ?? AionChatEmptyState;
   const scrollRef = useRef<HTMLDivElement>(null);
   const pinnedRef = useRef(true);
   const [isPinned, setIsPinned] = useState(true);
@@ -113,20 +124,25 @@ export function AionChatTranscript({
         {...props}
       >
         {entries.length === 0 ? (
-          <EmptyStateComponent agentTitle={agentTitle} />
+          <EmptyStateComponent
+            {...slots.emptyState?.props}
+            agentTitle={agentTitle}
+          />
         ) : (
           entries.map((entry) =>
             entry.type === "message" ? (
               <MessageComponent
+                {...slots.message?.props}
                 key={`message:${entry.message.id}`}
                 message={entry.message}
-                markdownComponent={markdownComponent}
+                markdownComponent={slots.markdown}
               />
             ) : (
               <ArtifactComponent
+                {...slots.artifact?.props}
                 key={`artifact:${entry.artifact.id}`}
                 artifact={entry.artifact}
-                markdownComponent={markdownComponent}
+                markdownComponent={slots.markdown}
               />
             ),
           )
