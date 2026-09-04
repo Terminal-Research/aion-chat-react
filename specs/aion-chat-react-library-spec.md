@@ -1174,7 +1174,9 @@ the contained workspace from Subtask AA and without completing Subtasks Q or R.
   attachments, and rapid streamed updates. Reconsider windowing only if these
   measured fixtures establish a material remaining problem.
 
-### Subtask AF — Prepare public source and Git consumption (status: in progress)
+### Subtask AF — Prepare public source and Git consumption (status: done)
+
+- Commit ID (aion-chat-react): `e01d7e6`
 
 - License the Aion-owned repository under MIT while retaining the separate
   CopilotKit attribution and license notice for adapted files.
