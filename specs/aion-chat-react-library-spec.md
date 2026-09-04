@@ -974,6 +974,8 @@ the contained workspace from Subtask AA and without completing Subtasks Q or R.
 
 ### Subtask S — Publish the initial library release (status: in progress)
 
+- Commit ID (aion-chat-react): `80d7cb7`
+
 - Finalize package name, semantic versioning, supported React versions, public
   exports, generated declarations, styles, license notices, and changelog.
 - Document core, direct A2A, injected GraphQL, standalone GraphQL, optional
