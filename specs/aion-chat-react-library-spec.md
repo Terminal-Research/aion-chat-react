@@ -878,7 +878,7 @@ the historical subtasks below is deferred until a concrete embed requires it.
 - Verify that the full GraphQL routes and their mandatory authentication remain
   unchanged.
 
-### Subtask M — Implement the direct A2A transport (status: not started)
+### Subtask M — Implement the direct A2A transport (status: done)
 
 - In `aion-chat-react`, add a direct A2A adapter that accepts an Agent Card URL
   or resolved card, selects a supported interface, and validates streaming

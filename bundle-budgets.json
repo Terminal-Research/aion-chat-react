@@ -1,4 +1,5 @@
 {
+  "dist/a2a/direct.js": { "rawBytes": 24576, "gzipBytes": 7168 },
   "dist/index.js": { "rawBytes": 49152, "gzipBytes": 13312 },
   "dist/graphql/apollo.js": { "rawBytes": 18432, "gzipBytes": 5632 },
   "dist/testing.js": { "rawBytes": 2048, "gzipBytes": 1024 },

@@ -84,6 +84,32 @@ transport-independent boundary, blocks submission while a draft is uploading
 or failed, and converts completed uploads into URL-backed message parts. The
 provider never creates a GraphQL or HTTP upload client itself.
 
+## Direct A2A integration
+
+The optional direct adapter discovers an A2A 1.0 Agent Card, chooses the first
+declared `HTTP+JSON` or `JSONRPC` interface, and requires advertised streaming
+support. It sends no cookies or bearer header for a public card. When the card
+requires HTTP bearer authentication, the callback is invoked for the current
+request and may return a refreshed token.
+
+```tsx
+import {
+  createDirectAionA2ATransport,
+} from "@terminal-research/aion-chat-react/a2a";
+
+const transport = createDirectAionA2ATransport({
+  agentCardUrl: "https://agent.example/.well-known/agent-card.json",
+  credentials: {
+    getBearerToken: async ({ signal }) => getCurrentToken({ signal }),
+  },
+});
+```
+
+Pass `agentCard` instead of `agentCardUrl` when the host already resolved the
+card. The transport validates the same current card shape before every call,
+sends `A2A-Version: 1.0`, maps responses into the shared chat event model, and
+closes the SSE reader on completion or browser cancellation.
+
 ## Host Apollo integration
 
 The optional Apollo adapter wraps a client that the host already configured

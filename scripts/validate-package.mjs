@@ -11,7 +11,7 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { gzipSync } from "node:zlib";
 
 const root = resolve(import.meta.dirname, "..");
@@ -23,17 +23,42 @@ function fail(message) {
   throw new Error(message);
 }
 
+async function entryFiles(relativePath, visited = new Set()) {
+  if (visited.has(relativePath)) {
+    return visited;
+  }
+  visited.add(relativePath);
+  const code = await readFile(join(root, relativePath), "utf8");
+  const imports = Array.from(
+    code.matchAll(/\bfrom\s+["'](\.[^"']+)["']/gu),
+    (match) => match[1],
+  );
+  for (const specifier of imports) {
+    await entryFiles(join(dirname(relativePath), specifier), visited);
+  }
+  return visited;
+}
+
 for (const [relativePath, budget] of Object.entries(budgets)) {
-  const content = await readFile(join(root, relativePath));
-  const rawBytes = content.byteLength;
-  const gzipBytes = gzipSync(content).byteLength;
+  const files = await entryFiles(relativePath);
+  const contents = await Promise.all(
+    Array.from(files, (file) => readFile(join(root, file))),
+  );
+  const rawBytes = contents.reduce((total, file) => total + file.byteLength, 0);
+  const gzipBytes = contents.reduce(
+    (total, file) => total + gzipSync(file).byteLength,
+    0,
+  );
   if (rawBytes > budget.rawBytes || gzipBytes > budget.gzipBytes) {
     fail(
       `${relativePath} is ${rawBytes} raw/${gzipBytes} gzip bytes; ` +
         `budget is ${budget.rawBytes} raw/${budget.gzipBytes} gzip bytes.`,
     );
   }
-  console.log(`${relativePath}: ${rawBytes} raw, ${gzipBytes} gzip bytes`);
+  console.log(
+    `${relativePath}: ${rawBytes} raw, ${gzipBytes} gzip bytes ` +
+      `(${files.size} file${files.size === 1 ? "" : "s"})`,
+  );
 }
 
 const coreCode = await readFile(join(root, "dist/index.js"), "utf8");
@@ -110,6 +135,7 @@ try {
     validationPath,
     `
       import { AionChatView } from "${packageName}";
+      import { createDirectAionA2ATransport } from "${packageName}/a2a";
       import { FakeAionChatTransport } from "${packageName}/testing";
       import { createApolloAionChatTransport } from "${packageName}/graphql";
 
@@ -117,6 +143,9 @@ try {
           typeof AionChatView !== "function") throw new Error("root export");
       if (typeof FakeAionChatTransport !== "function") {
         throw new Error("testing export");
+      }
+      if (typeof createDirectAionA2ATransport !== "function") {
+        throw new Error("a2a export");
       }
       if (typeof createApolloAionChatTransport !== "function") {
         throw new Error("graphql export");
