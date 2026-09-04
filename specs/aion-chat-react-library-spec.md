@@ -927,7 +927,10 @@ the historical subtasks below is deferred until a concrete embed requires it.
 
 ### Phase 4 — Consumer adoption
 
-### Subtask P — Migrate the aion-agent-cloud Playground (status: not started)
+### Subtask P — Migrate the aion-agent-cloud Playground (status: done)
+
+- Commit ID (aion-chat-react): `1b6841f`
+- Commit ID (aion-agent-cloud): `5cbea048a`
 
 - Wrap the existing application-owned Apollo client in the injected GraphQL
   adapter and replace the current Playground presentation/controller in
