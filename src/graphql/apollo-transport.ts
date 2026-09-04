@@ -1,9 +1,9 @@
-import type { ApolloClient } from "@apollo/client/core";
 import type { DocumentNode } from "graphql";
 
 import type { ChatAgent } from "../model";
 import type { AionChatTransport } from "../transport";
 import { observeApolloAionGraphQL } from "./apollo-observe";
+import type { ApolloAionSubscriptionClient } from "./apollo-client";
 import { createAionChatGraphQLTransport } from "./chat-transport";
 import { AION_CHAT_A2A_RPC_SUBSCRIPTION } from "./operation";
 import type {
@@ -15,7 +15,7 @@ import type {
 
 /** Options for the caller-owned Apollo Aion chat transport. */
 export interface ApolloAionChatTransportOptions {
-  readonly client: ApolloClient<unknown>;
+  readonly client: ApolloAionSubscriptionClient;
   readonly targetForAgent?: (agent: ChatAgent) => AionChatGraphQLTarget;
   readonly serviceParameters?: AionChatGraphQLServiceParameters;
   readonly operation?: DocumentNode;

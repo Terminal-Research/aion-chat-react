@@ -1,8 +1,8 @@
-import type { ApolloClient } from "@apollo/client/core";
 import type { DocumentNode } from "graphql";
 
 import type { ChatAgent } from "../model";
 import type { AionConversationDirectory } from "../conversations/directory";
+import type { ApolloAionSubscriptionClient } from "./apollo-client";
 import { observeApolloAionGraphQL } from "./apollo-observe";
 import {
   createAionChatGraphQLConversationDirectory,
@@ -17,7 +17,7 @@ import type {
 
 /** Options for a remote directory using a caller-owned Apollo client. */
 export interface ApolloAionConversationDirectoryOptions {
-  readonly client: ApolloClient<unknown>;
+  readonly client: ApolloAionSubscriptionClient;
   readonly targetForAgent?: (agent: ChatAgent) => AionChatGraphQLTarget;
   readonly serviceParameters?: AionChatGraphQLServiceParameters;
   readonly operation?: DocumentNode;

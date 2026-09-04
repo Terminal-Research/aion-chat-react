@@ -1,6 +1,10 @@
-import type { ApolloClient, FetchResult } from "@apollo/client/core";
+import type { FetchResult } from "@apollo/client/core";
 import type { DocumentNode } from "graphql";
 
+import {
+  type ApolloAionSubscriptionClient,
+  asApolloSubscriptionClient,
+} from "./apollo-client";
 import type { AionGraphQLResult } from "./types";
 
 type ApolloNotification<TData> =
@@ -13,7 +17,7 @@ export async function* observeApolloAionGraphQL<
   TData,
   TVariables extends object,
 >(
-  client: ApolloClient<unknown>,
+  client: ApolloAionSubscriptionClient,
   operation: DocumentNode,
   variables: TVariables,
   signal: AbortSignal,
@@ -47,7 +51,10 @@ export async function* observeApolloAionGraphQL<
           wake = resolve;
         });
   };
-  const observable = client.subscribe<TData, TVariables>({
+  const observable = asApolloSubscriptionClient(client).subscribe<
+    TData,
+    TVariables
+  >({
     query: operation,
     variables,
   });

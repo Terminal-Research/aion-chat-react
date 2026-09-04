@@ -1,7 +1,10 @@
-import type { ApolloClient } from "@apollo/client/core";
 import type { DocumentNode } from "graphql";
 
 import type { AionAgentCatalog } from "../catalog";
+import {
+  type ApolloAionQueryClient,
+  asApolloQueryClient,
+} from "./apollo-client";
 import {
   type AionAgentCatalogGraphQLData,
   type AionAgentCatalogGraphQLVariables,
@@ -12,7 +15,7 @@ import { AION_AGENT_CATALOG_QUERY } from "./catalog-operation";
 
 /** Options for a catalog using a caller-owned Apollo client. */
 export interface ApolloAionAgentCatalogOptions {
-  readonly client: ApolloClient<unknown>;
+  readonly client: ApolloAionQueryClient;
   readonly organizationId: string;
   readonly operation?: DocumentNode;
 }
@@ -31,11 +34,12 @@ export function createApolloAionAgentCatalog(
 ): AionAgentCatalog {
   const organizationId = assertOrganizationId(options.organizationId);
   const operation = options.operation ?? AION_AGENT_CATALOG_QUERY;
+  const client = asApolloQueryClient(options.client);
   return {
     async list(listOptions = {}) {
       listOptions.signal?.throwIfAborted();
       try {
-        const result = await options.client.query<
+        const result = await client.query<
           AionAgentCatalogGraphQLData,
           AionAgentCatalogGraphQLVariables
         >({

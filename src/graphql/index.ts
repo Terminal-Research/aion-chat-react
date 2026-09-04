@@ -9,6 +9,10 @@ export { createApolloAionChatTransport } from "./apollo-transport";
 export type { ApolloAionAgentCatalogOptions } from "./apollo-catalog";
 export { createApolloAionAgentCatalog } from "./apollo-catalog";
 export type {
+  ApolloAionQueryClient,
+  ApolloAionSubscriptionClient,
+} from "./apollo-client";
+export type {
   ApolloAionConversationDirectoryOptions,
 } from "./apollo-context-directory";
 export {
