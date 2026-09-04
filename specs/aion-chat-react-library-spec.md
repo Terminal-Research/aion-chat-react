@@ -798,6 +798,7 @@ multiple repositories, use
 
 ### Subtask G — Complete the composer and attachment UI (status: done)
 
+- Commit ID (aion-chat-react): `3dcdeee`
 - Expand the composer for processing state, multiline input, keyboard
   interaction, attachment drafts, removal, and host-supplied actions.
 - Define an attachment draft model and uploader interface independent of
@@ -807,6 +808,7 @@ multiple repositories, use
 
 ### Subtask H — Build Aion message and activity renderers (status: done)
 
+- Commit ID (aion-chat-react): `84820bc`
 - Implement default renderers for task status, reasoning/status disclosure,
   errors, typed parts, artifacts, file attachments, and extensible
   tool/activity content around the safe Markdown renderer from Subtask E.
@@ -817,6 +819,7 @@ multiple repositories, use
 
 ### Subtask I — Validate inline behavior and packaging (status: done)
 
+- Commit ID (aion-chat-react): `b91563c`
 - Add interactive fixtures for inline desktop, narrow/mobile, fake-transport,
   injected-Apollo, Bootstrap-bridged, and framework-neutral layouts.
 - Complete accessibility, keyboard, streaming, large-history, visual, and
@@ -1007,6 +1010,7 @@ the contained workspace from Subtask AA and without completing Subtasks Q or R.
 
 ### Subtask X — Define reusable typed slot values (status: done)
 
+- Commit ID (aion-chat-react): `1e195ea`
 - Introduce a small Aion-owned slot-value contract for recurring component
   replacement and partial default-prop customization across the composer,
   message/activity renderers, and popup/sidebar shells.
@@ -1097,6 +1101,7 @@ the contained workspace from Subtask AA and without completing Subtasks Q or R.
 
 ### Subtask AD — Add agent interaction motion (status: done)
 
+- Commit ID (aion-chat-react): `a717299`
 - Add Aion-owned shimmer, streamed-content entrance, and lifecycle indicator
   components based on the referenced interaction behavior, without copying
   Transitions.dev Pro source or custom SVG paths.
@@ -1121,6 +1126,7 @@ the contained workspace from Subtask AA and without completing Subtasks Q or R.
 
 ### Subtask AE — Add browser-native transcript containment (status: done)
 
+- Commit ID (aion-chat-react): `81be03d`
 - Add stable transcript-entry wrappers around messages and artifacts. Apply
   `content-visibility: auto` and pair it with an `auto`
   `contain-intrinsic-size` fallback suitable for ordinary chat entries.
