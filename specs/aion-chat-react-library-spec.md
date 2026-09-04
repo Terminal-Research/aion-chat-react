@@ -1088,7 +1088,10 @@ the contained workspace from Subtask AA and without completing Subtasks Q or R.
   fixed-context, always-new, and hidden-navigation policies are compositions of
   those same boundaries rather than separate controllers.
 
-### Subtask AB — Secure the Aion context directory (status: not started)
+### Subtask AB — Secure the Aion context directory (status: done)
+
+- Commit ID (aion-api2): `c3dd517f7`
+- Commit ID (aion-python-sdk): `cad3909`
 
 - In `aion-api2`, implement typed `GetContexts` handling and make the existing
   `GetContext` path operational through the A2A distribution boundary.
