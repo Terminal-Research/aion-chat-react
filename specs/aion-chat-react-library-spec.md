@@ -815,7 +815,7 @@ multiple repositories, use
 - Add memoization and virtualization only where transcript behavior proves it
   useful.
 
-### Subtask I — Validate inline behavior and packaging (status: not started)
+### Subtask I — Validate inline behavior and packaging (status: done)
 
 - Add interactive fixtures for inline desktop, narrow/mobile, fake-transport,
   injected-Apollo, Bootstrap-bridged, and framework-neutral layouts.

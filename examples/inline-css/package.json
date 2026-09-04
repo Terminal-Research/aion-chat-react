@@ -1,5 +1,5 @@
 {
-  "name": "@terminal-research/aion-chat-react-example-inline-bootstrap",
+  "name": "@terminal-research/aion-chat-react-example-inline-css",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -8,12 +8,8 @@
     "dev": "vite"
   },
   "dependencies": {
-    "@apollo/client": "^3.14.0",
     "@terminal-research/aion-chat-react": "file:../..",
-    "bootstrap": "^5.3.8",
-    "graphql": "^16.14.2",
     "react": "^19.2.0",
-    "react-bootstrap": "^2.10.10",
     "react-dom": "^19.2.0"
   },
   "devDependencies": {

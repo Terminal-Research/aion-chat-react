@@ -6,6 +6,7 @@
   "files": [
     "dist",
     "README.md",
+    "BUNDLE_BUDGETS.md",
     "THIRD_PARTY_NOTICES.md",
     "LICENSES"
   ],
@@ -32,9 +33,13 @@
   },
   "scripts": {
     "build": "vite build && tsc -p tsconfig.build.json",
-    "check": "npm run lint && npm run typecheck && npm test && npm run build && npm run example:build",
-    "example:build": "npm --workspace @terminal-research/aion-chat-react-example-inline-bootstrap run build",
+    "check": "npm run check:code && npm run check:artifacts",
+    "check:artifacts": "npm run build && npm run check:distribution",
+    "check:code": "npm run lint && npm run typecheck && npm test",
+    "check:distribution": "npm run package:check && npm run example:build",
+    "example:build": "npm run build --workspaces --if-present",
     "lint": "eslint .",
+    "package:check": "node scripts/validate-package.mjs",
     "test": "vitest run --passWithNoTests",
     "typecheck": "tsc --noEmit"
   },

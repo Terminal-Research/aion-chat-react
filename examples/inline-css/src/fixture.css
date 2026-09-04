@@ -1,0 +1,62 @@
+:root {
+  color: #e7eaf0;
+  background: #161922;
+  font-family: system-ui, sans-serif;
+}
+
+body {
+  margin: 0;
+}
+
+.fixture-page {
+  display: grid;
+  width: min(100% - 2rem, 32rem);
+  height: calc(100vh - 2rem);
+  min-height: 30rem;
+  margin: 1rem auto;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 1rem;
+}
+
+.fixture-page h1 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.fixture-page p {
+  margin-block: 0.25rem 0;
+  color: #aeb6c8;
+}
+
+.fixture-chat {
+  min-height: 0;
+  --aion-chat-color-background: #1e2230;
+  --aion-chat-color-surface: #282e3e;
+  --aion-chat-color-surface-emphasis: #31384a;
+  --aion-chat-color-text: #f3f5f8;
+  --aion-chat-color-muted: #aeb6c8;
+  --aion-chat-color-border: #3d465c;
+  --aion-chat-color-accent: #7394ff;
+  --aion-chat-color-accent-contrast: #0f1420;
+}
+
+@media (max-width: 30rem) {
+  .fixture-page {
+    width: 100%;
+    height: 100dvh;
+    min-height: 24rem;
+    margin: 0;
+  }
+
+  .fixture-page header {
+    padding: 0.75rem 1rem 0;
+  }
+
+  .fixture-chat,
+  .fixture-chat .aion-chat {
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: 0;
+  }
+}

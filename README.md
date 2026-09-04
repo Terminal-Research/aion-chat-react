@@ -102,4 +102,17 @@ const client = useApolloClient();
 const transport = createApolloAionChatTransport({ client });
 ```
 
-Run `npm run check` to validate the library and build the example fixture.
+Run `npm run check` to validate the library, packed artifact, and both example
+fixtures. The fixtures can also be run independently:
+
+```sh
+npm run dev --workspace \
+  @terminal-research/aion-chat-react-example-inline-bootstrap
+npm run dev --workspace \
+  @terminal-research/aion-chat-react-example-inline-css
+```
+
+The Bootstrap fixture switches between fake and injected Apollo transports and
+can constrain itself to a narrow layout. The framework-neutral fixture proves
+that the default theme does not require host CSS. Bundle baselines and enforced
+limits are documented in [BUNDLE_BUDGETS.md](./BUNDLE_BUDGETS.md).

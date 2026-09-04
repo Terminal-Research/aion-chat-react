@@ -16,4 +16,18 @@ body {
 .fixture-chat {
   min-height: 24rem;
   flex: 1 1 auto;
+  width: 100%;
+  max-width: 56rem;
+  margin-inline: auto;
+  transition: max-width 200ms ease;
+}
+
+.fixture-chat--narrow {
+  max-width: 24rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fixture-chat {
+    transition: none;
+  }
 }
