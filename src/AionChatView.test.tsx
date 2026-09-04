@@ -6,7 +6,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AionChatProvider } from "./AionChatProvider";
 import { AionChatTranscript } from "./AionChatTranscript";
@@ -213,6 +213,65 @@ describe("AionChatView", () => {
     );
 
     expect(screen.getByText("Custom message-1").className).toBe("host-message");
+  });
+
+  it("uploads selected attachments before including them in a message", async () => {
+    const transport = new FakeAionChatTransport(() => []);
+    let finishUpload: ((value: { url: string; mediaType: string }) => void) |
+      undefined;
+    const uploader = {
+      upload: vi.fn(
+        () =>
+          new Promise<{ url: string; mediaType: string }>((resolve) => {
+            finishUpload = resolve;
+          }),
+      ),
+    };
+    const view = render(
+      <AionChatProvider
+        transport={transport}
+        attachmentUploader={uploader}
+        defaultAgent={AGENT}
+        createId={createIds()}
+      >
+        <AionChatView />
+      </AionChatProvider>,
+    );
+    const file = new File(["image"], "report.png", { type: "image/png" });
+    const fileInput = view.container.querySelector<HTMLInputElement>(
+      'input[type="file"]',
+    );
+    expect(fileInput).not.toBeNull();
+    if (!fileInput) {
+      throw new Error("Expected the attachment file input.");
+    }
+
+    fireEvent.change(fileInput, { target: { files: [file] } });
+
+    await screen.findByText("Uploading");
+    expect(
+      screen.getByRole<HTMLButtonElement>("button", {
+        name: "Uploading…",
+      }).disabled,
+    ).toBe(true);
+    finishUpload?.({
+      url: "https://files.example/report.png",
+      mediaType: "image/png",
+    });
+    await screen.findByText("Ready");
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    await waitFor(() => expect(transport.requests).toHaveLength(1));
+    expect(transport.requests[0]?.message.parts).toEqual([
+      {
+        type: "file",
+        file: {
+          name: "report.png",
+          mediaType: "image/png",
+          url: "https://files.example/report.png",
+        },
+      },
+    ]);
+    expect(screen.queryByRole("list", { name: "Attachments" })).toBeNull();
   });
 
   it("customizes default composer props without replacing its behavior", () => {

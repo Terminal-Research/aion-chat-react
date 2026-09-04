@@ -257,4 +257,76 @@ describe("AionChatProvider", () => {
 
     expect(onConversationChange).toHaveBeenCalledTimes(1);
   });
+
+  it("aborts an in-flight attachment upload when its draft is removed", async () => {
+    let uploadSignal: AbortSignal | undefined;
+    const uploader = {
+      upload: vi.fn(
+        (_file: File, { signal }: { signal: AbortSignal }) =>
+          new Promise<never>((_resolve, reject) => {
+            uploadSignal = signal;
+            signal.addEventListener("abort", () => {
+              reject(new DOMException("Aborted", "AbortError"));
+            });
+          }),
+      ),
+    };
+    const transport = new FakeAionChatTransport(() => []);
+    const { result } = renderHook(() => useAionChat(), {
+      wrapper: createWrapper(transport, { attachmentUploader: uploader }),
+    });
+
+    act(() => {
+      result.current.actions.addAttachments?.([
+        new File(["draft"], "draft.txt", { type: "text/plain" }),
+      ]);
+    });
+    await waitFor(() => {
+      expect(result.current.state.attachments).toHaveLength(1);
+    });
+    const attachmentId = result.current.state.attachments[0]?.id;
+    expect(attachmentId).toBeDefined();
+    if (!attachmentId) {
+      throw new Error("Expected an attachment draft.");
+    }
+
+    act(() => result.current.actions.removeAttachment(attachmentId));
+
+    expect(uploadSignal?.aborted).toBe(true);
+    expect(result.current.state.attachments).toHaveLength(0);
+  });
+
+  it("does not carry attachment drafts to a different agent", async () => {
+    let uploadSignal: AbortSignal | undefined;
+    const uploader = {
+      upload: vi.fn(
+        (_file: File, { signal }: { signal: AbortSignal }) =>
+          new Promise<never>(() => {
+            uploadSignal = signal;
+          }),
+      ),
+    };
+    const transport = new FakeAionChatTransport(() => []);
+    const { result } = renderHook(() => useAionChat(), {
+      wrapper: createWrapper(transport, { attachmentUploader: uploader }),
+    });
+
+    act(() => {
+      result.current.actions.addAttachments?.([
+        new File(["draft"], "draft.txt", { type: "text/plain" }),
+      ]);
+    });
+    await waitFor(() => expect(result.current.state.attachments).toHaveLength(1));
+
+    act(() => {
+      result.current.actions.setAgent({
+        id: "distribution-2",
+        title: "Another agent",
+        availability: "available",
+      });
+    });
+
+    await waitFor(() => expect(result.current.state.attachments).toHaveLength(0));
+    expect(uploadSignal?.aborted).toBe(true);
+  });
 });

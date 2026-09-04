@@ -56,6 +56,12 @@ owned by the chat view.
 />;
 ```
 
+To enable the default attachment picker, inject an `AionAttachmentUploader`
+into `AionChatProvider`. The controller uploads selected files through that
+transport-independent boundary, blocks submission while a draft is uploading
+or failed, and converts completed uploads into URL-backed message parts. The
+provider never creates a GraphQL or HTTP upload client itself.
+
 ## Host Apollo integration
 
 The optional Apollo adapter wraps a client that the host already configured

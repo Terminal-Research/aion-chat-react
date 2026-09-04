@@ -19,9 +19,12 @@ import type { AionSlotValue } from "./slots";
 
 type ComposerOwnedProps =
   | "value"
-  | "isRunning"
+  | "status"
   | "canSend"
+  | "attachments"
   | "onChange"
+  | "onSelectAttachments"
+  | "onRemoveAttachment"
   | "onSend"
   | "onStop";
 
@@ -46,6 +49,11 @@ export function AionChatView({
   const Composer = slots.composer?.component ?? AionChatComposer;
   const runStatus = state.conversation.activeRun?.status;
   const error = state.conversation.activeRun?.error;
+  const composerStatus = meta.isRunning
+    ? "running"
+    : meta.isUploading
+      ? "uploading"
+      : "idle";
   const transcriptEntries = useMemo(() => {
     const messagesById = new Map(
       state.conversation.messages.map((message) => [message.id, message]),
@@ -95,9 +103,12 @@ export function AionChatView({
       <Composer
         {...slots.composer?.props}
         value={state.draft}
-        isRunning={meta.isRunning}
+        status={composerStatus}
         canSend={meta.canSend}
+        attachments={state.attachments}
         onChange={actions.setDraft}
+        onSelectAttachments={actions.addAttachments}
+        onRemoveAttachment={actions.removeAttachment}
         onSend={() => void actions.send()}
         onStop={actions.stop}
       />

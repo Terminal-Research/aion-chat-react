@@ -18,7 +18,7 @@ export type {
   ChatAgent,
   ChatAgentAvailability,
   ChatArtifact,
-  ChatAttachment,
+  ChatAttachmentDraft,
   ChatConversationState,
   ChatDataPart,
   ChatError,
@@ -43,6 +43,11 @@ export type {
   TurnId,
 } from "./model";
 export { createChatConversationState, getChatText } from "./model";
+export type {
+  AionAttachmentUploader,
+  AionAttachmentUploadOptions,
+  AionUploadedAttachment,
+} from "./attachments";
 export { reduceChatConversation } from "./reducer";
 export type {
   AionChatController,
@@ -59,7 +64,11 @@ export type {
   AionChatStreamOptions,
   AionChatTransport,
 } from "./transport";
-export type { AionChatComposerProps } from "./AionChatComposer";
+export type {
+  AionChatAttachmentInputProps,
+  AionChatComposerProps,
+  AionChatComposerStatus,
+} from "./AionChatComposer";
 export { AionChatComposer } from "./AionChatComposer";
 export type { AionChatArtifactProps } from "./AionChatArtifact";
 export { AionChatArtifact } from "./AionChatArtifact";

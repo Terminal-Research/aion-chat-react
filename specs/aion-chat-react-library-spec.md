@@ -796,7 +796,7 @@ multiple repositories, use
 
 ### Phase 2 — Complete and harden the inline chat
 
-### Subtask G — Complete the composer and attachment UI (status: not started)
+### Subtask G — Complete the composer and attachment UI (status: done)
 
 - Expand the composer for processing state, multiline input, keyboard
   interaction, attachment drafts, removal, and host-supplied actions.

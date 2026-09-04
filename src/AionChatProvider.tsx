@@ -7,12 +7,16 @@ import {
   useState,
 } from "react";
 
+import type { AionAttachmentUploader } from "./attachments";
 import type { ChatTransportEvent } from "./events";
 import { AionChatContext } from "./controller-context";
 import {
+  type AttachmentId,
   type ChatAgent,
+  type ChatAttachmentDraft,
   type ChatConversationState,
   type ChatError,
+  type ChatFilePart,
   type ChatMessage,
   type ChatPart,
   createChatConversationState,
@@ -25,11 +29,13 @@ export interface AionChatControllerState {
   readonly agent?: ChatAgent;
   readonly conversation: ChatConversationState;
   readonly draft: string;
+  readonly attachments: readonly ChatAttachmentDraft[];
 }
 
 /** Derived controller metadata used by chat views. */
 export interface AionChatControllerMeta {
   readonly isRunning: boolean;
+  readonly isUploading: boolean;
   readonly canSend: boolean;
   readonly canRetry: boolean;
 }
@@ -44,6 +50,8 @@ export interface AionChatSendInput {
 export interface AionChatControllerActions {
   readonly setAgent: (agent: ChatAgent | undefined) => void;
   readonly setDraft: (draft: string) => void;
+  readonly addAttachments?: (files: readonly File[]) => void;
+  readonly removeAttachment: (attachmentId: AttachmentId) => void;
   readonly send: (input?: AionChatSendInput) => Promise<void>;
   readonly stop: () => void;
   readonly retry: () => Promise<void>;
@@ -59,6 +67,7 @@ export interface AionChatController {
 /** Configuration for the shared Aion chat controller provider. */
 export interface AionChatProviderProps {
   readonly transport: AionChatTransport;
+  readonly attachmentUploader?: AionAttachmentUploader;
   readonly agent?: ChatAgent | null;
   readonly defaultAgent?: ChatAgent;
   readonly conversation?: ChatConversationState;
@@ -127,6 +136,53 @@ function toChatError(error: unknown): ChatError {
   };
 }
 
+function toAttachmentError(): ChatError {
+  return {
+    code: "attachment_upload_failed",
+    message: "The attachment could not be uploaded.",
+    retryable: true,
+  };
+}
+
+function updateAttachmentDraft(
+  attachments: readonly ChatAttachmentDraft[],
+  attachmentId: AttachmentId,
+  update: (attachment: ChatAttachmentDraft) => ChatAttachmentDraft,
+): readonly ChatAttachmentDraft[] {
+  let changed = false;
+  const next = attachments.map((attachment) => {
+    if (attachment.id !== attachmentId) {
+      return attachment;
+    }
+    changed = true;
+    return update(attachment);
+  });
+  return changed ? next : attachments;
+}
+
+function isUploadedAttachment(
+  attachment: ChatAttachmentDraft,
+): attachment is Extract<ChatAttachmentDraft, { readonly status: "uploaded" }> {
+  return attachment.status === "uploaded";
+}
+
+function toFilePart(
+  attachment: Extract<
+    ChatAttachmentDraft,
+    { readonly status: "uploaded" }
+  >,
+): ChatFilePart {
+  return {
+    type: "file",
+    file: {
+      name: attachment.uploaded.name ?? attachment.file.name,
+      mediaType:
+        attachment.uploaded.mediaType || attachment.file.type || undefined,
+      url: attachment.uploaded.url,
+    },
+  };
+}
+
 function findContinuationTaskId(
   state: ChatConversationState,
 ): string | undefined {
@@ -143,6 +199,7 @@ function findContinuationTaskId(
 export function AionChatProvider({
   children,
   transport,
+  attachmentUploader,
   agent: controlledAgent,
   defaultAgent,
   conversation: controlledConversation,
@@ -168,19 +225,35 @@ export function AionChatProvider({
     ),
   );
   const [localDraft, setLocalDraft] = useState(defaultDraft);
+  const [attachments, setAttachments] = useState<
+    readonly ChatAttachmentDraft[]
+  >([]);
   const conversationRef = useRef(localConversation);
+  const attachmentsRef = useRef(attachments);
   const abortRef = useRef<AbortController | undefined>(undefined);
+  const uploadAbortControllersRef = useRef(
+    new Map<AttachmentId, AbortController>(),
+  );
   const mountedRef = useRef(true);
   const agent =
     controlledAgent === undefined ? localAgent : selectedControlledAgent;
   const conversation = controlledConversation ?? localConversation;
   const draft = controlledDraft ?? localDraft;
+  const attachmentScopeRef = useRef({
+    agentId: agent?.id,
+    conversationId: conversation.id,
+  });
 
   useEffect(() => {
+    const uploadAbortControllers = uploadAbortControllersRef.current;
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
       abortRef.current?.abort();
+      for (const controller of uploadAbortControllers.values()) {
+        controller.abort();
+      }
+      uploadAbortControllers.clear();
     };
   }, []);
 
@@ -228,6 +301,128 @@ export function AionChatProvider({
       onDraftChange?.(nextDraft);
     },
     [controlledDraft, onDraftChange],
+  );
+
+  const updateAttachments = useCallback(
+    (
+      update: (
+        current: readonly ChatAttachmentDraft[],
+      ) => readonly ChatAttachmentDraft[],
+    ) => {
+      const current = attachmentsRef.current;
+      const next = update(current);
+      if (next === current) {
+        return;
+      }
+      attachmentsRef.current = next;
+      if (mountedRef.current) {
+        setAttachments(next);
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    const scope = attachmentScopeRef.current;
+    if (
+      scope.agentId === agent?.id &&
+      scope.conversationId === conversation.id
+    ) {
+      return;
+    }
+    attachmentScopeRef.current = {
+      agentId: agent?.id,
+      conversationId: conversation.id,
+    };
+    for (const controller of uploadAbortControllersRef.current.values()) {
+      controller.abort();
+    }
+    uploadAbortControllersRef.current.clear();
+    updateAttachments((current) => (current.length > 0 ? [] : current));
+  }, [agent?.id, conversation.id, updateAttachments]);
+
+  const removeAttachment = useCallback(
+    (attachmentId: AttachmentId) => {
+      uploadAbortControllersRef.current.get(attachmentId)?.abort();
+      uploadAbortControllersRef.current.delete(attachmentId);
+      updateAttachments((current) => {
+        const next = current.filter(
+          (attachment) => attachment.id !== attachmentId,
+        );
+        return next.length === current.length ? current : next;
+      });
+    },
+    [updateAttachments],
+  );
+
+  const addAttachments = useCallback(
+    (files: readonly File[]) => {
+      if (
+        !attachmentUploader ||
+        !agent ||
+        abortRef.current ||
+        files.length === 0
+      ) {
+        return;
+      }
+
+      const uploads = files.map((file) => {
+        const attachment: ChatAttachmentDraft = {
+          id: createId(),
+          status: "uploading",
+          file,
+        };
+        return { attachment, controller: new AbortController() };
+      });
+      updateAttachments((current) => [
+        ...current,
+        ...uploads.map(({ attachment }) => attachment),
+      ]);
+
+      for (const { attachment, controller } of uploads) {
+        uploadAbortControllersRef.current.set(attachment.id, controller);
+        void attachmentUploader
+          .upload(attachment.file, { signal: controller.signal })
+          .then((uploaded) => {
+            if (controller.signal.aborted) {
+              return;
+            }
+            updateAttachments((current) =>
+              updateAttachmentDraft(
+                current,
+                attachment.id,
+                (candidate) => ({
+                  id: candidate.id,
+                  status: "uploaded",
+                  file: candidate.file,
+                  uploaded,
+                }),
+              ),
+            );
+          })
+          .catch(() => {
+            if (controller.signal.aborted) {
+              return;
+            }
+            updateAttachments((current) =>
+              updateAttachmentDraft(
+                current,
+                attachment.id,
+                (candidate) => ({
+                  id: candidate.id,
+                  status: "failed",
+                  file: candidate.file,
+                  error: toAttachmentError(),
+                }),
+              ),
+            );
+          })
+          .finally(() => {
+            uploadAbortControllersRef.current.delete(attachment.id);
+          });
+      }
+    },
+    [agent, attachmentUploader, createId, updateAttachments],
   );
 
   const execute = useCallback(
@@ -356,8 +551,26 @@ export function AionChatProvider({
 
   const send = useCallback(
     async (input?: AionChatSendInput) => {
-      const parts = input?.parts ??
-        (draft.trim() ? [{ type: "text" as const, text: draft.trim() }] : []);
+      const currentAttachments = attachmentsRef.current;
+      if (
+        input?.parts === undefined &&
+        currentAttachments.some(
+          (attachment) => attachment.status !== "uploaded",
+        )
+      ) {
+        return;
+      }
+      const uploadedAttachments = currentAttachments.filter(
+        isUploadedAttachment,
+      );
+      const parts =
+        input?.parts ??
+        [
+          ...(draft.trim()
+            ? [{ type: "text" as const, text: draft.trim() }]
+            : []),
+          ...uploadedAttachments.map(toFilePart),
+        ];
       if (!agent || parts.length === 0 || abortRef.current) {
         return;
       }
@@ -371,9 +584,19 @@ export function AionChatProvider({
         createdAt,
       };
       setDraft("");
+      if (input?.parts === undefined && uploadedAttachments.length > 0) {
+        const sentIds = new Set(
+          uploadedAttachments.map((attachment) => attachment.id),
+        );
+        updateAttachments((current) =>
+          current.filter(
+            (attachment) => !sentIds.has(attachment.id),
+          ),
+        );
+      }
       await execute(createId(), message, 1, input?.metadata);
     },
-    [agent, createId, draft, execute, now, setDraft],
+    [agent, createId, draft, execute, now, setDraft, updateAttachments],
   );
 
   const stop = useCallback(() => {
@@ -404,20 +627,61 @@ export function AionChatProvider({
   }, [execute]);
 
   const isRunning = conversation.activeRun?.status === "running";
+  const isUploading = attachments.some(
+    (attachment) => attachment.status === "uploading",
+  );
+  const hasFailedAttachment = attachments.some(
+    (attachment) => attachment.status === "failed",
+  );
+  const hasUploadedAttachment = attachments.some(
+    isUploadedAttachment,
+  );
   const value = useMemo<AionChatController>(
     () => ({
-      state: { agent, conversation, draft },
-      actions: { setAgent, setDraft, send, stop, retry },
+      state: { agent, conversation, draft, attachments },
+      actions: {
+        setAgent,
+        setDraft,
+        addAttachments: attachmentUploader ? addAttachments : undefined,
+        removeAttachment,
+        send,
+        stop,
+        retry,
+      },
       meta: {
         isRunning,
-        canSend: Boolean(agent && draft.trim() && !isRunning),
+        isUploading,
+        canSend: Boolean(
+          agent &&
+            !isRunning &&
+            !isUploading &&
+            !hasFailedAttachment &&
+            (draft.trim() || hasUploadedAttachment),
+        ),
         canRetry: Boolean(
           conversation.activeRun?.status === "failed" &&
           conversation.activeRun.error?.retryable,
         ),
       },
     }),
-    [agent, conversation, draft, isRunning, retry, send, setAgent, setDraft, stop],
+    [
+      addAttachments,
+      agent,
+      attachmentUploader,
+      attachments,
+      conversation,
+      draft,
+      hasFailedAttachment,
+      hasUploadedAttachment,
+      isRunning,
+      isUploading,
+      removeAttachment,
+      retry,
+      send,
+      setAgent,
+      setDraft,
+      stop,
+    ],
   );
 
   return (

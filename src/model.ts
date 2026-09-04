@@ -1,3 +1,5 @@
+import type { AionUploadedAttachment } from "./attachments";
+
 /** Stable identifier aliases used by the chat model. */
 export type AgentId = string;
 export type ArtifactId = string;
@@ -67,20 +69,18 @@ export interface ChatMessage {
   readonly metadata?: Readonly<Record<string, unknown>>;
 }
 
-/** Local and uploaded states for a user-selected attachment. */
-export type ChatAttachment =
+/** Local upload states for one user-selected attachment draft. */
+export type ChatAttachmentDraft =
   | {
       readonly id: AttachmentId;
-      readonly status: "selected" | "uploading";
+      readonly status: "uploading";
       readonly file: File;
-      readonly progress?: number;
     }
   | {
       readonly id: AttachmentId;
       readonly status: "uploaded";
       readonly file: File;
-      readonly url: string;
-      readonly mediaType?: string;
+      readonly uploaded: AionUploadedAttachment;
     }
   | {
       readonly id: AttachmentId;
@@ -188,7 +188,6 @@ export interface ChatConversationState {
   readonly transcript: readonly ChatTranscriptItem[];
   readonly tasks: Readonly<Record<TaskId, ChatTask>>;
   readonly artifacts: Readonly<Record<ArtifactRecordId, ChatArtifact>>;
-  readonly attachments: readonly ChatAttachment[];
   readonly activeRun?: ChatRun;
   readonly seenEventIds: Readonly<Record<EventId, true>>;
 }
@@ -206,7 +205,6 @@ export function createChatConversationState(
     transcript: [],
     tasks: {},
     artifacts: {},
-    attachments: [],
     seenEventIds: {},
   };
 }
