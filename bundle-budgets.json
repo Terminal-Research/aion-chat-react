@@ -7,5 +7,6 @@
     "gzipBytes": 8192
   },
   "dist/testing.js": { "rawBytes": 2048, "gzipBytes": 1024 },
+  "dist/uploads.js": { "rawBytes": 8192, "gzipBytes": 3072 },
   "dist/styles.css": { "rawBytes": 16384, "gzipBytes": 3072 }
 }

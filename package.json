@@ -29,6 +29,10 @@
       "types": "./dist/testing/index.d.ts",
       "import": "./dist/testing.js"
     },
+    "./uploads": {
+      "types": "./dist/uploads/index.d.ts",
+      "import": "./dist/uploads.js"
+    },
     "./styles.css": "./dist/styles.css",
     "./graphql": {
       "types": "./dist/graphql/index.d.ts",

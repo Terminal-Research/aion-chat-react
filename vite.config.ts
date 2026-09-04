@@ -15,6 +15,7 @@ export default defineConfig({
         ),
         styles: resolve(import.meta.dirname, "src/styles/aion-chat.css"),
         testing: resolve(import.meta.dirname, "src/testing/index.ts"),
+        uploads: resolve(import.meta.dirname, "src/uploads/index.ts"),
       },
       cssFileName: "styles",
       formats: ["es"],

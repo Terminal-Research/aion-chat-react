@@ -880,6 +880,7 @@ the historical subtasks below is deferred until a concrete embed requires it.
 
 ### Subtask M — Implement the direct A2A transport (status: done)
 
+- Commit ID (aion-chat-react): `3e7807b`
 - In `aion-chat-react`, add a direct A2A adapter that accepts an Agent Card URL
   or resolved card, selects a supported interface, and validates streaming
   capability.
@@ -893,6 +894,7 @@ the historical subtasks below is deferred until a concrete embed requires it.
 
 ### Subtask N — Implement the standalone GraphQL gateway adapter (status: done)
 
+- Commit ID (aion-chat-react): `7e52357`
 - In `aion-chat-react`, add a separate standalone export for Aion's existing
   GraphQL routes with explicit HTTP/subscription URLs, an optional
   asynchronous bearer-token getter, and transport lifecycle options.
@@ -909,7 +911,7 @@ the historical subtasks below is deferred until a concrete embed requires it.
   organization ID and asynchronous user-JWT getter. Optional authentication
   remains deferred with the public embed work.
 
-### Subtask O — Implement upload integration (status: not started)
+### Subtask O — Implement upload integration (status: done)
 
 - Finalize the upload capability contract once the server endpoint,
   authorization behavior, retention policy, and anonymous-upload posture are

@@ -163,6 +163,43 @@ disposal is safe. Automatic reconnect attempts also re-read the token. Browser
 extension CSP, permissions, and content-script mounting remain deferred until
 there is a concrete extension host.
 
+## Aion Files uploads
+
+The optional Files adapter implements the existing attachment-uploader
+boundary with authenticated `POST /files` and an exact-version read grant. It
+requires a user JWT, organization ID, and association to the selected Aion
+agent identity or distribution. The returned chat attachment contains the
+temporary grant URL; the protected File create URL is never returned.
+
+```tsx
+import {
+  createAionFilesAttachmentUploader,
+} from "@terminal-research/aion-chat-react/uploads";
+
+const attachmentUploader = createAionFilesAttachmentUploader({
+  organizationId,
+  association: { kind: "Distribution", id: distributionId },
+  getBearerToken: async () => getCurrentUserJwt(),
+  filesUrl: "https://api.example/files",
+});
+
+<AionChatProvider
+  transport={transport}
+  attachmentUploader={attachmentUploader}
+  defaultAgent={agent}
+>
+  <AionChatView />
+</AionChatProvider>;
+```
+
+Uploads are rejected before network access above 20 MiB. Grant lifetimes
+default to one hour and cannot be configured above the server maximum. One
+uploader preserves an operation ID for repeated attempts with the same browser
+`File`, allowing a lost-response retry to replay safely. Grant URLs are
+temporary credentials: do not log or persist them beyond the active message
+lifecycle. File selection, screenshot capture, previews, confirmation, and
+narrower accepted media types remain host concerns.
+
 Run `npm run check` to validate the library, packed artifact, and both example
 fixtures. The fixtures can also be run independently:
 

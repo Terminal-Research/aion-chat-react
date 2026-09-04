@@ -155,6 +155,9 @@ try {
       import {
         createStandaloneAionGraphQLClient,
       } from "${packageName}/graphql/standalone";
+      import {
+        createAionFilesAttachmentUploader,
+      } from "${packageName}/uploads";
 
       if (typeof AionChatView !== "object" &&
           typeof AionChatView !== "function") throw new Error("root export");
@@ -169,6 +172,9 @@ try {
       }
       if (typeof createStandaloneAionGraphQLClient !== "function") {
         throw new Error("standalone graphql export");
+      }
+      if (typeof createAionFilesAttachmentUploader !== "function") {
+        throw new Error("uploads export");
       }
       if (!import.meta.resolve("${packageName}/styles.css").endsWith(".css")) {
         throw new Error("styles export");

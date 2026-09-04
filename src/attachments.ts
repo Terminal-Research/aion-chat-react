@@ -4,6 +4,7 @@ export interface AionUploadedAttachment {
   readonly name?: string;
   readonly mediaType?: string;
   readonly size?: number;
+  readonly expiresAt?: string;
 }
 
 /** Options supplied to a transport-independent attachment upload. */
