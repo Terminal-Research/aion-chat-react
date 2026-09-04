@@ -30,7 +30,11 @@ import type { AionSlotValue } from "./slots";
 
 /** One fully resolved item rendered by the transcript. */
 export type AionChatTranscriptEntry =
-  | { readonly type: "message"; readonly message: ChatMessage }
+  | {
+      readonly type: "message";
+      readonly message: ChatMessage;
+      readonly streaming?: boolean;
+    }
   | { readonly type: "artifact"; readonly artifact: ChatArtifact }
   | { readonly type: "task"; readonly task: ChatTask };
 
@@ -44,7 +48,7 @@ export interface AionChatEmptyStateProps
 export interface AionChatTranscriptSlots {
   readonly message?: AionSlotValue<
     AionChatMessageProps,
-    "message" | "markdownComponent" | "dataRenderers"
+    "message" | "streaming" | "markdownComponent" | "dataRenderers"
   >;
   readonly artifact?: AionSlotValue<
     AionChatArtifactProps,
@@ -159,6 +163,7 @@ export function AionChatTranscript({
                   {...slots.message?.props}
                   key={`message:${entry.message.id}`}
                   message={entry.message}
+                  streaming={entry.streaming}
                   markdownComponent={slots.markdown}
                   dataRenderers={slots.dataRenderers}
                 />

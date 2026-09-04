@@ -10,6 +10,10 @@ import {
   type AionChatComposerProps,
 } from "./AionChatComposer";
 import { AionChatError, type AionChatErrorProps } from "./AionChatActivity";
+import {
+  AionResponseActivity,
+  type AionResponseActivityProps,
+} from "./motion/AionActivityIndicator";
 import type {
   AionChatTranscriptEntry,
   AionChatTranscriptSlots,
@@ -33,6 +37,10 @@ type ComposerOwnedProps =
 export interface AionChatViewSlots extends AionChatTranscriptSlots {
   readonly composer?: AionSlotValue<AionChatComposerProps, ComposerOwnedProps>;
   readonly error?: AionSlotValue<AionChatErrorProps, "error">;
+  readonly responseActivity?: AionSlotValue<
+    AionResponseActivityProps,
+    "conversation"
+  >;
 }
 
 /** Props for the transport-backed inline chat surface. */
@@ -50,6 +58,8 @@ export function AionChatView({
   const { state, actions, meta } = useAionChat();
   const Composer = slots.composer?.component ?? AionChatComposer;
   const ErrorComponent = slots.error?.component ?? AionChatError;
+  const ResponseActivityComponent =
+    slots.responseActivity?.component ?? AionResponseActivity;
   const error = state.conversation.activeRun?.error;
   const composerStatus = meta.isRunning
     ? "running"
@@ -57,6 +67,15 @@ export function AionChatView({
       ? "uploading"
       : "idle";
   const transcriptEntries = useMemo(() => {
+    const activeRun = state.conversation.activeRun;
+    const activeTurn = state.conversation.turns.find(
+      (turn) => turn.id === activeRun?.turnId,
+    );
+    const streamingMessageIds = new Set(
+      activeRun?.status === "running"
+        ? activeTurn?.assistantMessageIds
+        : undefined,
+    );
     const messagesById = new Map(
       state.conversation.messages.map((message) => [message.id, message]),
     );
@@ -64,7 +83,15 @@ export function AionChatView({
       (item) => {
         if (item.type === "message") {
           const message = messagesById.get(item.id);
-          return message ? [{ type: "message" as const, message }] : [];
+          return message
+            ? [
+                {
+                  type: "message" as const,
+                  message,
+                  streaming: streamingMessageIds.has(message.id),
+                },
+              ]
+            : [];
         }
         if (item.type === "artifact") {
           const artifact = state.conversation.artifacts[item.id];
@@ -76,9 +103,11 @@ export function AionChatView({
     );
   }, [
     state.conversation.artifacts,
+    state.conversation.activeRun,
     state.conversation.messages,
     state.conversation.tasks,
     state.conversation.transcript,
+    state.conversation.turns,
   ]);
 
   return (
@@ -91,6 +120,10 @@ export function AionChatView({
         entries={transcriptEntries}
         agentTitle={state.agent?.title}
         slots={slots}
+      />
+      <ResponseActivityComponent
+        {...slots.responseActivity?.props}
+        conversation={state.conversation}
       />
       {error && (
         <ErrorComponent {...slots.error?.props} error={error} />

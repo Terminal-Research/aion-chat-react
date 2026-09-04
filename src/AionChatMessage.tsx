@@ -19,6 +19,7 @@ import type {
   ChatMessage,
   ChatPart,
 } from "./model";
+import { AionStreamingText } from "./motion/AionStreamingText";
 
 /** Props supplied to a structured-data part renderer. */
 export interface AionChatDataPartProps {
@@ -48,6 +49,7 @@ export interface AionChatPartsProps {
 /** Props supplied to a transcript message slot. */
 export interface AionChatMessageProps extends HTMLAttributes<HTMLDivElement> {
   readonly message: ChatMessage;
+  readonly streaming?: boolean;
   readonly markdownComponent?: AionChatMarkdownComponent;
   readonly dataRenderers?: AionChatDataPartRenderers;
 }
@@ -188,6 +190,7 @@ export const AionChatParts = memo(function AionChatParts({
 /** Default safe, non-Markdown presentation for one normalized message. */
 export const AionChatMessage = memo(function AionChatMessage({
   message,
+  streaming = false,
   markdownComponent = AionChatMarkdown,
   dataRenderers,
   className,
@@ -197,6 +200,13 @@ export const AionChatMessage = memo(function AionChatMessage({
   if (className) {
     classes.push(className);
   }
+  const streamPart =
+    streaming &&
+    message.role === "assistant" &&
+    message.parts.length === 1 &&
+    message.parts[0]?.type === "text"
+      ? message.parts[0]
+      : undefined;
 
   return (
     <div
@@ -205,13 +215,20 @@ export const AionChatMessage = memo(function AionChatMessage({
       {...props}
     >
       <div className="aion-chat__message-content">
-        <AionChatParts
-          parts={message.parts}
-          textComponent={
-            message.role === "assistant" ? markdownComponent : undefined
-          }
-          dataRenderers={dataRenderers}
-        />
+        {streamPart ? (
+          <AionStreamingText
+            text={streamPart.text}
+            markdownComponent={markdownComponent}
+          />
+        ) : (
+          <AionChatParts
+            parts={message.parts}
+            textComponent={
+              message.role === "assistant" ? markdownComponent : undefined
+            }
+            dataRenderers={dataRenderers}
+          />
+        )}
       </div>
     </div>
   );

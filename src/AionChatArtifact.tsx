@@ -9,6 +9,8 @@ import {
   type AionChatDataPartRenderers,
 } from "./AionChatMessage";
 import type { ChatArtifact } from "./model";
+import { AionShimmerText } from "./motion/AionShimmerText";
+import { AionStreamingText } from "./motion/AionStreamingText";
 
 /** Props supplied to a transcript artifact slot. */
 export interface AionChatArtifactProps extends HTMLAttributes<HTMLElement> {
@@ -25,14 +27,25 @@ export const AionChatArtifact = memo(function AionChatArtifact({
   className,
   ...props
 }: AionChatArtifactProps) {
-  const content = (
+  const isThinking = artifact.artifactId === "aion:thinking-delta";
+  const streamPart =
+    artifact.artifactId === "aion:stream-delta" &&
+    artifact.parts.length === 1 &&
+    artifact.parts[0]?.type === "text"
+      ? artifact.parts[0]
+      : undefined;
+  const content = streamPart ? (
+    <AionStreamingText
+      text={streamPart.text}
+      markdownComponent={markdownComponent}
+    />
+  ) : (
     <AionChatParts
       parts={artifact.parts}
       textComponent={markdownComponent}
       dataRenderers={dataRenderers}
     />
   );
-  const isThinking = artifact.artifactId === "aion:thinking-delta";
 
   return (
     <article
@@ -48,7 +61,12 @@ export const AionChatArtifact = memo(function AionChatArtifact({
     >
       {isThinking ? (
         <details open={!artifact.lastChunk}>
-          <summary>{artifact.name ?? "Thinking"}</summary>
+          <summary>
+            <AionShimmerText
+              text={artifact.name ?? "Thinking"}
+              active={!artifact.lastChunk}
+            />
+          </summary>
           <div className="aion-chat__artifact-content">{content}</div>
         </details>
       ) : (

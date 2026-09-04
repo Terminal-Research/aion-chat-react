@@ -73,6 +73,60 @@ describe("AionChatView", () => {
     ]);
   });
 
+  it("marks only appended assistant message deltas for motion", async () => {
+    const transport = new FakeAionChatTransport((request) => [
+      {
+        event: {
+          type: "message.delta",
+          eventId: "event-delta-1",
+          requestId: request.requestId,
+          occurredAt: "2026-08-31T12:00:01.000Z",
+          turnId: request.turnId,
+          messageId: "message-assistant-1",
+          text: "Hello",
+        },
+      },
+      {
+        delayMs: 25,
+        event: {
+          type: "message.delta",
+          eventId: "event-delta-2",
+          requestId: request.requestId,
+          occurredAt: "2026-08-31T12:00:02.000Z",
+          turnId: request.turnId,
+          messageId: "message-assistant-1",
+          text: " world",
+        },
+      },
+      {
+        delayMs: 1_000,
+        event: {
+          type: "run.completed",
+          eventId: "event-complete-1",
+          requestId: request.requestId,
+          occurredAt: "2026-08-31T12:00:03.000Z",
+        },
+      },
+    ]);
+    const view = render(
+      <AionChatProvider
+        transport={transport}
+        defaultAgent={AGENT}
+        defaultDraft="Begin"
+        createId={createIds()}
+      >
+        <AionChatView />
+      </AionChatProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    await screen.findByText("Hello");
+    const appended = await screen.findByText("world");
+
+    expect(appended.className).toBe("aion-chat__streaming-text-new");
+    expect(view.container.textContent).toContain("Hello world");
+  });
+
   it("does not submit from Enter while an IME composition is active", async () => {
     const transport = new FakeAionChatTransport(() => []);
     render(

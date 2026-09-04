@@ -1095,7 +1095,7 @@ the contained workspace from Subtask AA and without completing Subtasks Q or R.
   unsupported or remote history is unavailable. Remote rename, archive, and
   deletion remain outside the version 1.0.0 extension contract.
 
-### Subtask AD — Add agent interaction motion (status: not started)
+### Subtask AD — Add agent interaction motion (status: done)
 
 - Add Aion-owned shimmer, streamed-content entrance, and lifecycle indicator
   components based on the referenced interaction behavior, without copying

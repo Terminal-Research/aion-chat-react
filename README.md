@@ -38,6 +38,13 @@ class, or a stylesheet. The main groups are `--aion-chat-color-*`,
 these properties to both standard Bootstrap 5.3 variables and Aion Cloud's
 `--ins-*` equivalents.
 
+Interaction motion uses the same CSS-variable boundary. Hosts can tune
+`--aion-chat-motion-shimmer-duration`,
+`--aion-chat-motion-stream-duration`,
+`--aion-chat-motion-stream-blur`, and
+`--aion-chat-motion-spinner-duration`. The defaults stop automatically for
+`prefers-reduced-motion: reduce`.
+
 Assistant text and streamed text artifacts use the safe default Markdown
 renderer. Raw HTML and remote Markdown images are not rendered, unsafe URL
 protocols are removed, and external links use opener isolation. A host can
@@ -48,6 +55,11 @@ reasoning presentations. Structured data remains visible as JSON unless a host
 registers a typed component by `part.data.kind` through
 `slots.dataRenderers`. Message, artifact, task-activity, and error components
 also remain replaceable through their typed slots.
+
+The response indicator stays pending until normalized agent output begins,
+uses Phosphor icons by default, and never treats request admission as success.
+Its icon set and the complete response-activity component are replaceable
+without coupling transport state to Phosphor types.
 
 Component slots accept an optional replacement component and default props.
 Controller-owned values such as the current draft and send handlers remain

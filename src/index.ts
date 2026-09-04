@@ -115,3 +115,18 @@ export type {
 export { AionChatTheme } from "./AionChatTheme";
 export { useAionChatPortalContainer } from "./useAionChatTheme";
 export type { AionSlotValue } from "./slots";
+export type {
+  AionActivityIconProps,
+  AionActivityIcons,
+  AionActivityIndicatorProps,
+  AionActivityPhase,
+  AionResponseActivityProps,
+} from "./motion/AionActivityIndicator";
+export {
+  AionActivityIndicator,
+  AionResponseActivity,
+} from "./motion/AionActivityIndicator";
+export type { AionShimmerTextProps } from "./motion/AionShimmerText";
+export { AionShimmerText } from "./motion/AionShimmerText";
+export type { AionStreamingTextProps } from "./motion/AionStreamingText";
+export { AionStreamingText } from "./motion/AionStreamingText";

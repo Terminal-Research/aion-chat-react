@@ -23,6 +23,12 @@
   --aion-chat-space-4: 1rem;
   --aion-chat-space-5: 1.5rem;
   --aion-chat-max-message-width: 80%;
+  --aion-chat-motion-shimmer-duration: 2s;
+  --aion-chat-motion-shimmer-color: var(--aion-chat-color-text);
+  --aion-chat-motion-shimmer-highlight: var(--aion-chat-color-muted);
+  --aion-chat-motion-stream-duration: 350ms;
+  --aion-chat-motion-stream-blur: 1px;
+  --aion-chat-motion-spinner-duration: 900ms;
 
   color: var(--aion-chat-color-text);
   font-family: var(--aion-chat-font-family);
@@ -32,6 +38,7 @@
 
 .aion-chat,
 .aion-chat__activity,
+.aion-chat__indicator,
 .aion-chat__composer,
 .aion-chat__composer-attachment,
 .aion-chat__composer-controls,
@@ -131,6 +138,131 @@
 .aion-chat__artifact--thinking summary,
 .aion-chat__data summary {
   cursor: pointer;
+}
+
+.aion-chat__shimmer[data-active="true"] {
+  color: transparent;
+  background-image: linear-gradient(
+    90deg,
+    var(--aion-chat-motion-shimmer-color) 20%,
+    var(--aion-chat-motion-shimmer-highlight) 50%,
+    var(--aion-chat-motion-shimmer-color) 80%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: aion-chat-shimmer
+    var(--aion-chat-motion-shimmer-duration) linear infinite;
+}
+
+.aion-chat__streaming-text {
+  white-space: pre-wrap;
+}
+
+.aion-chat__streaming-text-new {
+  animation: aion-chat-stream-in
+    var(--aion-chat-motion-stream-duration) ease-out both;
+}
+
+.aion-chat__indicator {
+  display: flex;
+  flex: 0 0 auto;
+  gap: var(--aion-chat-space-2);
+  align-items: center;
+  margin: 0;
+  padding: var(--aion-chat-space-2) var(--aion-chat-space-4);
+  color: var(--aion-chat-color-muted);
+  font-size: 0.875em;
+}
+
+.aion-chat__indicator-icon {
+  width: 1.25em;
+  height: 1.25em;
+  flex: 0 0 auto;
+  animation: aion-chat-indicator-in
+    var(--aion-chat-motion-stream-duration) ease-out both;
+}
+
+.aion-chat__indicator[data-activity-phase="pending"]
+  .aion-chat__indicator-icon {
+  animation: aion-chat-spinner
+    var(--aion-chat-motion-spinner-duration) linear infinite;
+}
+
+.aion-chat__indicator[data-activity-phase="succeeded"] {
+  color: var(--aion-chat-color-accent);
+}
+
+.aion-chat__indicator[data-activity-phase="requires-action"] {
+  color: var(--aion-chat-color-text);
+}
+
+.aion-chat__indicator[data-activity-phase="failed"] {
+  color: var(--aion-chat-color-danger);
+}
+
+@keyframes aion-chat-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes aion-chat-stream-in {
+  from {
+    opacity: 0;
+    filter: blur(var(--aion-chat-motion-stream-blur));
+  }
+
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+@keyframes aion-chat-spinner {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@keyframes aion-chat-indicator-in {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aion-chat__shimmer[data-active="true"] {
+    color: inherit;
+    background: none;
+  }
+
+  .aion-chat__shimmer[data-active="true"],
+  .aion-chat__streaming-text-new,
+  .aion-chat__indicator-icon,
+  .aion-chat__indicator[data-activity-phase="pending"]
+    .aion-chat__indicator-icon {
+    animation: none;
+    filter: none;
+    transform: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .aion-chat__shimmer[data-active="true"] {
+    color: CanvasText;
+    background: none;
+  }
 }
 
 .aion-chat__artifact--thinking .aion-chat__artifact-content,
