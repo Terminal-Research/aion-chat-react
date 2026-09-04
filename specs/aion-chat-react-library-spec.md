@@ -1038,7 +1038,7 @@ the contained workspace from Subtask AA and without completing Subtasks Q or R.
   anonymous caller and public catalog/RPC operations can execute without a
   separate GraphQL controller or route pair.
 
-### Subtask Z — Reuse the authenticated identity catalog (status: not started)
+### Subtask Z — Reuse the authenticated identity catalog (status: done)
 
 - In `aion-chat-react`, add a checked-in `agentIdentityDetails` operation based
   on the existing Python chat-client catalog query.
@@ -1050,6 +1050,10 @@ the contained workspace from Subtask AA and without completing Subtasks Q or R.
   addressing fields required by the React client.
 - Keep organization authorization server-owned and prove the client query does
   not request administrative identity fields it does not use.
+- Implementation decision: expose one catalog entry per active A2A
+  distribution, using the distribution ID as `ChatAgent.id` while retaining
+  the parent identity's presentation and addressing fields. This preserves the
+  existing Playground invocation model without a target-remapping callback.
 
 ### Subtask AA — Add agent and conversation navigation (status: not started)
 

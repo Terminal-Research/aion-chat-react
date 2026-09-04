@@ -44,6 +44,14 @@ export type {
 } from "./model";
 export { createChatConversationState, getChatText } from "./model";
 export type {
+  AionAgentCatalog,
+  AionAgentCatalogEntry,
+  AionAgentCatalogErrorCode,
+  AionAgentCatalogIdentityType,
+  AionAgentCatalogListOptions,
+} from "./catalog";
+export { AionAgentCatalogError } from "./catalog";
+export type {
   AionAttachmentUploader,
   AionAttachmentUploadOptions,
   AionUploadedAttachment,

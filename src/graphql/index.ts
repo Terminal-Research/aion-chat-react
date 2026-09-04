@@ -6,6 +6,12 @@ export {
 } from "./operation";
 export type { ApolloAionChatTransportOptions } from "./apollo-transport";
 export { createApolloAionChatTransport } from "./apollo-transport";
+export type { ApolloAionAgentCatalogOptions } from "./apollo-catalog";
+export { createApolloAionAgentCatalog } from "./apollo-catalog";
+export {
+  AION_AGENT_CATALOG_QUERY,
+  AION_AGENT_CATALOG_QUERY_SOURCE,
+} from "./catalog-operation";
 export { buildAionChatGraphQLVariables } from "./chat-transport";
 export type {
   AionChatGraphQLServiceParameters,

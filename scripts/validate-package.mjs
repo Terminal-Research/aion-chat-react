@@ -148,11 +148,15 @@ try {
   await writeFile(
     validationPath,
     `
-      import { AionChatView } from "${packageName}";
+      import { AionAgentCatalogError, AionChatView } from "${packageName}";
       import { createDirectAionA2ATransport } from "${packageName}/a2a";
       import { FakeAionChatTransport } from "${packageName}/testing";
-      import { createApolloAionChatTransport } from "${packageName}/graphql";
       import {
+        createApolloAionAgentCatalog,
+        createApolloAionChatTransport,
+      } from "${packageName}/graphql";
+      import {
+        createStandaloneAionAgentCatalog,
         createStandaloneAionGraphQLClient,
       } from "${packageName}/graphql/standalone";
       import {
@@ -161,6 +165,9 @@ try {
 
       if (typeof AionChatView !== "object" &&
           typeof AionChatView !== "function") throw new Error("root export");
+      if (typeof AionAgentCatalogError !== "function") {
+        throw new Error("catalog model export");
+      }
       if (typeof FakeAionChatTransport !== "function") {
         throw new Error("testing export");
       }
@@ -170,8 +177,14 @@ try {
       if (typeof createApolloAionChatTransport !== "function") {
         throw new Error("graphql export");
       }
+      if (typeof createApolloAionAgentCatalog !== "function") {
+        throw new Error("apollo catalog export");
+      }
       if (typeof createStandaloneAionGraphQLClient !== "function") {
         throw new Error("standalone graphql export");
+      }
+      if (typeof createStandaloneAionAgentCatalog !== "function") {
+        throw new Error("standalone catalog export");
       }
       if (typeof createAionFilesAttachmentUploader !== "function") {
         throw new Error("uploads export");
