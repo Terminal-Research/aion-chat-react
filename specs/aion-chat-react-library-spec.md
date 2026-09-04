@@ -913,6 +913,7 @@ the historical subtasks below is deferred until a concrete embed requires it.
 
 ### Subtask O — Implement upload integration (status: done)
 
+- Commit ID (aion-chat-react): `db9c087`
 - Finalize the upload capability contract once the server endpoint,
   authorization behavior, retention policy, and anonymous-upload posture are
   selected.
