@@ -159,33 +159,51 @@ export function AionChatTranscript({
           entries.map((entry) => {
             if (entry.type === "message") {
               return (
-                <MessageComponent
-                  {...slots.message?.props}
+                <div
                   key={`message:${entry.message.id}`}
-                  message={entry.message}
-                  streaming={entry.streaming}
-                  markdownComponent={slots.markdown}
-                  dataRenderers={slots.dataRenderers}
-                />
+                  className="aion-chat__transcript-entry"
+                  data-entry-type="message"
+                  data-entry-id={entry.message.id}
+                >
+                  <MessageComponent
+                    {...slots.message?.props}
+                    message={entry.message}
+                    streaming={entry.streaming}
+                    markdownComponent={slots.markdown}
+                    dataRenderers={slots.dataRenderers}
+                  />
+                </div>
               );
             }
             if (entry.type === "artifact") {
               return (
-                <ArtifactComponent
-                  {...slots.artifact?.props}
+                <div
                   key={`artifact:${entry.artifact.id}`}
-                  artifact={entry.artifact}
-                  markdownComponent={slots.markdown}
-                  dataRenderers={slots.dataRenderers}
-                />
+                  className="aion-chat__transcript-entry"
+                  data-entry-type="artifact"
+                  data-entry-id={entry.artifact.id}
+                >
+                  <ArtifactComponent
+                    {...slots.artifact?.props}
+                    artifact={entry.artifact}
+                    markdownComponent={slots.markdown}
+                    dataRenderers={slots.dataRenderers}
+                  />
+                </div>
               );
             }
             return (
-              <TaskActivityComponent
-                {...slots.taskActivity?.props}
+              <div
                 key={`task:${entry.task.id}`}
-                task={entry.task}
-              />
+                className="aion-chat__transcript-entry"
+                data-entry-type="task"
+                data-entry-id={entry.task.id}
+              >
+                <TaskActivityComponent
+                  {...slots.taskActivity?.props}
+                  task={entry.task}
+                />
+              </div>
             );
           })
         )}

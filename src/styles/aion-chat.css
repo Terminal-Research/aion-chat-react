@@ -78,6 +78,11 @@
   overscroll-behavior: contain;
 }
 
+.aion-chat__transcript-entry {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 6rem;
+}
+
 .aion-chat__empty {
   display: grid;
   min-height: 100%;

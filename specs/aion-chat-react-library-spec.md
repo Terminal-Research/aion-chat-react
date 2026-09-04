@@ -1119,7 +1119,7 @@ the contained workspace from Subtask AA and without completing Subtasks Q or R.
 - Implement reduced-motion, hydration/history, cancellation, failure,
   unmount/timer cleanup, accessibility, and fast-stream performance coverage.
 
-### Subtask AE — Add browser-native transcript containment (status: not started)
+### Subtask AE — Add browser-native transcript containment (status: done)
 
 - Add stable transcript-entry wrappers around messages and artifacts. Apply
   `content-visibility: auto` and pair it with an `auto`

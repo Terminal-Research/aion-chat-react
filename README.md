@@ -61,6 +61,10 @@ uses Phosphor icons by default, and never treats request admission as success.
 Its icon set and the complete response-activity component are replaceable
 without coupling transport state to Phosphor types.
 
+Transcript entries stay in React state and in the DOM. The default stylesheet
+uses browser-native `content-visibility` containment for off-screen work; it
+does not window or truncate long conversations.
+
 Component slots accept an optional replacement component and default props.
 Controller-owned values such as the current draft and send handlers remain
 owned by the chat view.
