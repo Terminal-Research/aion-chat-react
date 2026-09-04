@@ -3,7 +3,7 @@ name: Aion Chat React Library
 date_created: 2026-08-31
 date_started: 2026-08-31
 date_completed: <incomplete>
-date_updated: 2026-09-03
+date_updated: 2026-09-04
 ---
 
 # Aion Chat React Library
@@ -972,7 +972,7 @@ the contained workspace from Subtask AA and without completing Subtasks Q or R.
 - Deferral: add these examples only with the corresponding concrete shell
   requirement. They are not release blockers for the contained workspace.
 
-### Subtask S — Publish the initial library release (status: in progress)
+### Subtask S — Publish the initial library release (status: deferred)
 
 - Commit ID (aion-chat-react): `80d7cb7`
 
@@ -982,6 +982,9 @@ the contained workspace from Subtask AA and without completing Subtasks Q or R.
   credentials, catalog, upload, theming, and migration APIs.
 - Pack and install the release candidate in isolated and
   `aion-agent-cloud` fixtures before publishing.
+- Deferral: do not publish the package to the npm registry yet. Keep the source
+  repository public and let Aion-owned consumers pin reviewed Git commits or
+  release tags until registry publication has a concrete operational need.
 
 ### Review follow-ups discovered after Phase 1
 
@@ -1170,6 +1173,34 @@ the contained workspace from Subtask AA and without completing Subtasks Q or R.
   pinned and manual scrolling, restored history, variable-height Markdown and
   attachments, and rapid streamed updates. Reconsider windowing only if these
   measured fixtures establish a material remaining problem.
+
+### Subtask AF — Prepare public source and Git consumption (status: in progress)
+
+- License the Aion-owned repository under MIT while retaining the separate
+  CopilotKit attribution and license notice for adapted files.
+- Record the public GitHub repository in package metadata and document pinned
+  commit or release-tag dependencies for Aion-owned consumers.
+- Add the npm `prepare` lifecycle so public Git dependencies compile their
+  untracked `dist` artifacts during installation, including Vercel builds.
+- Keep public npm publication deferred and verify the packed package plus a
+  clean consumer installation from a local Git reference.
+
+### Subtask AG — Deliver distribution chat through a hosted iframe (status: deferred)
+
+- Add a distribution-level chat-embed configuration that produces a public
+  installation snippet containing only non-secret distribution and appearance
+  configuration.
+- Serve a small framework-independent loader from an Aion-controlled CDN. The
+  loader mounts, opens, closes, resizes, and removes an Aion-hosted cross-origin
+  iframe through a versioned `postMessage` contract.
+- Run the iframe application on an Aion origin and build it from this React
+  library. Keep API connections, conversation state, and any authenticated
+  session inside that boundary rather than exposing the React package as the
+  customer integration surface.
+- Define origin allowlisting, CSP and `frame-ancestors`, iframe permissions,
+  anonymous session ownership, and scoped authenticated embed credentials
+  before implementation. Do not place Aion user JWTs or signing secrets in the
+  installation snippet.
 
 ## 3) Package Hierarchy + Responsibilities
 
@@ -1777,6 +1808,15 @@ note.
   Use Phosphor icons consistently, drive every transition from normalized
   lifecycle state, avoid simultaneous indefinite effects, and provide an
   immediate reduced-motion path.
+- [status: resolved] Should the React library repository remain private for
+  Aion-owned consumers, or be public before an npm release? Resolution: keep
+  the GitHub repository public so Vercel and other Aion builds can install a
+  pinned Git reference without private-repository credentials. Continue to
+  treat the package API as internally supported and defer npm publication.
+- [status: resolved] Should customer-page chat distributions directly mount
+  the React package into the host DOM? Resolution: no. Provide a small public
+  loader that mounts an Aion-hosted cross-origin iframe. The iframe consumes
+  the React library internally and owns chat transport and session state.
 
 ## 6) Q&A (Design Decisions Log)
 
@@ -2180,3 +2220,22 @@ change transcript retention in the initial implementation. Validate scroll
 anchoring, restored history, browser search, selection, accessibility, and
 rapid streaming; reconsider virtualization only if those measurements expose
 a material problem.
+
+Q: Why is the React library repository public if its initial consumers are
+Aion-owned applications?
+
+A: A public repository lets Aion frontend builds install a pinned Git commit or
+release tag without distributing private GitHub credentials to Vercel. Public
+source does not make the package the customer embed contract or weaken Aion's
+server-side authorization. The project is MIT-licensed, while public npm
+publication and broader package-support commitments remain deferred.
+
+Q: How will a distribution expose chat on a customer website?
+
+A: The distribution will provide a small, non-secret installation snippet that
+loads an Aion-hosted JavaScript bootstrap. That loader creates a cross-origin
+iframe whose Aion-hosted application consumes this React library and owns its
+API connections and conversation state. The loader owns only host-page
+placement and a narrow, origin-validated `postMessage` bridge. Public agents
+may run anonymously; authenticated embeds require a separately designed
+short-lived, scoped credential flow rather than an Aion user JWT in the page.

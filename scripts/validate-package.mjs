@@ -113,6 +113,7 @@ try {
       "pack",
       "--json",
       "--dry-run=false",
+      "--ignore-scripts",
       "--pack-destination",
       temporaryRoot,
     ],
@@ -321,6 +322,7 @@ try {
   await Promise.all([
     access(join(installedPackage, "BUNDLE_BUDGETS.md")),
     access(join(installedPackage, "CHANGELOG.md")),
+    access(join(installedPackage, "LICENSE")),
     access(join(installedPackage, "THIRD_PARTY_NOTICES.md")),
     access(join(installedPackage, "LICENSES", "CopilotKit-MIT.txt")),
     access(join(installedPackage, "dist", "index.d.ts")),

@@ -2,10 +2,19 @@
   "name": "@terminal-research/aion-chat-react",
   "version": "0.1.0",
   "description": "Aion React components and transports for agent chat.",
-  "license": "UNLICENSED",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Terminal-Research/aion-chat-react.git"
+  },
+  "homepage": "https://github.com/Terminal-Research/aion-chat-react#readme",
+  "bugs": {
+    "url": "https://github.com/Terminal-Research/aion-chat-react/issues"
+  },
   "type": "module",
   "files": [
     "dist",
+    "LICENSE",
     "README.md",
     "CHANGELOG.md",
     "BUNDLE_BUDGETS.md",
@@ -61,6 +70,7 @@
     "example:build": "npm run build --workspaces --if-present",
     "lint": "eslint .",
     "package:check": "node scripts/validate-package.mjs",
+    "prepare": "npm run build",
     "prepublishOnly": "npm run check",
     "test": "vitest run --passWithNoTests",
     "typecheck": "tsc --noEmit"

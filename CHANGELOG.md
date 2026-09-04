@@ -15,5 +15,7 @@ Initial pre-1.0 release of the Aion React chat library.
   context directories.
 - Add direct A2A, host-owned Apollo, and standalone GraphQL transport adapters,
   plus the authenticated Aion Files attachment uploader.
+- License the public source under MIT and support pinned GitHub dependencies by
+  compiling distribution artifacts during npm's `prepare` lifecycle.
 - Add package-boundary, bundle-budget, transport-conformance, accessibility,
   and example application validation for React 19.2.

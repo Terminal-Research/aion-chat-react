@@ -11,6 +11,32 @@ See the living
 [feature specification](./specs/aion-chat-react-library-spec.md) for scope,
 design decisions, and implementation status.
 
+## Installation
+
+The source repository is public, but the package is not yet published to the
+npm registry. Aion-owned consumers should pin a reviewed commit or release tag
+in `package.json`:
+
+```json
+{
+  "dependencies": {
+    "@terminal-research/aion-chat-react":
+      "github:Terminal-Research/aion-chat-react#<commit-or-tag>"
+  }
+}
+```
+
+Running `npm install` builds the package from that Git reference through its
+`prepare` lifecycle. Commit the resulting lockfile so staging and production
+builds resolve the same source revision. Avoid depending on the moving `main`
+branch.
+
+The public repository does not make the React package a supported third-party
+embed surface. Future customer-page distributions will receive a small Aion
+loader script that mounts an Aion-hosted, cross-origin iframe. The iframe
+application will consume this library internally; customer sites will not need
+React, GraphQL, or Aion package dependencies.
+
 ## Local usage
 
 The root entry exports the transport-neutral model, provider, headless hooks,
