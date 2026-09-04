@@ -12,6 +12,7 @@ import type { AionAgentCatalog } from "./catalog";
 import {
   createInMemoryAionConversationStore,
 } from "./conversations/memory-store";
+import type { AionConversationDirectory } from "./conversations/directory";
 import { createAionConversationSnapshot } from "./conversations/snapshot";
 import { FakeAionChatTransport } from "./testing/fake-transport";
 
@@ -89,6 +90,30 @@ describe("AionChatWorkspace", () => {
     );
 
     expect(screen.queryByRole("navigation")).toBeNull();
+    expect(
+      await screen.findByRole("textbox", { name: "Chat message" }),
+    ).toBeTruthy();
+  });
+
+  it("starts a new chat when remote history is unavailable", async () => {
+    const directory: AionConversationDirectory = {
+      list: () => Promise.reject(new Error("Unavailable")),
+      load: () => Promise.reject(new Error("Unavailable")),
+    };
+    render(
+      <AionChatWorkspace
+        fixedAgent={{
+          id: "distribution-1",
+          title: "Status agent",
+          availability: "available",
+        }}
+        conversationDirectory={directory}
+        startNewConversation
+        transport={new FakeAionChatTransport(() => [])}
+        createId={() => "context-new"}
+      />,
+    );
+
     expect(
       await screen.findByRole("textbox", { name: "Chat message" }),
     ).toBeTruthy();

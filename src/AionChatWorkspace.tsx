@@ -13,6 +13,7 @@ import {
 import { AionChatView, type AionChatViewProps } from "./AionChatView";
 import type { AionAttachmentUploader } from "./attachments";
 import type { AionAgentCatalog, AionAgentCatalogEntry } from "./catalog";
+import type { AionConversationDirectory } from "./conversations/directory";
 import {
   createInMemoryAionConversationStore,
 } from "./conversations/memory-store";
@@ -39,6 +40,7 @@ export interface AionChatWorkspaceProps
   readonly transport: AionChatTransport;
   readonly catalog?: AionAgentCatalog;
   readonly conversationStore?: AionConversationStore;
+  readonly conversationDirectory?: AionConversationDirectory;
   readonly fixedAgent?: ChatAgent;
   readonly fixedContextId?: ContextId;
   readonly startNewConversation?: boolean;
@@ -84,6 +86,7 @@ export function AionChatWorkspace({
   transport,
   catalog,
   conversationStore,
+  conversationDirectory,
   fixedAgent,
   fixedContextId,
   startNewConversation = false,
@@ -123,6 +126,7 @@ export function AionChatWorkspace({
   const agent = fixedAgent ?? selectedEntry?.agent;
   const conversations = useAionConversations({
     store,
+    directory: conversationDirectory,
     agent,
     fixedContextId,
     createId,
@@ -138,7 +142,8 @@ export function AionChatWorkspace({
     if (
       !startNewConversation ||
       !agent ||
-      conversations.status !== "ready" ||
+      (conversations.status !== "ready" &&
+        conversations.status !== "error") ||
       conversations.conversation ||
       startedAgentRef.current === agent.id
     ) {
@@ -220,17 +225,25 @@ export function AionChatWorkspace({
           catalogLoading={catalogState.status === "loading"}
           catalogError={catalogState.error}
           conversationsLoading={conversations.status === "loading"}
+          hasMoreConversations={conversations.hasMoreConversations}
           conversationsError={conversations.error}
           showBack={!fixedAgent}
           onSelectAgent={selectAgent}
           onBack={returnToAgents}
           onNewConversation={createConversation}
           onSelectConversation={selectConversation}
-          onRemoveConversation={(contextId) => {
-            void removeConversation(contextId);
-          }}
+          onRemoveConversation={
+            conversationDirectory
+              ? undefined
+              : (contextId) => {
+                  void removeConversation(contextId);
+                }
+          }
           onRetryCatalog={catalogState.reload}
           onRetryConversations={conversations.reload}
+          onLoadMoreConversations={() => {
+            void conversations.loadMoreConversations();
+          }}
         />
       ) : null}
       <section

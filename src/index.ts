@@ -58,6 +58,18 @@ export type {
   AionConversationSummary,
 } from "./conversations/types";
 export { AION_CONVERSATION_SNAPSHOT_VERSION } from "./conversations/types";
+export type {
+  AionConversationDirectory,
+  AionConversationDirectoryListOptions,
+  AionConversationDirectoryLoadOptions,
+  AionConversationDirectoryPage,
+} from "./conversations/directory";
+export type {
+  AionConversationDirectoryErrorCode,
+} from "./conversations/directory-error";
+export {
+  AionConversationDirectoryError,
+} from "./conversations/directory-error";
 export {
   createAionConversationSnapshot,
   summarizeAionConversation,

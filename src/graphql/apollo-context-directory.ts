@@ -2,9 +2,11 @@ import type { ApolloClient } from "@apollo/client/core";
 import type { DocumentNode } from "graphql";
 
 import type { ChatAgent } from "../model";
-import type { AionChatTransport } from "../transport";
+import type { AionConversationDirectory } from "../conversations/directory";
 import { observeApolloAionGraphQL } from "./apollo-observe";
-import { createAionChatGraphQLTransport } from "./chat-transport";
+import {
+  createAionChatGraphQLConversationDirectory,
+} from "./context-directory";
 import { AION_CHAT_A2A_RPC_SUBSCRIPTION } from "./operation";
 import type {
   AionChatGraphQLServiceParameters,
@@ -13,23 +15,23 @@ import type {
   AionChatGraphQLVariables,
 } from "./types";
 
-/** Options for the caller-owned Apollo Aion chat transport. */
-export interface ApolloAionChatTransportOptions {
+/** Options for a remote directory using a caller-owned Apollo client. */
+export interface ApolloAionConversationDirectoryOptions {
   readonly client: ApolloClient<unknown>;
   readonly targetForAgent?: (agent: ChatAgent) => AionChatGraphQLTarget;
   readonly serviceParameters?: AionChatGraphQLServiceParameters;
   readonly operation?: DocumentNode;
-  readonly createEventId?: () => string;
+  readonly createRequestId?: () => string;
+  readonly createModelId?: () => string;
   readonly now?: () => string;
-  readonly unaryFallback?: boolean;
 }
 
-/** Creates an Aion chat transport around one caller-owned Apollo client. */
-export function createApolloAionChatTransport(
-  options: ApolloAionChatTransportOptions,
-): AionChatTransport {
+/** Creates a caller-scoped directory around one Apollo client. */
+export function createApolloAionConversationDirectory(
+  options: ApolloAionConversationDirectoryOptions,
+): AionConversationDirectory {
   const operation = options.operation ?? AION_CHAT_A2A_RPC_SUBSCRIPTION;
-  return createAionChatGraphQLTransport({
+  return createAionChatGraphQLConversationDirectory({
     observe: (variables, signal) =>
       observeApolloAionGraphQL<
         AionChatGraphQLSubscriptionData,
@@ -37,8 +39,8 @@ export function createApolloAionChatTransport(
       >(options.client, operation, variables, signal),
     targetForAgent: options.targetForAgent,
     serviceParameters: options.serviceParameters,
-    createEventId: options.createEventId,
+    createRequestId: options.createRequestId,
+    createModelId: options.createModelId,
     now: options.now,
-    unaryFallback: options.unaryFallback,
   });
 }

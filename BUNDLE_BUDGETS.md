@@ -1,16 +1,16 @@
 # Bundle budgets
 
-The Phase 4 release baseline was measured from the minified Vite library
-output on 2026-09-03. Budgets include approximately 25–50 percent headroom so
-ordinary maintenance does not fail on byte-level noise while material growth
-requires an explicit review.
+The release baseline was measured from the minified Vite library output on
+2026-09-03 and remeasured after adding remote context-directory adapters.
+Budgets retain practical headroom so ordinary maintenance does not fail on
+byte-level noise while material growth requires an explicit review.
 
 | Entry | Baseline raw | Baseline gzip | Raw budget | Gzip budget |
 | --- | ---: | ---: | ---: | ---: |
-| Core `dist/index.js` | 63.3 kB | 16.4 kB | 80 KiB | 20 KiB |
-| Direct A2A `dist/a2a/direct.js` | 18.1 kB | 5.8 kB | 24 KiB | 7 KiB |
-| Apollo `dist/graphql/apollo.js` | 18.1 kB | 6.3 kB | 24 KiB | 7 KiB |
-| Standalone GraphQL | 21.9 kB | 7.5 kB | 24 KiB | 8 KiB |
+| Core `dist/index.js` | 67.5 kB | 17.6 kB | 80 KiB | 20 KiB |
+| Direct A2A `dist/a2a/direct.js` | 23.8 kB | 7.6 kB | 28 KiB | 9 KiB |
+| Apollo `dist/graphql/apollo.js` | 24.1 kB | 8.1 kB | 28 KiB | 10 KiB |
+| Standalone GraphQL | 27.9 kB | 9.3 kB | 32 KiB | 11 KiB |
 | Testing `dist/testing.js` | 1.3 kB | 0.7 kB | 2 KiB | 1 KiB |
 | Uploads `dist/uploads.js` | 5.2 kB | 2.0 kB | 8 KiB | 3 KiB |
 | Browser storage `dist/storage/browser.js` | 9.8 kB | 3.2 kB | 16 KiB | 5 KiB |

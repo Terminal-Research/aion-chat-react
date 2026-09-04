@@ -22,7 +22,11 @@ export interface AionChatGraphQLVariables {
   readonly request: {
     readonly jsonrpc: "2.0";
     readonly id: string;
-    readonly method: "SendStreamingMessage" | "SendMessage";
+    readonly method:
+      | "GetContext"
+      | "GetContexts"
+      | "SendMessage"
+      | "SendStreamingMessage";
     readonly params: Readonly<Record<string, unknown>>;
   };
   readonly target: AionChatGraphQLTarget;

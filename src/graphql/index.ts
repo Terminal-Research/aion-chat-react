@@ -8,6 +8,12 @@ export type { ApolloAionChatTransportOptions } from "./apollo-transport";
 export { createApolloAionChatTransport } from "./apollo-transport";
 export type { ApolloAionAgentCatalogOptions } from "./apollo-catalog";
 export { createApolloAionAgentCatalog } from "./apollo-catalog";
+export type {
+  ApolloAionConversationDirectoryOptions,
+} from "./apollo-context-directory";
+export {
+  createApolloAionConversationDirectory,
+} from "./apollo-context-directory";
 export {
   AION_AGENT_CATALOG_QUERY,
   AION_AGENT_CATALOG_QUERY_SOURCE,

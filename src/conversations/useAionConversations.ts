@@ -12,6 +12,7 @@ import {
   createChatConversationState,
 } from "../model";
 import type { AionNavigationLoadStatus } from "../useAionAgentCatalog";
+import type { AionConversationDirectory } from "./directory";
 import {
   createAionConversationSnapshot,
   summarizeAionConversation,
@@ -24,8 +25,10 @@ import type {
 /** Configuration for local conversation navigation and persistence. */
 export interface UseAionConversationsOptions {
   readonly store: AionConversationStore;
+  readonly directory?: AionConversationDirectory;
   readonly agent?: ChatAgent;
   readonly fixedContextId?: ContextId;
+  readonly directoryPageSize?: number;
   readonly createId?: () => string;
   readonly now?: () => string;
 }
@@ -37,8 +40,10 @@ export interface UseAionConversationsResult {
   readonly conversation?: ChatConversationState;
   readonly status: AionNavigationLoadStatus;
   readonly error?: Error;
+  readonly hasMoreConversations: boolean;
   readonly createConversation: () => ContextId | undefined;
   readonly selectConversation: (contextId: ContextId) => Promise<void>;
+  readonly loadMoreConversations: () => Promise<void>;
   readonly saveConversation: (state: ChatConversationState) => void;
   readonly removeConversation: (contextId: ContextId) => Promise<void>;
   readonly clearSelection: () => void;
@@ -52,6 +57,8 @@ interface ConversationHookState {
   readonly conversation?: ChatConversationState;
   readonly status: AionNavigationLoadStatus;
   readonly error?: Error;
+  readonly remoteContextIds: readonly ContextId[];
+  readonly nextRemoteOffset?: number;
 }
 
 function defaultCreateId(): string {
@@ -64,6 +71,12 @@ function defaultNow(): string {
 
 function conversationError(): Error {
   return new Error("The local conversation history could not be loaded.");
+}
+
+function asError(value: unknown): Error {
+  return value instanceof Error
+    ? value
+    : new Error("The remote conversation history could not be loaded.");
 }
 
 function withAgent(
@@ -87,8 +100,46 @@ function sortSummaries(
   summaries: readonly AionConversationSummary[],
 ): readonly AionConversationSummary[] {
   return [...summaries].sort((left, right) =>
-    right.updatedAt.localeCompare(left.updatedAt),
+    (right.updatedAt ?? "").localeCompare(left.updatedAt ?? ""),
   );
+}
+
+function remoteSummary(
+  agent: ChatAgent,
+  contextId: ContextId,
+): AionConversationSummary {
+  return {
+    agentId: agent.id,
+    contextId,
+    title: "Conversation",
+    preview: contextId,
+  };
+}
+
+function mergeRemoteSummaries(
+  agent: ChatAgent,
+  remoteContextIds: readonly ContextId[],
+  cached: readonly AionConversationSummary[],
+  optimisticContextIds: ReadonlySet<ContextId>,
+): readonly AionConversationSummary[] {
+  const cachedById = new Map(
+    cached.map((summary) => [summary.contextId, summary]),
+  );
+  const remoteIds = new Set(remoteContextIds);
+  const optimistic = sortSummaries(
+    cached.filter(
+      (summary) =>
+        optimisticContextIds.has(summary.contextId) &&
+        !remoteIds.has(summary.contextId),
+    ),
+  );
+  return [
+    ...optimistic,
+    ...remoteContextIds.map(
+      (contextId) =>
+        cachedById.get(contextId) ?? remoteSummary(agent, contextId),
+    ),
+  ];
 }
 
 function replaceSummary(
@@ -106,8 +157,10 @@ function replaceSummary(
 /** Coordinates local summaries, selection, and safe snapshot persistence. */
 export function useAionConversations({
   store,
+  directory,
   agent,
   fixedContextId,
+  directoryPageSize = 50,
   createId = defaultCreateId,
   now = defaultNow,
 }: UseAionConversationsOptions): UseAionConversationsResult {
@@ -115,13 +168,19 @@ export function useAionConversations({
   const loadGenerationRef = useRef(0);
   const mutationQueueRef = useRef(Promise.resolve());
   const activeRunContextsRef = useRef(new Set<string>());
+  const optimisticContextsRef = useRef(new Map<string, Set<ContextId>>());
+  const selectionAbortRef = useRef<AbortController>(undefined);
+  const pageAbortRef = useRef<AbortController>(undefined);
+  const nowRef = useRef(now);
   const mountedRef = useRef(true);
   const [state, setState] = useState<ConversationHookState>({
     agentId: agent?.id,
     summaries: [],
+    remoteContextIds: [],
     status: agent ? "loading" : "idle",
   });
   const stateRef = useRef(state);
+  nowRef.current = now;
 
   const updateState = useCallback(
     (
@@ -150,53 +209,120 @@ export function useAionConversations({
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
+      selectionAbortRef.current?.abort();
+      pageAbortRef.current?.abort();
     };
   }, []);
 
   useEffect(() => {
     const generation = ++loadGenerationRef.current;
+    const abortController = new AbortController();
+    selectionAbortRef.current?.abort();
+    pageAbortRef.current?.abort();
     if (!agent) {
       updateState(() => ({
         agentId: undefined,
         summaries: [],
+        remoteContextIds: [],
         status: "idle",
       }));
-      return;
+      return () => abortController.abort();
     }
     updateState(() => ({
       agentId: agent.id,
       summaries: [],
+      remoteContextIds: [],
       status: "loading",
     }));
     void mutationQueueRef.current
       .catch(() => undefined)
       .then(async () => {
-        const [summaries, snapshot] = await Promise.all([
-          store.list(agent.id),
-          fixedContextId
-            ? store.load(agent.id, fixedContextId)
-            : Promise.resolve(null),
-        ]);
+        const cached = await store.list(agent.id);
+        let summaries: readonly AionConversationSummary[];
+        let conversation: ChatConversationState | undefined;
+        let remoteContextIds: readonly ContextId[] = [];
+        let nextRemoteOffset: number | undefined;
+        let directoryError: Error | undefined;
+
+        if (directory) {
+          try {
+            if (fixedContextId) {
+              conversation = await directory.load(
+                agent,
+                fixedContextId,
+                { signal: abortController.signal },
+              );
+              try {
+                await store.save(
+                  agent.id,
+                  createAionConversationSnapshot(conversation, {
+                    updatedAt: nowRef.current(),
+                  }),
+                );
+              } catch {
+                directoryError = conversationError();
+              }
+              summaries = [];
+            } else {
+              const page = await directory.list(agent, {
+                offset: 0,
+                limit: directoryPageSize,
+                signal: abortController.signal,
+              });
+              remoteContextIds = page.contextIds;
+              nextRemoteOffset = page.nextOffset;
+              summaries = mergeRemoteSummaries(
+                agent,
+                remoteContextIds,
+                cached,
+                optimisticContextsRef.current.get(agent.id) ?? new Set(),
+              );
+            }
+          } catch (error) {
+            if (abortController.signal.aborted) {
+              return;
+            }
+            directoryError = asError(error);
+            conversation = fixedContextId
+              ? emptyConversation(agent, fixedContextId)
+              : undefined;
+            summaries = mergeRemoteSummaries(
+              agent,
+              [],
+              cached,
+              optimisticContextsRef.current.get(agent.id) ?? new Set(),
+            );
+          }
+        } else {
+          const snapshot = fixedContextId
+            ? await store.load(agent.id, fixedContextId)
+            : null;
+          summaries = sortSummaries(cached);
+          conversation = fixedContextId
+            ? snapshot
+              ? withAgent(snapshot.conversation, agent)
+              : emptyConversation(agent, fixedContextId)
+            : undefined;
+        }
         if (
           !mountedRef.current ||
           loadGenerationRef.current !== generation
         ) {
           return;
         }
-        const conversation = fixedContextId
-          ? snapshot
-            ? withAgent(snapshot.conversation, agent)
-            : emptyConversation(agent, fixedContextId)
-          : undefined;
         updateState(() => ({
           agentId: agent.id,
-          summaries: sortSummaries(summaries),
+          summaries,
+          remoteContextIds,
+          nextRemoteOffset,
           selectedContextId: fixedContextId,
           conversation,
-          status: "ready",
+          status:
+            directoryError && !fixedContextId ? "error" : "ready",
+          error: directoryError,
         }));
       })
-      .catch(() => {
+      .catch((error: unknown) => {
         if (
           mountedRef.current &&
           loadGenerationRef.current === generation
@@ -204,12 +330,22 @@ export function useAionConversations({
           updateState(() => ({
             agentId: agent.id,
             summaries: [],
+            remoteContextIds: [],
             status: "error",
-            error: conversationError(),
+            error: directory ? asError(error) : conversationError(),
           }));
         }
       });
-  }, [agent, fixedContextId, reloadToken, store, updateState]);
+    return () => abortController.abort();
+  }, [
+    agent,
+    directory,
+    directoryPageSize,
+    fixedContextId,
+    reloadToken,
+    store,
+    updateState,
+  ]);
 
   const createConversation = useCallback(() => {
     if (!agent) {
@@ -223,10 +359,16 @@ export function useAionConversations({
       updatedAt: timestamp,
     });
     const summary = summarizeAionConversation(snapshot);
+    const optimistic =
+      optimisticContextsRef.current.get(agent.id) ?? new Set<ContextId>();
+    optimistic.add(contextId);
+    optimisticContextsRef.current.set(agent.id, optimistic);
     ++loadGenerationRef.current;
     updateState((current) => ({
       agentId: agent.id,
       summaries: replaceSummary(current.summaries, summary),
+      remoteContextIds: current.remoteContextIds,
+      nextRemoteOffset: current.nextRemoteOffset,
       selectedContextId: contextId,
       conversation,
       status: "ready",
@@ -248,6 +390,9 @@ export function useAionConversations({
       if (!agent) {
         return;
       }
+      selectionAbortRef.current?.abort();
+      const abortController = new AbortController();
+      selectionAbortRef.current = abortController;
       const generation = ++loadGenerationRef.current;
       updateState((current) => ({
         ...current,
@@ -258,7 +403,24 @@ export function useAionConversations({
       }));
       try {
         await mutationQueueRef.current.catch(() => undefined);
-        const snapshot = await store.load(agent.id, contextId);
+        const remoteConversation = directory
+          ? await directory.load(agent, contextId, {
+              signal: abortController.signal,
+            })
+          : undefined;
+        const snapshot = remoteConversation
+          ? createAionConversationSnapshot(remoteConversation, {
+              updatedAt: now(),
+            })
+          : await store.load(agent.id, contextId);
+        let cacheError: Error | undefined;
+        if (remoteConversation && snapshot) {
+          try {
+            await enqueueMutation(() => store.save(agent.id, snapshot));
+          } catch {
+            cacheError = conversationError();
+          }
+        }
         if (
           !mountedRef.current ||
           loadGenerationRef.current !== generation
@@ -280,12 +442,23 @@ export function useAionConversations({
         }
         updateState((current) => ({
           ...current,
+          summaries: remoteConversation
+            ? replaceSummary(
+                current.summaries,
+                summarizeAionConversation(snapshot),
+              )
+            : current.summaries,
           selectedContextId: contextId,
-          conversation: withAgent(snapshot.conversation, agent),
-          status: "ready",
-          error: undefined,
+          conversation: remoteConversation
+            ? withAgent(remoteConversation, agent)
+            : withAgent(snapshot.conversation, agent),
+          status: cacheError ? "error" : "ready",
+          error: cacheError,
         }));
-      } catch {
+      } catch (error) {
+        if (abortController.signal.aborted) {
+          return;
+        }
         if (
           mountedRef.current &&
           loadGenerationRef.current === generation
@@ -293,12 +466,12 @@ export function useAionConversations({
           updateState((current) => ({
             ...current,
             status: "error",
-            error: conversationError(),
+            error: directory ? asError(error) : conversationError(),
           }));
         }
       }
     },
-    [agent, store, updateState],
+    [agent, directory, enqueueMutation, now, store, updateState],
   );
 
   const saveConversation = useCallback(
@@ -351,6 +524,72 @@ export function useAionConversations({
     [agent, enqueueMutation, now, store, updateState],
   );
 
+  const loadMoreConversations = useCallback(async () => {
+    const current = stateRef.current;
+    if (!agent || !directory || current.nextRemoteOffset === undefined) {
+      return;
+    }
+    pageAbortRef.current?.abort();
+    const abortController = new AbortController();
+    pageAbortRef.current = abortController;
+    const offset = current.nextRemoteOffset;
+    updateState((value) => ({
+      ...value,
+      status: "loading",
+      error: undefined,
+    }));
+    try {
+      const page = await directory.list(agent, {
+        offset,
+        limit: directoryPageSize,
+        signal: abortController.signal,
+      });
+      const cached = await store.list(agent.id);
+      if (
+        abortController.signal.aborted ||
+        !mountedRef.current ||
+        stateRef.current.agentId !== agent.id ||
+        stateRef.current.nextRemoteOffset !== offset
+      ) {
+        return;
+      }
+      updateState((value) => {
+        const remoteContextIds = [
+          ...value.remoteContextIds,
+          ...page.contextIds.filter(
+            (contextId) => !value.remoteContextIds.includes(contextId),
+          ),
+        ];
+        return {
+          ...value,
+          summaries: mergeRemoteSummaries(
+            agent,
+            remoteContextIds,
+            cached,
+            optimisticContextsRef.current.get(agent.id) ?? new Set(),
+          ),
+          remoteContextIds,
+          nextRemoteOffset: page.nextOffset,
+          status: "ready",
+          error: undefined,
+        };
+      });
+    } catch (error) {
+      if (
+        !abortController.signal.aborted &&
+        mountedRef.current &&
+        stateRef.current.agentId === agent.id &&
+        stateRef.current.nextRemoteOffset === offset
+      ) {
+        updateState((value) => ({
+          ...value,
+          status: "error",
+          error: asError(error),
+        }));
+      }
+    }
+  }, [agent, directory, directoryPageSize, store, updateState]);
+
   const removeConversation = useCallback(
     async (contextId: ContextId) => {
       if (!agent) {
@@ -366,9 +605,17 @@ export function useAionConversations({
         }
         updateState((current) => ({
           ...current,
-          summaries: current.summaries.filter(
-            (summary) => summary.contextId !== contextId,
-          ),
+          summaries:
+            directory && current.remoteContextIds.includes(contextId)
+              ? replaceSummary(
+                  current.summaries.filter(
+                    (summary) => summary.contextId !== contextId,
+                  ),
+                  remoteSummary(agent, contextId),
+                )
+              : current.summaries.filter(
+                  (summary) => summary.contextId !== contextId,
+                ),
           selectedContextId:
             current.selectedContextId === contextId
               ? undefined
@@ -390,10 +637,11 @@ export function useAionConversations({
         }
       }
     },
-    [agent, enqueueMutation, store, updateState],
+    [agent, directory, enqueueMutation, store, updateState],
   );
 
   const clearSelection = useCallback(() => {
+    selectionAbortRef.current?.abort();
     ++loadGenerationRef.current;
     updateState((current) => ({
       ...current,
@@ -412,8 +660,10 @@ export function useAionConversations({
     conversation: state.conversation,
     status: state.status,
     error: state.error,
+    hasMoreConversations: state.nextRemoteOffset !== undefined,
     createConversation,
     selectConversation,
+    loadMoreConversations,
     saveConversation,
     removeConversation,
     clearSelection,

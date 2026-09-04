@@ -125,7 +125,7 @@ export function createBrowserAionConversationStore(
         .filter((snapshot) => snapshot.agentId === agentId)
         .map(summarizeAionConversation)
         .sort((left, right) =>
-          right.updatedAt.localeCompare(left.updatedAt),
+          (right.updatedAt ?? "").localeCompare(left.updatedAt ?? ""),
         );
       return Promise.resolve(summaries);
     },

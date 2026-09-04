@@ -293,6 +293,7 @@
 .aion-chat__conversation-remove,
 .aion-chat__navigator-icon-button,
 .aion-chat__navigator-new,
+.aion-chat__navigation-load-more,
 .aion-chat__navigation-status button {
   min-height: 2.25rem;
   color: var(--aion-chat-color-text);
@@ -324,6 +325,7 @@
 .aion-chat__conversation-remove:hover,
 .aion-chat__navigator-icon-button:hover,
 .aion-chat__navigator-new:hover,
+.aion-chat__navigation-load-more:hover,
 .aion-chat__navigation-status button:hover {
   background: var(--aion-chat-color-surface-emphasis);
 }
@@ -340,6 +342,7 @@
 }
 
 .aion-chat__navigator-new,
+.aion-chat__navigation-load-more,
 .aion-chat__navigation-status button {
   display: inline-flex;
   align-items: center;
@@ -347,11 +350,18 @@
   padding: var(--aion-chat-space-1) var(--aion-chat-space-2);
 }
 
+.aion-chat__navigation-load-more {
+  width: calc(100% - 2 * var(--aion-chat-space-2));
+  justify-content: center;
+  margin: var(--aion-chat-space-2);
+}
+
 .aion-chat__navigation-item:focus-visible,
 .aion-chat__conversation-select:focus-visible,
 .aion-chat__conversation-remove:focus-visible,
 .aion-chat__navigator-icon-button:focus-visible,
 .aion-chat__navigator-new:focus-visible,
+.aion-chat__navigation-load-more:focus-visible,
 .aion-chat__navigation-status button:focus-visible {
   outline: none;
   box-shadow: var(--aion-chat-focus-ring);

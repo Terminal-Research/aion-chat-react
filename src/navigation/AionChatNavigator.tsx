@@ -26,6 +26,7 @@ export interface AionChatNavigatorProps
   readonly catalogLoading?: boolean;
   readonly catalogError?: Error;
   readonly conversationsLoading?: boolean;
+  readonly hasMoreConversations?: boolean;
   readonly conversationsError?: Error;
   readonly showBack?: boolean;
   readonly onSelectAgent: (entry: AionAgentCatalogEntry) => void;
@@ -35,6 +36,7 @@ export interface AionChatNavigatorProps
   readonly onRemoveConversation?: (contextId: string) => void;
   readonly onRetryCatalog?: () => void;
   readonly onRetryConversations?: () => void;
+  readonly onLoadMoreConversations?: () => void;
 }
 
 /**
@@ -50,6 +52,7 @@ export function AionChatNavigator({
   catalogLoading,
   catalogError,
   conversationsLoading,
+  hasMoreConversations,
   conversationsError,
   showBack = true,
   onSelectAgent,
@@ -59,6 +62,7 @@ export function AionChatNavigator({
   onRemoveConversation,
   onRetryCatalog,
   onRetryConversations,
+  onLoadMoreConversations,
   className,
   ...props
 }: AionChatNavigatorProps) {
@@ -163,10 +167,12 @@ export function AionChatNavigator({
             summaries={conversations}
             selectedContextId={selectedContextId}
             loading={conversationsLoading}
+            hasMore={hasMoreConversations}
             error={conversationsError}
             onSelectConversation={onSelectConversation}
             onRemoveConversation={onRemoveConversation}
             onRetry={onRetryConversations}
+            onLoadMore={onLoadMoreConversations}
           />
         </section>
       </div>

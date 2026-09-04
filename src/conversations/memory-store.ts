@@ -12,7 +12,7 @@ function sortSummaries(
   summaries: readonly AionConversationSummary[],
 ): readonly AionConversationSummary[] {
   return [...summaries].sort((left, right) =>
-    right.updatedAt.localeCompare(left.updatedAt),
+    (right.updatedAt ?? "").localeCompare(left.updatedAt ?? ""),
   );
 }
 

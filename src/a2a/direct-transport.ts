@@ -29,6 +29,19 @@ export interface DirectAionA2ATransportOptions {
   readonly now?: () => string;
 }
 
+/** Agent Card and browser request options shared by direct A2A adapters. */
+export type DirectAionA2AConnectionOptions = Pick<
+  DirectAionA2ATransportOptions,
+  "agentCard" | "agentCardUrl" | "credentials" | "fetch"
+>;
+
+/** One unary JSON-RPC request sent through a resolved Agent Card. */
+export interface DirectAionJsonRpcRequest {
+  readonly id: string;
+  readonly method: string;
+  readonly params?: Readonly<Record<string, unknown>>;
+}
+
 class DirectAionTransportError extends Error {
   constructor(readonly chatError: ChatError) {
     super(chatError.message);
@@ -243,6 +256,24 @@ function selectInterface(
     throw transportError(
       "unsupported_agent_interface",
       "The Agent Card has no browser-supported A2A 1.0 interface.",
+      false,
+    );
+  }
+  return agentInterface;
+}
+
+function selectJsonRpcInterface(
+  card: DirectAionAgentCard,
+): DirectAionAgentInterface {
+  const agentInterface = card.supportedInterfaces.find(
+    (candidate) =>
+      candidate.protocolVersion === SUPPORTED_PROTOCOL_VERSION &&
+      candidate.protocolBinding === "JSONRPC",
+  );
+  if (!agentInterface) {
+    throw transportError(
+      "unsupported_operation",
+      "The Agent Card has no JSON-RPC interface for Aion extensions.",
       false,
     );
   }
@@ -518,7 +549,7 @@ function isTerminal(event: ChatTransportEvent): boolean {
 }
 
 async function resolveAgentCard(
-  options: DirectAionA2ATransportOptions,
+  options: DirectAionA2AConnectionOptions,
   fetcher: typeof globalThis.fetch,
   signal: AbortSignal,
 ): Promise<DirectAionAgentCard> {
@@ -541,6 +572,58 @@ async function resolveAgentCard(
     );
   }
   return parseAgentCard(await response.json());
+}
+
+function validateConnectionOptions(
+  options: DirectAionA2AConnectionOptions,
+): void {
+  const hasAgentCardUrl = options.agentCardUrl !== undefined;
+  const hasAgentCard = options.agentCard !== undefined;
+  if (hasAgentCardUrl === hasAgentCard) {
+    throw new Error("Provide exactly one of agentCardUrl or agentCard.");
+  }
+  if (options.agentCardUrl !== undefined) {
+    validateHttpUrl(options.agentCardUrl, "The Agent Card URL");
+  }
+}
+
+/** @internal Sends one unary extension call through a direct Agent Card. */
+export async function callDirectAionJsonRpc(
+  options: DirectAionA2AConnectionOptions,
+  request: DirectAionJsonRpcRequest,
+  signal: AbortSignal,
+): Promise<unknown> {
+  validateConnectionOptions(options);
+  const fetcher = options.fetch ?? globalThis.fetch;
+  const card = await resolveAgentCard(options, fetcher, signal);
+  const agentInterface = selectJsonRpcInterface(card);
+  const authorization = await authorizationHeader(
+    card,
+    agentInterface,
+    options.credentials,
+    signal,
+  );
+  const headers: Record<string, string> = {
+    Accept: "application/json",
+    "A2A-Version": agentInterface.protocolVersion,
+    "Content-Type": "application/json",
+  };
+  if (authorization) {
+    headers.Authorization = authorization;
+  }
+  const response = await fetcher(agentInterface.url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ jsonrpc: "2.0", ...request }),
+    credentials: "omit",
+    redirect: "error",
+    signal,
+  });
+  if (!response.ok) {
+    await response.body?.cancel();
+    throw httpError(response);
+  }
+  return response.json();
 }
 
 async function* responsePayloads(
@@ -648,16 +731,7 @@ async function* directStream(
 export function createDirectAionA2ATransport(
   options: DirectAionA2ATransportOptions,
 ): AionChatTransport {
-  const hasAgentCardUrl = options.agentCardUrl !== undefined;
-  const hasAgentCard = options.agentCard !== undefined;
-  if (hasAgentCardUrl === hasAgentCard) {
-    throw new Error(
-      "Provide exactly one of agentCardUrl or agentCard to the A2A transport.",
-    );
-  }
-  if (options.agentCardUrl !== undefined) {
-    validateHttpUrl(options.agentCardUrl, "The Agent Card URL");
-  }
+  validateConnectionOptions(options);
   return {
     stream: (request, { signal }) => directStream(options, request, signal),
   };

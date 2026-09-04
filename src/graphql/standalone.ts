@@ -14,6 +14,12 @@ export type { StandaloneAionChatTransportOptions } from "./standalone-chat-trans
 export { createStandaloneAionChatTransport } from "./standalone-chat-transport";
 export type { StandaloneAionAgentCatalogOptions } from "./standalone-catalog";
 export { createStandaloneAionAgentCatalog } from "./standalone-catalog";
+export type {
+  StandaloneAionConversationDirectoryOptions,
+} from "./standalone-context-directory";
+export {
+  createStandaloneAionConversationDirectory,
+} from "./standalone-context-directory";
 export { AION_AGENT_CATALOG_QUERY_SOURCE } from "./catalog-source";
 export type {
   AionChatGraphQLServiceParameters,

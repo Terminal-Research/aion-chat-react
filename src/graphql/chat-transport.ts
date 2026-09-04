@@ -7,6 +7,7 @@ import type {
 } from "../transport";
 import { collectGraphQLErrorMessages } from "./error-messages";
 import { normalizeAionChatGraphQLResponse } from "./normalize";
+import { assertAionChatGraphQLTarget } from "./target";
 import type {
   AionChatGraphQLServiceParameters,
   AionChatGraphQLSubscriptionData,
@@ -67,15 +68,6 @@ function outboundPart(part: ChatPart): Readonly<Record<string, unknown>> {
   }
 }
 
-function assertSingleTarget(target: AionChatGraphQLTarget): void {
-  const selectors = Object.values(target).filter(
-    (value) => typeof value === "string" && value.length > 0,
-  );
-  if (selectors.length !== 1) {
-    throw new Error("An Aion GraphQL target requires exactly one selector.");
-  }
-}
-
 /** Builds the current Aion GraphQL A2A variables for one chat request. */
 export function buildAionChatGraphQLVariables(
   request: AionChatRequest,
@@ -83,7 +75,7 @@ export function buildAionChatGraphQLVariables(
   target: AionChatGraphQLTarget,
   serviceParameters: AionChatGraphQLServiceParameters = { version: "0.3" },
 ): AionChatGraphQLVariables {
-  assertSingleTarget(target);
+  assertAionChatGraphQLTarget(target);
   return {
     request: {
       jsonrpc: "2.0",

@@ -21,8 +21,8 @@ export interface AionConversationSummary {
   readonly contextId: ContextId;
   readonly title: string;
   readonly preview?: string;
-  readonly createdAt: string;
-  readonly updatedAt: string;
+  readonly createdAt?: string;
+  readonly updatedAt?: string;
 }
 
 /** Local persistence boundary keyed by agent and A2A context. */

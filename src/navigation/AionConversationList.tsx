@@ -9,10 +9,12 @@ export interface AionConversationListProps
   readonly summaries: readonly AionConversationSummary[];
   readonly selectedContextId?: string;
   readonly loading?: boolean;
+  readonly hasMore?: boolean;
   readonly error?: Error;
   readonly onSelectConversation: (contextId: string) => void;
   readonly onRemoveConversation?: (contextId: string) => void;
   readonly onRetry?: () => void;
+  readonly onLoadMore?: () => void;
   readonly formatTimestamp?: (timestamp: string) => string;
 }
 
@@ -35,10 +37,12 @@ export function AionConversationList({
   summaries,
   selectedContextId,
   loading = false,
+  hasMore = false,
   error,
   onSelectConversation,
   onRemoveConversation,
   onRetry,
+  onLoadMore,
   formatTimestamp = defaultFormatTimestamp,
   className,
   ...props
@@ -58,7 +62,7 @@ export function AionConversationList({
       ) : null}
       {error ? (
         <div className="aion-chat__navigation-status" role="alert">
-          <p>Local conversation history could not be loaded.</p>
+          <p>Conversation history could not be loaded.</p>
           {onRetry ? (
             <button type="button" onClick={onRetry}>
               Try again
@@ -95,12 +99,14 @@ export function AionConversationList({
                     {summary.preview}
                   </span>
                 ) : null}
-                <time
-                  className="aion-chat__navigation-time"
-                  dateTime={summary.updatedAt}
-                >
-                  {formatTimestamp(summary.updatedAt)}
-                </time>
+                {summary.updatedAt ? (
+                  <time
+                    className="aion-chat__navigation-time"
+                    dateTime={summary.updatedAt}
+                  >
+                    {formatTimestamp(summary.updatedAt)}
+                  </time>
+                ) : null}
               </button>
               {onRemoveConversation ? (
                 <button
@@ -116,6 +122,16 @@ export function AionConversationList({
           );
         })}
       </div>
+      {hasMore && onLoadMore ? (
+        <button
+          className="aion-chat__navigation-load-more"
+          type="button"
+          disabled={loading}
+          onClick={onLoadMore}
+        >
+          {loading ? "Loading…" : "Load more"}
+        </button>
+      ) : null}
     </div>
   );
 }
