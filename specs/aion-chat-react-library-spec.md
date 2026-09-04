@@ -1040,6 +1040,8 @@ the contained workspace from Subtask AA and without completing Subtasks Q or R.
 
 ### Subtask Z — Reuse the authenticated identity catalog (status: done)
 
+- Commit ID (aion-chat-react): `2164666`
+
 - In `aion-chat-react`, add a checked-in `agentIdentityDetails` operation based
   on the existing Python chat-client catalog query.
 - Require the caller to provide an organization ID and authenticated user JWT,
@@ -1056,6 +1058,8 @@ the contained workspace from Subtask AA and without completing Subtasks Q or R.
   existing Playground invocation model without a target-remapping callback.
 
 ### Subtask AA — Add agent and conversation navigation (status: done)
+
+- Commit ID (aion-chat-react): `10ae2a5`
 
 - Define an Aion-owned `AionConversationStore` separate from
   `AionChatTransport`. Its initial operations list, load, save, and remove
