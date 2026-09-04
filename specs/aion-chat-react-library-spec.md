@@ -3,7 +3,7 @@ name: Aion Chat React Library
 date_created: 2026-08-31
 date_started: 2026-08-31
 date_completed: <incomplete>
-date_updated: 2026-09-01
+date_updated: 2026-09-03
 ---
 
 # Aion Chat React Library
@@ -419,6 +419,11 @@ Interaction motion references:
   third-party notices or provenance document.
 - Public exports must be intentional; source-internal modules are not part of
   the compatibility contract unless exported from a documented entry point.
+- The initial transcript must use browser-native `content-visibility: auto`
+  with `contain-intrinsic-size` on stable transcript-entry wrappers. Do not
+  add JavaScript windowing, item measurement, or transcript-retention limits
+  until measured consumer behavior demonstrates that browser containment is
+  insufficient.
 - Release readiness must include measured bundle output and an agreed budget;
   no arbitrary size threshold is assumed before the initial build exists.
 
@@ -467,9 +472,10 @@ Interaction motion references:
   model before deriving presentation messages; retain raw identifiers and
   typed parts needed for follow-up actions.
 - **Risk: token-by-token streaming causes expensive rerenders or broken scroll
-  behavior.** **Mitigation:** preserve message memoization, threshold-based
-  virtualization, batched event reduction, and explicit pinned/manual scroll
-  modes; validate with long and rapidly streaming transcripts.
+  behavior.** **Mitigation:** preserve message memoization, browser-native
+  off-screen rendering, batched event reduction, and explicit pinned/manual
+  scroll modes; validate with long and rapidly streaming transcripts before
+  introducing virtualization.
 - **Risk: delta motion accumulates behind a fast stream.** A word-by-word demo
   can queue more visual delay than a real model stream can tolerate.
   **Mitigation:** animate actual appended batches from their current state,
@@ -553,6 +559,11 @@ Interaction motion references:
   file selection.
 - Verify auto-scroll remains pinned during normal streaming, respects manual
   user scrolling, recovers predictably, and remains usable with large histories.
+- Verify `content-visibility: auto` and `contain-intrinsic-size` reduce
+  off-screen rendering work without removing transcript content from browser
+  search, selection, keyboard navigation, or the accessibility tree. Exercise
+  initial history restore, upward scrolling, variable-height messages, and
+  streamed height changes for visible scroll jumps.
 - Verify the contained workspace composes agent catalog, agent selection,
   conversation selection, and chat without requiring a popup/sidebar shell or
   taking ownership of host-page layout.
@@ -1108,6 +1119,20 @@ the contained workspace from Subtask AA and without completing Subtasks Q or R.
 - Implement reduced-motion, hydration/history, cancellation, failure,
   unmount/timer cleanup, accessibility, and fast-stream performance coverage.
 
+### Subtask AE — Add browser-native transcript containment (status: not started)
+
+- Add stable transcript-entry wrappers around messages and artifacts. Apply
+  `content-visibility: auto` and pair it with an `auto`
+  `contain-intrinsic-size` fallback suitable for ordinary chat entries.
+- Keep every message in React state and the DOM. This optimization must not
+  delete, truncate, paginate, or otherwise change transcript retention.
+- Do not add virtual-list state, item measurement, spacer elements, or a
+  windowing dependency in the initial implementation.
+- Validate browser search, selection, keyboard and screen-reader access,
+  pinned and manual scrolling, restored history, variable-height Markdown and
+  attachments, and rapid streamed updates. Reconsider windowing only if these
+  measured fixtures establish a material remaining problem.
+
 ## 3) Package Hierarchy + Responsibilities
 
 The names below are provisional but establish dependency direction. Modules may
@@ -1451,6 +1476,22 @@ const themeStyle = {
 - A reduced-motion media query produces static, immediately resolved visual
   states. It does not require a React-side media-query listener for correctness.
 
+### Transcript rendering performance
+
+- Stable transcript-entry wrappers use `content-visibility: auto` so supporting
+  browsers can skip off-screen layout and painting while preserving the full
+  transcript in the DOM.
+- Pair containment with `contain-intrinsic-size: auto <fallback>` so an
+  unrendered wrapper reserves an estimated block size and remembers its actual
+  size after rendering. Tune the initial fallback using the long-history
+  fixture rather than adding per-message JavaScript measurement.
+- Browsers that do not support the properties render the complete transcript
+  normally. The library does not branch its React state model by browser
+  support.
+- Virtualization is not part of the initial implementation. It may be added as
+  a later measured optimization if browser containment does not meet the
+  transcript performance requirements of real consumers.
+
 ### React composition
 
 ```tsx
@@ -1680,9 +1721,14 @@ note.
   manifest/CSP constraints follow from that choice? Deferral: browser-extension
   and customer-page shell selection is outside the current workspace scope.
   Revisit it with a concrete host and delivery model.
-- [status: open] What measured transcript length and streaming update rate
+- [status: resolved] What measured transcript length and streaming update rate
   should trigger message windowing, and can `content-visibility` satisfy the
   same browser, accessibility, search, and scroll requirements more simply?
+  Resolution: use `content-visibility: auto` with
+  `contain-intrinsic-size: auto <fallback>` on stable transcript-entry wrappers
+  for the initial implementation. Do not add windowing or a retention limit.
+  Reconsider virtualization only if long-history and streaming measurements
+  demonstrate a material remaining problem.
 - [status: deferred] Should the popup behave as a modal dialog with focus
   containment, or as a non-modal chat surface that permits interaction with
   the host page while open? Deferral: decide this only when a concrete popup or
@@ -2085,3 +2131,14 @@ tree-shakeable named imports from `@phosphor-icons/react` for default spinner,
 check, and failure visuals, matching the icon system already used by
 `aion-agent-cloud`. All motion values flow through semantic CSS variables and
 all default effects stop under `prefers-reduced-motion: reduce`.
+
+Q: How should the initial library render very long transcripts efficiently?
+
+A: Use browser-native `content-visibility: auto` on stable transcript-entry
+wrappers, paired with an `auto` `contain-intrinsic-size` fallback. This keeps
+the complete transcript in React state and the DOM while allowing supporting
+browsers to skip off-screen rendering work. Do not add JavaScript windowing or
+change transcript retention in the initial implementation. Validate scroll
+anchoring, restored history, browser search, selection, accessibility, and
+rapid streaming; reconsider virtualization only if those measurements expose
+a material problem.
