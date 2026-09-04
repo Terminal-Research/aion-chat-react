@@ -14,6 +14,10 @@ export default defineConfig({
           "src/graphql/standalone.ts",
         ),
         styles: resolve(import.meta.dirname, "src/styles/aion-chat.css"),
+        "storage/browser": resolve(
+          import.meta.dirname,
+          "src/storage/browser.ts",
+        ),
         testing: resolve(import.meta.dirname, "src/testing/index.ts"),
         uploads: resolve(import.meta.dirname, "src/uploads/index.ts"),
       },

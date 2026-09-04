@@ -79,7 +79,12 @@ for (const specifier of importSpecifiers) {
   }
 }
 
-const forbiddenCoreText = ["CopilotKit", "@ag-ui", "licenseKey"];
+const forbiddenCoreText = [
+  "CopilotKit",
+  "@ag-ui",
+  "licenseKey",
+  "localStorage",
+];
 for (const marker of forbiddenCoreText) {
   if (coreCode.includes(marker)) {
     fail(`Core entry unexpectedly contains ${marker}.`);
@@ -148,7 +153,12 @@ try {
   await writeFile(
     validationPath,
     `
-      import { AionAgentCatalogError, AionChatView } from "${packageName}";
+      import {
+        AionAgentCatalogError,
+        AionChatView,
+        AionChatWorkspace,
+        createInMemoryAionConversationStore,
+      } from "${packageName}";
       import { createDirectAionA2ATransport } from "${packageName}/a2a";
       import { FakeAionChatTransport } from "${packageName}/testing";
       import {
@@ -162,11 +172,20 @@ try {
       import {
         createAionFilesAttachmentUploader,
       } from "${packageName}/uploads";
+      import {
+        createBrowserAionConversationStore,
+      } from "${packageName}/storage/browser";
 
       if (typeof AionChatView !== "object" &&
           typeof AionChatView !== "function") throw new Error("root export");
       if (typeof AionAgentCatalogError !== "function") {
         throw new Error("catalog model export");
+      }
+      if (typeof AionChatWorkspace !== "function") {
+        throw new Error("workspace export");
+      }
+      if (typeof createInMemoryAionConversationStore !== "function") {
+        throw new Error("memory storage export");
       }
       if (typeof FakeAionChatTransport !== "function") {
         throw new Error("testing export");
@@ -188,6 +207,9 @@ try {
       }
       if (typeof createAionFilesAttachmentUploader !== "function") {
         throw new Error("uploads export");
+      }
+      if (typeof createBrowserAionConversationStore !== "function") {
+        throw new Error("browser storage export");
       }
       if (!import.meta.resolve("${packageName}/styles.css").endsWith(".css")) {
         throw new Error("styles export");

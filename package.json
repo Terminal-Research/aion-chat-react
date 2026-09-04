@@ -33,6 +33,10 @@
       "types": "./dist/uploads/index.d.ts",
       "import": "./dist/uploads.js"
     },
+    "./storage/browser": {
+      "types": "./dist/storage/browser.d.ts",
+      "import": "./dist/storage/browser.js"
+    },
     "./styles.css": "./dist/styles.css",
     "./graphql": {
       "types": "./dist/graphql/index.d.ts",

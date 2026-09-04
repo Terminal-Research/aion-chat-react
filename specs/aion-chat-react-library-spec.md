@@ -1055,7 +1055,7 @@ the contained workspace from Subtask AA and without completing Subtasks Q or R.
   the parent identity's presentation and addressing fields. This preserves the
   existing Playground invocation model without a target-remapping callback.
 
-### Subtask AA — Add agent and conversation navigation (status: not started)
+### Subtask AA — Add agent and conversation navigation (status: done)
 
 - Define an Aion-owned `AionConversationStore` separate from
   `AionChatTransport`. Its initial operations list, load, save, and remove
@@ -1075,6 +1075,14 @@ the contained workspace from Subtask AA and without completing Subtasks Q or R.
 - Defer remote history synchronization, thread rename, archive, cross-device
   updates, and server-side deletion until Aion exposes a reviewed caller-scoped
   conversation-directory contract.
+- Implementation decision: local snapshots retain normalized transcript, task,
+  and artifact meaning while removing active runs, controller metadata,
+  uploaded bytes, and all file URLs. Running streams persist once at admission
+  and again when settled rather than writing every content delta.
+- Implementation decision: the default workspace shares the public catalog,
+  store, provider, and list components used by headless consumers. Fixed-agent,
+  fixed-context, always-new, and hidden-navigation policies are compositions of
+  those same boundaries rather than separate controllers.
 
 ### Subtask AB — Secure the Aion context directory (status: not started)
 

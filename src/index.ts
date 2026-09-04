@@ -52,6 +52,25 @@ export type {
 } from "./catalog";
 export { AionAgentCatalogError } from "./catalog";
 export type {
+  AionConversationSnapshot,
+  AionConversationSnapshotOptions,
+  AionConversationStore,
+  AionConversationSummary,
+} from "./conversations/types";
+export { AION_CONVERSATION_SNAPSHOT_VERSION } from "./conversations/types";
+export {
+  createAionConversationSnapshot,
+  summarizeAionConversation,
+} from "./conversations/snapshot";
+export {
+  createInMemoryAionConversationStore,
+} from "./conversations/memory-store";
+export type {
+  UseAionConversationsOptions,
+  UseAionConversationsResult,
+} from "./conversations/useAionConversations";
+export { useAionConversations } from "./conversations/useAionConversations";
+export type {
   AionAttachmentUploader,
   AionAttachmentUploadOptions,
   AionUploadedAttachment,
@@ -121,6 +140,24 @@ export type {
   AionChatThemeStyle,
 } from "./AionChatTheme";
 export { AionChatTheme } from "./AionChatTheme";
+export type { AionAgentListProps } from "./navigation/AionAgentList";
+export { AionAgentList } from "./navigation/AionAgentList";
+export type {
+  AionConversationListProps,
+} from "./navigation/AionConversationList";
+export { AionConversationList } from "./navigation/AionConversationList";
+export type {
+  AionChatNavigatorProps,
+  AionChatNavigatorView,
+} from "./navigation/AionChatNavigator";
+export { AionChatNavigator } from "./navigation/AionChatNavigator";
+export type { AionChatWorkspaceProps } from "./AionChatWorkspace";
+export { AionChatWorkspace } from "./AionChatWorkspace";
+export type {
+  AionNavigationLoadStatus,
+  UseAionAgentCatalogResult,
+} from "./useAionAgentCatalog";
+export { useAionAgentCatalog } from "./useAionAgentCatalog";
 export { useAionChatPortalContainer } from "./useAionChatTheme";
 export type { AionSlotValue } from "./slots";
 export type {
