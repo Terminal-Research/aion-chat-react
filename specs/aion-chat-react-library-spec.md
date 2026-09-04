@@ -1107,7 +1107,9 @@ the contained workspace from Subtask AA and without completing Subtasks Q or R.
 - Add behavior tests with two callers using the same agent, plus pagination,
   ordering, history, artifacts, status, and unsupported-method coverage.
 
-### Subtask AC — Add the remote conversation directory (status: not started)
+### Subtask AC — Add the remote conversation directory (status: done)
+
+- Commit ID (aion-chat-react): `40c55fb`
 
 - In `aion-chat-react`, define `AionConversationDirectory` separately from
   `AionChatTransport` and `AionConversationStore`. It lists remote context IDs
