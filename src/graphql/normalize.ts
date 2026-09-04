@@ -4,16 +4,16 @@ import {
   normalizeAionResponse,
 } from "../a2a/normalize";
 import type { ChatTransportEvent } from "../events";
-import type { ApolloAionChatSubscriptionData } from "./types";
+import type { AionChatGraphQLSubscriptionData } from "./types";
 
 /** Coordinates required to normalize one GraphQL response payload. */
-export type ApolloAionChatNormalizationContext =
+export type AionChatGraphQLNormalizationContext =
   AionResponseNormalizationContext;
 
 /** Normalizes one selected GraphQL response into core transport events. */
-export function normalizeApolloAionChatResponse(
-  data: ApolloAionChatSubscriptionData,
-  context: ApolloAionChatNormalizationContext,
+export function normalizeAionChatGraphQLResponse(
+  data: AionChatGraphQLSubscriptionData,
+  context: AionChatGraphQLNormalizationContext,
 ): readonly ChatTransportEvent[] {
   const response = data.a2aRpc;
   if (!response) {

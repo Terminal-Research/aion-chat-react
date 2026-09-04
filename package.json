@@ -33,6 +33,10 @@
     "./graphql": {
       "types": "./dist/graphql/index.d.ts",
       "import": "./dist/graphql/apollo.js"
+    },
+    "./graphql/standalone": {
+      "types": "./dist/graphql/standalone.d.ts",
+      "import": "./dist/graphql/standalone.js"
     }
   },
   "scripts": {
@@ -87,6 +91,7 @@
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
+    "graphql-ws": "^6.2.1",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1"
   }

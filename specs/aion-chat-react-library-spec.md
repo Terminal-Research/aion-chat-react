@@ -891,7 +891,7 @@ the historical subtasks below is deferred until a concrete embed requires it.
 - Support browser cancellation, SSE/stream cleanup, A2A version headers, and
   the same normalized event model as GraphQL transports.
 
-### Subtask N — Implement the standalone GraphQL gateway adapter (status: not started)
+### Subtask N — Implement the standalone GraphQL gateway adapter (status: done)
 
 - In `aion-chat-react`, add a separate standalone export for Aion's existing
   GraphQL routes with explicit HTTP/subscription URLs, an optional
@@ -905,6 +905,9 @@ the historical subtasks below is deferred until a concrete embed requires it.
 - Deferral: browser-extension-specific documentation is not part of the current
   workspace scope. Retain the general standalone-client lifecycle work for a
   later host that needs it.
+- Implementation decision: the initial standalone client requires an
+  organization ID and asynchronous user-JWT getter. Optional authentication
+  remains deferred with the public embed work.
 
 ### Subtask O — Implement upload integration (status: not started)
 

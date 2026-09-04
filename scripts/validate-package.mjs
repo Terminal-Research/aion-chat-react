@@ -86,6 +86,20 @@ for (const marker of forbiddenCoreText) {
   }
 }
 
+const standaloneCode = await readFile(
+  join(root, "dist/graphql/standalone.js"),
+  "utf8",
+);
+const standaloneImports = Array.from(
+  standaloneCode.matchAll(/\bfrom\s+["']([^"']+)["']/gu),
+  (match) => match[1],
+);
+for (const specifier of standaloneImports) {
+  if (specifier === "graphql" || specifier.startsWith("@apollo/client")) {
+    fail(`Standalone GraphQL entry unexpectedly imports ${specifier}.`);
+  }
+}
+
 const temporaryRoot = await mkdtemp(join(tmpdir(), "aion-chat-react-"));
 try {
   const packOutput = execFileSync(
@@ -138,6 +152,9 @@ try {
       import { createDirectAionA2ATransport } from "${packageName}/a2a";
       import { FakeAionChatTransport } from "${packageName}/testing";
       import { createApolloAionChatTransport } from "${packageName}/graphql";
+      import {
+        createStandaloneAionGraphQLClient,
+      } from "${packageName}/graphql/standalone";
 
       if (typeof AionChatView !== "object" &&
           typeof AionChatView !== "function") throw new Error("root export");
@@ -149,6 +166,9 @@ try {
       }
       if (typeof createApolloAionChatTransport !== "function") {
         throw new Error("graphql export");
+      }
+      if (typeof createStandaloneAionGraphQLClient !== "function") {
+        throw new Error("standalone graphql export");
       }
       if (!import.meta.resolve("${packageName}/styles.css").endsWith(".css")) {
         throw new Error("styles export");

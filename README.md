@@ -2,9 +2,9 @@
 
 An Aion-owned React component library for transport-neutral agent chat.
 
-The package is under active development and is not yet published. The first
-implementation milestone is an inline chat surface backed by fake streaming
-and a caller-owned Apollo Client.
+The package is under active development and is not yet published. It provides
+an inline chat surface with fake, direct A2A, caller-owned Apollo, and
+standalone GraphQL transports.
 
 See the living
 [feature specification](./specs/aion-chat-react-library-spec.md) for scope,
@@ -127,6 +127,41 @@ import {
 const client = useApolloClient();
 const transport = createApolloAionChatTransport({ client });
 ```
+
+## Standalone GraphQL integration
+
+Use the standalone client when a host does not already own an Apollo client.
+It uses native `fetch` for HTTP operations and opens a lazy `graphql-ws`
+connection only when a subscription starts. The same client can back chat and
+other checked-in GraphQL operations without creating duplicate sockets.
+
+```tsx
+import {
+  createStandaloneAionChatTransport,
+  createStandaloneAionGraphQLClient,
+} from "@terminal-research/aion-chat-react/graphql/standalone";
+
+const client = createStandaloneAionGraphQLClient({
+  organizationId,
+  httpUrl: "https://api.example/api/graphql",
+  webSocketUrl: "wss://api.example/ws/graphql",
+  getBearerToken: async () => getCurrentUserJwt(),
+});
+const transport = createStandaloneAionChatTransport({ client });
+```
+
+The client sends no cookies. Aion's current WebSocket authentication requires
+the bearer token on the upgrade URL; the client also sends the same value in
+GraphQL connection parameters. Server request logging must continue to omit
+query strings, and hosts must not log constructed socket URLs or tokens.
+
+Changing the value returned by `getBearerToken` does not reauthenticate an
+already-open socket. Call `await client.reconnect()` after a login or explicit
+credential transition, then let the next subscription open the new socket.
+Call `await client.dispose()` when the owning integration unmounts; repeated
+disposal is safe. Automatic reconnect attempts also re-read the token. Browser
+extension CSP, permissions, and content-script mounting remain deferred until
+there is a concrete extension host.
 
 Run `npm run check` to validate the library, packed artifact, and both example
 fixtures. The fixtures can also be run independently:

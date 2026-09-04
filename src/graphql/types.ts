@@ -1,5 +1,5 @@
 /** Exactly one selector must be populated for an Aion capability target. */
-export interface ApolloAionChatTarget {
+export interface AionChatGraphQLTarget {
   readonly agentAtName?: string;
   readonly agentEnvironmentId?: string;
   readonly agentIdentityId?: string;
@@ -8,7 +8,7 @@ export interface ApolloAionChatTarget {
 }
 
 /** Service parameters forwarded with an Aion GraphQL A2A request. */
-export interface ApolloAionChatServiceParameters {
+export interface AionChatGraphQLServiceParameters {
   readonly version?: string;
   readonly extensions?: readonly string[];
   readonly additional?: readonly {
@@ -18,19 +18,19 @@ export interface ApolloAionChatServiceParameters {
 }
 
 /** Variables for the scoped Aion A2A GraphQL subscription. */
-export interface ApolloAionChatVariables {
+export interface AionChatGraphQLVariables {
   readonly request: {
     readonly jsonrpc: "2.0";
     readonly id: string;
     readonly method: "SendStreamingMessage" | "SendMessage";
     readonly params: Readonly<Record<string, unknown>>;
   };
-  readonly target: ApolloAionChatTarget;
-  readonly serviceParameters?: ApolloAionChatServiceParameters;
+  readonly target: AionChatGraphQLTarget;
+  readonly serviceParameters?: AionChatGraphQLServiceParameters;
 }
 
 /** Minimal result shape selected by the Aion A2A GraphQL subscription. */
-export interface ApolloAionChatSubscriptionData {
+export interface AionChatGraphQLSubscriptionData {
   readonly a2aRpc?:
     | {
         readonly __typename: "A2AJsonRpcSuccessResponseGQL";
@@ -49,4 +49,16 @@ export interface ApolloAionChatSubscriptionData {
         };
       }
     | null;
+}
+
+/** Portable GraphQL error fields used by both client adapters. */
+export interface AionGraphQLError {
+  readonly message: string;
+  readonly [field: string]: unknown;
+}
+
+/** One GraphQL execution result from either supported client adapter. */
+export interface AionGraphQLResult<TData> {
+  readonly data?: TData | null;
+  readonly errors?: readonly AionGraphQLError[];
 }

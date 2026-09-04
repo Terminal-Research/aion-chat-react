@@ -8,12 +8,12 @@ import { AionChatView } from "../AionChatView";
 import { collectAionChatTransportTrace } from "../testing/transport-contract";
 import type { AionChatRequest } from "../transport";
 import {
-  buildApolloAionChatVariables,
   createApolloAionChatTransport,
 } from "./apollo-transport";
+import { buildAionChatGraphQLVariables } from "./chat-transport";
 import type {
-  ApolloAionChatSubscriptionData,
-  ApolloAionChatVariables,
+  AionChatGraphQLSubscriptionData,
+  AionChatGraphQLVariables,
 } from "./types";
 
 afterEach(cleanup);
@@ -49,17 +49,17 @@ const REQUEST: AionChatRequest = {
 };
 
 type Observer = {
-  next: (value: FetchResult<ApolloAionChatSubscriptionData>) => void;
+  next: (value: FetchResult<AionChatGraphQLSubscriptionData>) => void;
   error: (error: unknown) => void;
   complete: () => void;
 };
 
 function mockClient(
-  run: (variables: ApolloAionChatVariables, observer: Observer) => void,
+  run: (variables: AionChatGraphQLVariables, observer: Observer) => void,
 ) {
   const unsubscribe = vi.fn();
   const subscribe = vi.fn(
-    (options: { variables: ApolloAionChatVariables }) => ({
+    (options: { variables: AionChatGraphQLVariables }) => ({
       subscribe(observer: Observer) {
         run(options.variables, observer);
         return { unsubscribe };
@@ -81,7 +81,7 @@ function mockClient(
 
 describe("createApolloAionChatTransport", () => {
   it("encodes v0.3 text, URL file, and data parts", () => {
-    const variables = buildApolloAionChatVariables(
+    const variables = buildAionChatGraphQLVariables(
       REQUEST,
       "SendStreamingMessage",
       { distributionId: "distribution-1" },

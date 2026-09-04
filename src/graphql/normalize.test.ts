@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { normalizeApolloAionChatResponse } from "./normalize";
+import { normalizeAionChatGraphQLResponse } from "./normalize";
 
 function context() {
   let id = 0;
@@ -12,9 +12,9 @@ function context() {
   };
 }
 
-describe("normalizeApolloAionChatResponse", () => {
+describe("normalizeAionChatGraphQLResponse", () => {
   it("normalizes and completes a final Aion stream-delta artifact", () => {
-    const events = normalizeApolloAionChatResponse(
+    const events = normalizeAionChatGraphQLResponse(
       {
         a2aRpc: {
           __typename: "A2AJsonRpcSuccessResponseGQL",
@@ -65,7 +65,7 @@ describe("normalizeApolloAionChatResponse", () => {
   });
 
   it("retains status messages and authentication-required task state", () => {
-    const events = normalizeApolloAionChatResponse(
+    const events = normalizeAionChatGraphQLResponse(
       {
         a2aRpc: {
           __typename: "A2AJsonRpcSuccessResponseGQL",
@@ -108,7 +108,7 @@ describe("normalizeApolloAionChatResponse", () => {
       [-32010, "authentication_required"],
       [-32011, "access_denied"],
     ] as const) {
-      const events = normalizeApolloAionChatResponse(
+      const events = normalizeAionChatGraphQLResponse(
         {
           a2aRpc: {
             __typename: "A2AJsonRpcErrorResponseGQL",
