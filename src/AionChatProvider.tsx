@@ -48,6 +48,14 @@ export interface AionChatSendInput {
   readonly metadata?: Readonly<Record<string, unknown>>;
 }
 
+/** Candidate message exposed to a host before transport submission. */
+export interface AionChatBeforeSendContext {
+  readonly agent: ChatAgent;
+  readonly conversation: ChatConversationState;
+  readonly parts: readonly ChatPart[];
+  readonly metadata?: Readonly<Record<string, unknown>>;
+}
+
 /** Commands exposed by the headless Aion chat controller. */
 export interface AionChatControllerActions {
   readonly setAgent: (agent: ChatAgent | undefined) => void;
@@ -82,6 +90,8 @@ export interface AionChatProviderProps {
   readonly onRunStart?: (request: AionChatRequest) => void;
   readonly onRunEnd?: (state: ChatConversationState) => void;
   readonly onError?: (error: ChatError) => void;
+  /** Returns true when the host handled the candidate without transport. */
+  readonly onBeforeSend?: (context: AionChatBeforeSendContext) => boolean;
   readonly createId?: () => string;
   readonly now?: () => string;
 }
@@ -191,6 +201,7 @@ export function AionChatProvider({
   onRunStart,
   onRunEnd,
   onError,
+  onBeforeSend,
   createId = defaultCreateId,
   now = defaultNow,
 }: PropsWithChildren<AionChatProviderProps>) {
@@ -570,6 +581,17 @@ export function AionChatProvider({
       ) {
         return;
       }
+      if (
+        onBeforeSend?.({
+          agent,
+          conversation: conversationRef.current,
+          parts,
+          metadata: input?.metadata,
+        })
+      ) {
+        setDraft("");
+        return;
+      }
 
       const createdAt = now();
       const message: ChatMessage = {
@@ -592,7 +614,16 @@ export function AionChatProvider({
       }
       await execute(createId(), message, 1, input?.metadata);
     },
-    [agent, createId, draft, execute, now, setDraft, updateAttachments],
+    [
+      agent,
+      createId,
+      draft,
+      execute,
+      now,
+      onBeforeSend,
+      setDraft,
+      updateAttachments,
+    ],
   );
 
   const stop = useCallback(() => {

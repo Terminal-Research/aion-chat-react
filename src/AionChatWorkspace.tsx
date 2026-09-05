@@ -25,6 +25,8 @@ import type {
 import type {
   ChatAgent,
   ChatConversationState,
+  ChatMessage,
+  ChatPart,
   ContextId,
 } from "./model";
 import {
@@ -33,6 +35,19 @@ import {
 } from "./navigation/AionChatNavigator";
 import type { AionChatTransport } from "./transport";
 import { useAionAgentCatalog } from "./useAionAgentCatalog";
+
+/** Candidate text supplied to a host-owned local command handler. */
+export interface AionChatLocalCommandContext {
+  readonly text: string;
+  readonly agent: ChatAgent;
+  readonly conversation: ChatConversationState;
+}
+
+/** Local workspace action returned by a host-owned command handler. */
+export type AionChatLocalCommandResult =
+  | { readonly type: "handled" }
+  | { readonly type: "new-conversation" }
+  | { readonly type: "message"; readonly text: string };
 
 /** Configuration for the contained catalog, conversations, and chat view. */
 export interface AionChatWorkspaceProps
@@ -56,8 +71,49 @@ export interface AionChatWorkspaceProps
   readonly onRunStart?: AionChatProviderProps["onRunStart"];
   readonly onRunEnd?: AionChatProviderProps["onRunEnd"];
   readonly onError?: AionChatProviderProps["onError"];
+  /** Handles host-defined text commands before they reach the transport. */
+  readonly onLocalCommand?: (
+    context: AionChatLocalCommandContext,
+  ) => AionChatLocalCommandResult | undefined;
   readonly createId?: () => string;
   readonly now?: () => string;
+}
+
+function defaultCreateId(): string {
+  return globalThis.crypto.randomUUID();
+}
+
+function defaultNow(): string {
+  return new Date().toISOString();
+}
+
+function localMessage(
+  conversation: ChatConversationState,
+  text: string,
+  createId: () => string,
+  now: () => string,
+): ChatConversationState {
+  const message: ChatMessage = {
+    id: createId(),
+    role: "system",
+    parts: [{ type: "text", text }],
+    contextId: conversation.contextId,
+    createdAt: now(),
+  };
+  return {
+    ...conversation,
+    messages: [...conversation.messages, message],
+    transcript: [
+      ...conversation.transcript,
+      { type: "message", id: message.id },
+    ],
+  };
+}
+
+function commandText(parts: readonly ChatPart[]): string | undefined {
+  return parts.length === 1 && parts[0]?.type === "text"
+    ? parts[0].text.trim()
+    : undefined;
 }
 
 function configurationError(
@@ -100,6 +156,7 @@ export function AionChatWorkspace({
   onRunStart,
   onRunEnd,
   onError,
+  onLocalCommand,
   createId,
   now,
   className,
@@ -116,6 +173,8 @@ export function AionChatWorkspace({
     [],
   );
   const store = conversationStore ?? defaultStore;
+  const modelId = createId ?? defaultCreateId;
+  const currentTime = now ?? defaultNow;
   const catalogState = useAionAgentCatalog(fixedAgent ? undefined : catalog);
   const [selectedAgentId, setSelectedAgentId] = useState<string>();
   const [navigatorView, setNavigatorView] =
@@ -193,6 +252,33 @@ export function AionChatWorkspace({
     onConversationChange?.(state);
   };
 
+  const handleBeforeSend: AionChatProviderProps["onBeforeSend"] = (context) => {
+    const text = commandText(context.parts);
+    const result = text
+      ? onLocalCommand?.({
+          text,
+          agent: context.agent,
+          conversation: context.conversation,
+        })
+      : undefined;
+    if (!result) {
+      return false;
+    }
+    if (result.type === "new-conversation") {
+      createConversation();
+    } else if (result.type === "message") {
+      updateConversation(
+        localMessage(
+          context.conversation,
+          result.text,
+          modelId,
+          currentTime,
+        ),
+      );
+    }
+    return true;
+  };
+
   const removeConversation = async (contextId: string) => {
     const summary = conversations.summaries.find(
       (candidate) => candidate.contextId === contextId,
@@ -261,6 +347,7 @@ export function AionChatWorkspace({
             onRunStart={onRunStart}
             onRunEnd={onRunEnd}
             onError={onError}
+            onBeforeSend={onLocalCommand ? handleBeforeSend : undefined}
             createId={createId}
             now={now}
           >

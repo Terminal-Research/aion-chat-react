@@ -78,6 +78,28 @@ describe("AionChatProvider", () => {
     expect(result.current.state.draft).toBe("Do not send");
   });
 
+  it("lets a host consume a candidate before transport", async () => {
+    const transport = new FakeAionChatTransport(() => []);
+    const onBeforeSend = vi.fn(() => true);
+    const { result } = renderHook(() => useAionChat(), {
+      wrapper: createWrapper(transport, {
+        defaultDraft: "/help",
+        onBeforeSend,
+      }),
+    });
+
+    await act(async () => result.current.actions.send());
+
+    expect(onBeforeSend).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agent: AGENT,
+        parts: [{ type: "text", text: "/help" }],
+      }),
+    );
+    expect(transport.requests).toEqual([]);
+    expect(result.current.state.draft).toBe("");
+  });
+
   it("streams a draft through the transport into normalized state", async () => {
     const transport = new FakeAionChatTransport((request) => [
       {

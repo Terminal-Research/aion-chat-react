@@ -93,6 +93,7 @@ export type {
   AionChatControllerActions,
   AionChatControllerMeta,
   AionChatControllerState,
+  AionChatBeforeSendContext,
   AionChatProviderProps,
   AionChatSendInput,
 } from "./AionChatProvider";
@@ -163,7 +164,11 @@ export type {
   AionChatNavigatorView,
 } from "./navigation/AionChatNavigator";
 export { AionChatNavigator } from "./navigation/AionChatNavigator";
-export type { AionChatWorkspaceProps } from "./AionChatWorkspace";
+export type {
+  AionChatLocalCommandContext,
+  AionChatLocalCommandResult,
+  AionChatWorkspaceProps,
+} from "./AionChatWorkspace";
 export { AionChatWorkspace } from "./AionChatWorkspace";
 export type {
   AionNavigationLoadStatus,

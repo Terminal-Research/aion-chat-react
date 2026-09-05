@@ -3,6 +3,7 @@ import {
   fireEvent,
   render,
   screen,
+  within,
   waitFor,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -207,5 +208,42 @@ describe("AionChatWorkspace", () => {
     await waitFor(() => {
       expect(screen.queryByText("New conversation")).toBeNull();
     });
+  });
+
+  it("handles host commands without sending them to the agent", async () => {
+    const transport = new FakeAionChatTransport(() => []);
+    const onLocalCommand = vi.fn(({ text }: { text: string }) =>
+      text === "/clear"
+        ? { type: "new-conversation" as const }
+        : { type: "message" as const, text: "Local help" },
+    );
+    render(
+      <AionChatWorkspace
+        catalog={CATALOG}
+        transport={transport}
+        onLocalCommand={onLocalCommand}
+        createId={createIds()}
+      />,
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Status agent/u }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "New" }));
+    const composer = screen.getByRole("textbox", { name: "Chat message" });
+    fireEvent.change(composer, { target: { value: "/help" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+
+    expect(await within(screen.getByRole("log")).findByText("Local help"))
+      .toBeTruthy();
+    expect(transport.requests).toEqual([]);
+
+    fireEvent.change(composer, { target: { value: "/clear" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+
+    await waitFor(() => expect(onLocalCommand).toHaveBeenCalledTimes(2));
+    expect(transport.requests).toEqual([]);
+    expect(within(screen.getByRole("log")).queryByText("Local help"))
+      .toBeNull();
   });
 });
