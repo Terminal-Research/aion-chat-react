@@ -2,6 +2,7 @@ import {
   type PropsWithChildren,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -222,6 +223,12 @@ export function AionChatProvider({
     conversationId: conversation.id,
   });
 
+  useLayoutEffect(() => {
+    if (controlledConversation) {
+      conversationRef.current = controlledConversation;
+    }
+  }, [controlledConversation]);
+
   useEffect(() => {
     const uploadAbortControllers = uploadAbortControllersRef.current;
     mountedRef.current = true;
@@ -234,12 +241,6 @@ export function AionChatProvider({
       uploadAbortControllers.clear();
     };
   }, []);
-
-  useEffect(() => {
-    if (controlledConversation) {
-      conversationRef.current = controlledConversation;
-    }
-  }, [controlledConversation]);
 
   useEffect(() => {
     return () => {

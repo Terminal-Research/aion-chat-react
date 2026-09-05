@@ -1,5 +1,5 @@
-import { act, renderHook, waitFor } from "@testing-library/react";
-import type { PropsWithChildren } from "react";
+import { act, render, renderHook, waitFor } from "@testing-library/react";
+import { type PropsWithChildren, useEffect } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -7,7 +7,10 @@ import {
   type AionChatProviderProps,
 } from "./AionChatProvider";
 import { useAionChat } from "./hooks";
-import type { ChatConversationState } from "./model";
+import {
+  type ChatConversationState,
+  createChatConversationState,
+} from "./model";
 import type { AionChatRequest } from "./transport";
 import { FakeAionChatTransport } from "./testing/fake-transport";
 
@@ -291,6 +294,61 @@ describe("AionChatProvider", () => {
       contextId: "context-1",
       taskId: "task-remote",
     });
+  });
+
+  it("uses a newly committed conversation before consumer effects", async () => {
+    const first = {
+      ...createChatConversationState("conversation-1", AGENT),
+      contextId: "context-1",
+    };
+    const second = {
+      ...createChatConversationState("conversation-2", AGENT),
+      contextId: "context-2",
+    };
+    const transport = new FakeAionChatTransport((request) => [
+      {
+        event: {
+          type: "run.completed",
+          eventId: "event-complete-controlled",
+          requestId: request.requestId,
+          occurredAt: "2026-08-31T12:00:01.000Z",
+        },
+      },
+    ]);
+
+    function SendAfterCommit({ enabled }: { enabled: boolean }) {
+      const { actions } = useAionChat();
+      useEffect(() => {
+        if (enabled) {
+          void actions.send({ parts: [{ type: "text", text: "Continue" }] });
+        }
+      }, [actions, enabled]);
+      return null;
+    }
+
+    function Harness({
+      conversation,
+      send,
+    }: {
+      conversation: ChatConversationState;
+      send: boolean;
+    }) {
+      return (
+        <AionChatProvider
+          transport={transport}
+          defaultAgent={AGENT}
+          conversation={conversation}
+        >
+          <SendAfterCommit enabled={send} />
+        </AionChatProvider>
+      );
+    }
+
+    const view = render(<Harness conversation={first} send={false} />);
+    view.rerender(<Harness conversation={second} send />);
+
+    await waitFor(() => expect(transport.requests).toHaveLength(1));
+    expect(transport.requests[0]?.contextId).toBe("context-2");
   });
 
   it("stops observing a transport after unmount", async () => {
