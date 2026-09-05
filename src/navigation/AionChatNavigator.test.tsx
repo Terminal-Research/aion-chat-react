@@ -8,6 +8,7 @@ import {
   AionChatNavigator,
   type AionChatNavigatorView,
 } from "./AionChatNavigator";
+import { AionAgentList } from "./AionAgentList";
 
 const AGENT: AionAgentCatalogEntry = {
   agent: {
@@ -30,9 +31,46 @@ const SUMMARY: AionConversationSummary = {
   updatedAt: "2026-09-03T12:00:01.000Z",
 };
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 describe("AionChatNavigator", () => {
+  it("keys unsaved agents by their stable catalog identity", () => {
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    render(
+      <AionAgentList
+        entries={[
+          { ...AGENT, distributionId: "" },
+          {
+            ...AGENT,
+            agent: {
+              ...AGENT.agent,
+              id: "distribution-2",
+              title: "Writing agent",
+            },
+            identityId: "identity-2",
+            distributionId: "",
+          },
+        ]}
+        onSelectAgent={() => undefined}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: /Status agent/u }))
+      .toBeTruthy();
+    expect(screen.getByRole("button", { name: /Writing agent/u }))
+      .toBeTruthy();
+    expect(
+      consoleError.mock.calls.flat().some((value) =>
+        String(value).includes("same key"),
+      ),
+    ).toBe(false);
+  });
+
   it("moves through one panel and restores focus on Back", () => {
     function Harness() {
       const [view, setView] = useState<AionChatNavigatorView>("agents");

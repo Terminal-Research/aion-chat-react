@@ -68,7 +68,7 @@ export function AionAgentList({
           return (
             <div
               role="listitem"
-              key={entry.distributionId}
+              key={entry.agent.id}
             >
               <button
                 className="aion-chat__navigation-item"
