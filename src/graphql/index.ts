@@ -28,6 +28,7 @@ export type {
   AionChatGraphQLSubscriptionData,
   AionChatGraphQLTarget,
   AionChatGraphQLVariables,
+  AionChatJsonRpcError,
   AionGraphQLError,
   AionGraphQLResult,
 } from "./types";

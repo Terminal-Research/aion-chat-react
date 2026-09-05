@@ -276,6 +276,39 @@ describe("createApolloAionChatTransport", () => {
     });
   });
 
+  it("exposes JSON-RPC error data to a host observer", async () => {
+    const error = {
+      code: -32000,
+      message: "Credit admission denied.",
+      data: {
+        kind: "credit_admission_denied",
+        code: "insufficient_credits",
+      },
+    };
+    const mock = mockClient((_variables, observer) => {
+      observer.next({
+        data: {
+          a2aRpc: {
+            __typename: "A2AJsonRpcErrorResponseGQL",
+            jsonrpc: "2.0",
+            error,
+          },
+        },
+      });
+      observer.complete();
+    });
+    const onJsonRpcError = vi.fn();
+    const transport = createApolloAionChatTransport({
+      client: mock.client,
+      onJsonRpcError,
+    });
+
+    const trace = await collectAionChatTransportTrace(transport, REQUEST);
+
+    expect(onJsonRpcError).toHaveBeenCalledWith(error);
+    expect(JSON.stringify(trace)).not.toContain("insufficient_credits");
+  });
+
   it("fails when the stream closes without a terminal response", async () => {
     const mock = mockClient((_variables, observer) => {
       observer.next({

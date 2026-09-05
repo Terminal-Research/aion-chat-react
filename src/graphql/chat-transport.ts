@@ -16,6 +16,7 @@ import type {
   AionChatGraphQLSubscriptionData,
   AionChatGraphQLTarget,
   AionChatGraphQLVariables,
+  AionChatJsonRpcError,
   AionGraphQLResult,
 } from "./types";
 
@@ -33,6 +34,7 @@ export interface AionChatGraphQLTransportOptions {
   readonly createEventId?: () => string;
   readonly now?: () => string;
   readonly unaryFallback?: boolean;
+  readonly onJsonRpcError?: (error: AionChatJsonRpcError) => void;
 }
 
 function createEventId(): string {
@@ -209,6 +211,10 @@ async function* streamAionChatGraphQL(
         }
         if (!payload.data) {
           continue;
+        }
+        const response = payload.data.a2aRpc;
+        if (response?.__typename === "A2AJsonRpcErrorResponseGQL") {
+          options.onJsonRpcError?.(response.error);
         }
         const events = normalizeAionChatGraphQLResponse(payload.data, {
           requestId: request.requestId,

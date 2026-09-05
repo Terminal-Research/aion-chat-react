@@ -7,6 +7,7 @@ import type {
   AionChatGraphQLServiceParameters,
   AionChatGraphQLSubscriptionData,
   AionChatGraphQLTarget,
+  AionChatJsonRpcError,
 } from "./types";
 
 /** Options for chat over a caller-owned standalone GraphQL client. */
@@ -18,6 +19,8 @@ export interface StandaloneAionChatTransportOptions {
   readonly createEventId?: () => string;
   readonly now?: () => string;
   readonly unaryFallback?: boolean;
+  /** Observes raw JSON-RPC errors without retaining them in chat state. */
+  readonly onJsonRpcError?: (error: AionChatJsonRpcError) => void;
 }
 
 /** Creates chat transport over a caller-owned standalone GraphQL client. */
@@ -40,5 +43,6 @@ export function createStandaloneAionChatTransport(
     createEventId: options.createEventId,
     now: options.now,
     unaryFallback: options.unaryFallback,
+    onJsonRpcError: options.onJsonRpcError,
   });
 }

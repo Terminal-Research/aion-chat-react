@@ -11,6 +11,7 @@ import type {
   AionChatGraphQLSubscriptionData,
   AionChatGraphQLTarget,
   AionChatGraphQLVariables,
+  AionChatJsonRpcError,
 } from "./types";
 
 /** Options for the caller-owned Apollo Aion chat transport. */
@@ -22,6 +23,8 @@ export interface ApolloAionChatTransportOptions {
   readonly createEventId?: () => string;
   readonly now?: () => string;
   readonly unaryFallback?: boolean;
+  /** Observes raw JSON-RPC errors without retaining them in chat state. */
+  readonly onJsonRpcError?: (error: AionChatJsonRpcError) => void;
 }
 
 /** Creates an Aion chat transport around one caller-owned Apollo client. */
@@ -40,5 +43,6 @@ export function createApolloAionChatTransport(
     createEventId: options.createEventId,
     now: options.now,
     unaryFallback: options.unaryFallback,
+    onJsonRpcError: options.onJsonRpcError,
   });
 }

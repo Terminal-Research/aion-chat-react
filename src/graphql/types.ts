@@ -33,6 +33,13 @@ export interface AionChatGraphQLVariables {
   readonly serviceParameters?: AionChatGraphQLServiceParameters;
 }
 
+/** Raw JSON-RPC error exposed only to an integration-owned observer. */
+export interface AionChatJsonRpcError {
+  readonly code: number;
+  readonly message: string;
+  readonly data?: unknown;
+}
+
 /** Minimal result shape selected by the Aion A2A GraphQL subscription. */
 export interface AionChatGraphQLSubscriptionData {
   readonly a2aRpc?:
@@ -46,11 +53,7 @@ export interface AionChatGraphQLSubscriptionData {
         readonly __typename: "A2AJsonRpcErrorResponseGQL";
         readonly id?: unknown;
         readonly jsonrpc: string;
-        readonly error: {
-          readonly code: number;
-          readonly message: string;
-          readonly data?: unknown;
-        };
+        readonly error: AionChatJsonRpcError;
       }
     | null;
 }
