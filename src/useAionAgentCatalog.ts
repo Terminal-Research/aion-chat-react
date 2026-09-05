@@ -89,7 +89,7 @@ export function useAionAgentCatalog(
     state.catalog === catalog
       ? state
       : {
-          entries: [],
+          entries: catalog ? state.entries : [],
           status: catalog ? "loading" as const : "idle" as const,
         };
   return {

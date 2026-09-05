@@ -48,4 +48,59 @@ describe("useAionAgentCatalog", () => {
 
     expect(signal?.aborted).toBe(true);
   });
+
+  it("preserves loaded entries while a replacement catalog loads", async () => {
+    let resolveReplacement: (
+      entries: readonly AionAgentCatalogEntry[],
+    ) => void = () => undefined;
+    const initialCatalog: AionAgentCatalog = {
+      list: vi.fn().mockResolvedValue([ENTRY]),
+    };
+    const replacementEntry: AionAgentCatalogEntry = {
+      ...ENTRY,
+      agent: { ...ENTRY.agent, title: "Updated status agent" },
+    };
+    const replacementCatalog: AionAgentCatalog = {
+      list: vi.fn(
+        () =>
+          new Promise<readonly AionAgentCatalogEntry[]>((resolve) => {
+            resolveReplacement = resolve;
+          }),
+      ),
+    };
+    const { result, rerender } = renderHook(
+      ({ catalog }) => useAionAgentCatalog(catalog),
+      { initialProps: { catalog: initialCatalog } },
+    );
+
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    rerender({ catalog: replacementCatalog });
+
+    expect(result.current.status).toBe("loading");
+    expect(result.current.entries).toEqual([ENTRY]);
+
+    act(() => resolveReplacement([replacementEntry]));
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    expect(result.current.entries).toEqual([replacementEntry]);
+  });
+
+  it("clears loaded entries when the catalog is removed", async () => {
+    const catalog: AionAgentCatalog = {
+      list: vi.fn().mockResolvedValue([ENTRY]),
+    };
+    const initialProps: { currentCatalog?: AionAgentCatalog } = {
+      currentCatalog: catalog,
+    };
+    const { result, rerender } = renderHook(
+      ({ currentCatalog }: { currentCatalog?: AionAgentCatalog }) =>
+        useAionAgentCatalog(currentCatalog),
+      { initialProps },
+    );
+
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    rerender({ currentCatalog: undefined });
+
+    expect(result.current.status).toBe("idle");
+    expect(result.current.entries).toEqual([]);
+  });
 });
