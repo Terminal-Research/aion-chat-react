@@ -142,6 +142,7 @@ export function AionChatWorkspace({
     if (
       !startNewConversation ||
       !agent ||
+      agent.availability !== "available" ||
       (conversations.status !== "ready" &&
         conversations.status !== "error") ||
       conversations.conversation ||
@@ -177,7 +178,9 @@ export function AionChatWorkspace({
 
   const createConversation = () => {
     const contextId = conversations.createConversation();
-    onContextChange?.(contextId);
+    if (contextId) {
+      onContextChange?.(contextId);
+    }
   };
 
   const selectConversation = (contextId: string) => {
@@ -228,6 +231,7 @@ export function AionChatWorkspace({
           hasMoreConversations={conversations.hasMoreConversations}
           conversationsError={conversations.error}
           showBack={!fixedAgent}
+          newConversationDisabled={agent?.availability !== "available"}
           onSelectAgent={selectAgent}
           onBack={returnToAgents}
           onNewConversation={createConversation}

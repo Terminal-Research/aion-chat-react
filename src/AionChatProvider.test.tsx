@@ -58,6 +58,26 @@ describe("AionChatProvider", () => {
     expect(result.current.meta.canSend).toBe(false);
   });
 
+  it("does not send through an unavailable agent", async () => {
+    const transport = new FakeAionChatTransport(() => []);
+    const { result } = renderHook(() => useAionChat(), {
+      wrapper: createWrapper(transport, {
+        defaultAgent: {
+          ...AGENT,
+          availability: "unavailable",
+          unavailableReason: "Deployment is offline.",
+        },
+        defaultDraft: "Do not send",
+      }),
+    });
+
+    expect(result.current.meta.canSend).toBe(false);
+    await act(async () => result.current.actions.send());
+
+    expect(transport.requests).toEqual([]);
+    expect(result.current.state.draft).toBe("Do not send");
+  });
+
   it("streams a draft through the transport into normalized state", async () => {
     const transport = new FakeAionChatTransport((request) => [
       {

@@ -119,6 +119,22 @@ describe("AionChatWorkspace", () => {
     ).toBeTruthy();
   });
 
+  it("disables new conversations for a fixed unavailable agent", async () => {
+    render(
+      <AionChatWorkspace
+        fixedAgent={{
+          id: "distribution-1",
+          title: "Status agent",
+          availability: "unavailable",
+        }}
+        transport={new FakeAionChatTransport(() => [])}
+      />,
+    );
+
+    expect(await screen.findByRole("button", { name: "New" }))
+      .toHaveProperty("disabled", true);
+  });
+
   it("confirms before removing local conversation history", async () => {
     const agent = {
       id: "distribution-1",

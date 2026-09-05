@@ -348,7 +348,7 @@ export function useAionConversations({
   ]);
 
   const createConversation = useCallback(() => {
-    if (!agent) {
+    if (!agent || agent.availability !== "available") {
       return undefined;
     }
     const contextId = createId();

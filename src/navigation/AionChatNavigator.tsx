@@ -29,6 +29,7 @@ export interface AionChatNavigatorProps
   readonly hasMoreConversations?: boolean;
   readonly conversationsError?: Error;
   readonly showBack?: boolean;
+  readonly newConversationDisabled?: boolean;
   readonly onSelectAgent: (entry: AionAgentCatalogEntry) => void;
   readonly onBack: () => void;
   readonly onNewConversation: () => void;
@@ -55,6 +56,7 @@ export function AionChatNavigator({
   hasMoreConversations,
   conversationsError,
   showBack = true,
+  newConversationDisabled = false,
   onSelectAgent,
   onBack,
   onNewConversation,
@@ -157,6 +159,7 @@ export function AionChatNavigator({
               ref={showBack ? undefined : conversationFocusRef}
               className="aion-chat__navigator-new"
               type="button"
+              disabled={newConversationDisabled}
               onClick={onNewConversation}
             >
               <PlusIcon aria-hidden="true" />

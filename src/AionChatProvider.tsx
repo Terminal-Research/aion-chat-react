@@ -339,6 +339,7 @@ export function AionChatProvider({
       if (
         !attachmentUploader ||
         !agent ||
+        agent.availability !== "available" ||
         abortRef.current ||
         files.length === 0
       ) {
@@ -411,7 +412,11 @@ export function AionChatProvider({
       attempt: number,
       metadata?: Readonly<Record<string, unknown>>,
     ) => {
-      if (!agent || abortRef.current) {
+      if (
+        !agent ||
+        agent.availability !== "available" ||
+        abortRef.current
+      ) {
         return;
       }
 
@@ -557,7 +562,12 @@ export function AionChatProvider({
             : []),
           ...uploadedAttachments.map(toFilePart),
         ];
-      if (!agent || parts.length === 0 || abortRef.current) {
+      if (
+        !agent ||
+        agent.availability !== "available" ||
+        parts.length === 0 ||
+        abortRef.current
+      ) {
         return;
       }
 
@@ -639,6 +649,7 @@ export function AionChatProvider({
         isUploading,
         canSend: Boolean(
           agent &&
+            agent.availability === "available" &&
             !isRunning &&
             !isUploading &&
             !hasFailedAttachment &&
@@ -646,7 +657,8 @@ export function AionChatProvider({
         ),
         canRetry: Boolean(
           conversation.activeRun?.status === "failed" &&
-          conversation.activeRun.error?.retryable,
+          conversation.activeRun.error?.retryable &&
+          agent?.availability === "available",
         ),
       },
     }),

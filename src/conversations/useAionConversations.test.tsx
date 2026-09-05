@@ -26,6 +26,11 @@ const SECOND_AGENT: ChatAgent = {
   title: "Writing agent",
 };
 
+const UNAVAILABLE_AGENT: ChatAgent = {
+  ...FIRST_AGENT,
+  availability: "unavailable",
+};
+
 function withMessage(
   conversation: ChatConversationState,
 ): ChatConversationState {
@@ -82,6 +87,27 @@ describe("useAionConversations", () => {
       const saved = await store.load("distribution-1", "context-1");
       expect(saved?.title).toBe("Daily status");
     });
+  });
+
+  it("does not create a context for an unavailable agent", async () => {
+    const store = createInMemoryAionConversationStore();
+    const { result } = renderHook(() =>
+      useAionConversations({
+        store,
+        agent: UNAVAILABLE_AGENT,
+        createId: () => "context-1",
+      }),
+    );
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+
+    let contextId: string | undefined;
+    act(() => {
+      contextId = result.current.createConversation();
+    });
+
+    expect(contextId).toBeUndefined();
+    expect(result.current.summaries).toEqual([]);
+    await expect(store.load(FIRST_AGENT.id, "context-1")).resolves.toBeNull();
   });
 
   it("partitions history when the selected agent changes", async () => {
