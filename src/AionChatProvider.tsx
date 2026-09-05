@@ -19,6 +19,7 @@ import {
   type ChatFilePart,
   type ChatMessage,
   type ChatPart,
+  type ChatTask,
   createChatConversationState,
 } from "./model";
 import { reduceChatConversation } from "./reducer";
@@ -158,13 +159,18 @@ function toFilePart(
 function findContinuationTaskId(
   state: ChatConversationState,
 ): string | undefined {
-  return [...state.turns]
+  const canContinue = (task: ChatTask | undefined) =>
+    task?.metadata?.aionChatSyntheticTaskId !== true &&
+    (task?.status.state === "input-required" ||
+      task?.status.state === "auth-required");
+  const fromTurn = [...state.turns]
     .reverse()
     .flatMap((turn) => [...turn.taskIds].reverse())
-    .find((taskId) => {
-      const taskState = state.tasks[taskId]?.status.state;
-      return taskState === "input-required" || taskState === "auth-required";
-    });
+    .find((taskId) => canContinue(state.tasks[taskId]));
+  if (fromTurn) {
+    return fromTurn;
+  }
+  return Object.values(state.tasks).find(canContinue)?.id;
 }
 
 /** Provides transport-backed normalized state to headless chat consumers. */

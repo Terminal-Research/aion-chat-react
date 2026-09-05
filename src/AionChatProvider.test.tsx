@@ -7,6 +7,7 @@ import {
   type AionChatProviderProps,
 } from "./AionChatProvider";
 import { useAionChat } from "./hooks";
+import type { ChatConversationState } from "./model";
 import type { AionChatRequest } from "./transport";
 import { FakeAionChatTransport } from "./testing/fake-transport";
 
@@ -244,6 +245,51 @@ describe("AionChatProvider", () => {
     expect(requests[1]).toMatchObject({
       contextId: "context-1",
       taskId: "task-1",
+    });
+  });
+
+  it("continues a turnless remote input-required task", async () => {
+    const conversation: ChatConversationState = {
+      id: "context-1",
+      agent: AGENT,
+      contextId: "context-1",
+      turns: [],
+      messages: [],
+      transcript: [{ type: "task", id: "task-remote" }],
+      tasks: {
+        "task-remote": {
+          id: "task-remote",
+          contextId: "context-1",
+          status: { state: "input-required" },
+          history: [],
+          artifactIds: [],
+        },
+      },
+      artifacts: {},
+      seenEventIds: {},
+    };
+    const transport = new FakeAionChatTransport((request) => [
+      {
+        event: {
+          type: "run.completed",
+          eventId: "event-complete-remote",
+          requestId: request.requestId,
+          occurredAt: "2026-08-31T12:00:01.000Z",
+        },
+      },
+    ]);
+    const { result } = renderHook(() => useAionChat(), {
+      wrapper: createWrapper(transport, {
+        conversation,
+        defaultDraft: "Project A",
+      }),
+    });
+
+    await act(async () => result.current.actions.send());
+
+    expect(transport.requests[0]).toMatchObject({
+      contextId: "context-1",
+      taskId: "task-remote",
     });
   });
 

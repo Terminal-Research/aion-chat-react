@@ -81,6 +81,54 @@ describe("Aion conversation directory normalization", () => {
     ]);
   });
 
+  it("uses a persisted message task ID for a resumable context", () => {
+    const conversation = normalizeAionRemoteConversation(
+      {
+        contextId: "context-1",
+        history: [],
+        artifacts: [],
+        status: {
+          state: "TASK_STATE_INPUT_REQUIRED",
+          message: {
+            messageId: "message-1",
+            taskId: "task-1",
+            role: "ROLE_AGENT",
+            parts: [{ text: "Which project?" }],
+          },
+        },
+      },
+      AGENT,
+      "context-1",
+      "2026-09-03T12:00:00.000Z",
+      () => "generated-1",
+    );
+
+    expect(conversation.tasks["task-1"]).toMatchObject({
+      id: "task-1",
+      contextId: "context-1",
+      status: { state: "input-required" },
+    });
+    expect(conversation.tasks["aion-context:context-1"]).toBeUndefined();
+  });
+
+  it("marks fallback task IDs as unsuitable for continuation", () => {
+    const conversation = normalizeAionRemoteConversation(
+      {
+        contextId: "context-1",
+        history: [],
+        artifacts: [],
+        status: { state: "TASK_STATE_INPUT_REQUIRED" },
+      },
+      AGENT,
+      "context-1",
+      "2026-09-03T12:00:00.000Z",
+      () => "generated-1",
+    );
+
+    expect(conversation.tasks["aion-context:context-1"]?.metadata)
+      .toEqual({ aionChatSyntheticTaskId: true });
+  });
+
   it("maps protocol and transport failures to redaction-safe errors", () => {
     expect(() =>
       aionConversationDirectoryResult(

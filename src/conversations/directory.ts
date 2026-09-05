@@ -222,6 +222,29 @@ function appendUniqueMessages(
     : history;
 }
 
+function nonEmptyString(value: unknown): string | undefined {
+  return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+function messageTaskId(value: unknown): string | undefined {
+  const message = record(value);
+  return message
+    ? nonEmptyString(field(message, "taskId", "task_id"))
+    : undefined;
+}
+
+function remoteTaskId(
+  conversation: UnknownRecord,
+  history: readonly unknown[],
+  status: UnknownRecord,
+): string | undefined {
+  return (
+    nonEmptyString(field(conversation, "taskId", "task_id")) ??
+    messageTaskId(status.message) ??
+    [...history].reverse().map(messageTaskId).find(Boolean)
+  );
+}
+
 /** Normalizes the raw GetContext result into renderer-ready chat state. */
 export function normalizeAionRemoteConversation(
   value: unknown,
@@ -236,17 +259,19 @@ export function normalizeAionRemoteConversation(
     : undefined;
   const history = conversation?.history;
   const artifacts = conversation?.artifacts;
-  const status = conversation?.status;
+  const status = record(conversation?.status);
   if (
+    !conversation ||
     contextId !== requestedContextId ||
     !Array.isArray(history) ||
     !Array.isArray(artifacts) ||
-    !record(status)
+    !status
   ) {
     throw invalidResponse();
   }
 
-  const taskId = `aion-context:${contextId}`;
+  const persistedTaskId = remoteTaskId(conversation, history, status);
+  const taskId = persistedTaskId ?? `aion-context:${contextId}`;
   const events = normalizeAionResponse(
     {
       kind: "task",
@@ -255,6 +280,9 @@ export function normalizeAionRemoteConversation(
       history,
       artifacts,
       status,
+      metadata: persistedTaskId
+        ? undefined
+        : { aionChatSyntheticTaskId: true },
     },
     {
       requestId: taskId,
