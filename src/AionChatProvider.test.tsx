@@ -187,6 +187,29 @@ describe("AionChatProvider", () => {
     });
   });
 
+  it("fails a run when its transport ends without a terminal event", async () => {
+    const transport = new FakeAionChatTransport(() => []);
+    const onError = vi.fn();
+    const { result } = renderHook(() => useAionChat(), {
+      wrapper: createWrapper(transport, {
+        defaultDraft: "Start.",
+        onError,
+      }),
+    });
+
+    await act(async () => result.current.actions.send());
+
+    expect(result.current.state.conversation.activeRun).toMatchObject({
+      status: "failed",
+      error: { code: "incomplete_a2a_stream", retryable: true },
+    });
+    expect(onError).toHaveBeenCalledWith({
+      code: "incomplete_a2a_stream",
+      message: "The A2A stream closed before a terminal response.",
+      retryable: true,
+    });
+  });
+
   it("passes input-required task coordinates into the next request", async () => {
     const requests: AionChatRequest[] = [];
     const transport = new FakeAionChatTransport((request) => {

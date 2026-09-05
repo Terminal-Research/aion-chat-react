@@ -276,6 +276,45 @@ describe("createApolloAionChatTransport", () => {
     });
   });
 
+  it("fails when the stream closes without a terminal response", async () => {
+    const mock = mockClient((_variables, observer) => {
+      observer.next({
+        data: {
+          a2aRpc: {
+            __typename: "A2AJsonRpcSuccessResponseGQL",
+            jsonrpc: "2.0",
+            result: {
+              kind: "TaskArtifactUpdateEvent",
+              contextId: "context-1",
+              taskId: "task-1",
+              append: true,
+              lastChunk: false,
+              artifact: {
+                artifactId: "aion:stream-delta",
+                parts: [{ kind: "text", text: "Partial" }],
+              },
+            },
+          },
+        },
+      });
+      observer.complete();
+    });
+    const transport = createApolloAionChatTransport({
+      client: mock.client,
+      createEventId: createIds(),
+    });
+
+    const trace = await collectAionChatTransportTrace(transport, REQUEST);
+
+    expect(trace.events.map((event) => event.type)).toEqual([
+      "artifact.updated",
+      "run.failed",
+    ]);
+    expect(trace.events.at(-1)).toMatchObject({
+      error: { code: "incomplete_a2a_stream", retryable: true },
+    });
+  });
+
   it("unsubscribes immediately when the controller aborts", async () => {
     const mock = mockClient(() => undefined);
     const transport = createApolloAionChatTransport({ client: mock.client });

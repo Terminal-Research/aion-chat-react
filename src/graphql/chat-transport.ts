@@ -1,4 +1,7 @@
-import type { ChatTransportEvent } from "../events";
+import {
+  type ChatTransportEvent,
+  isTerminalChatTransportEvent,
+} from "../events";
 import type { ChatAgent, ChatError, ChatPart } from "../model";
 import type {
   AionChatRequest,
@@ -215,6 +218,9 @@ async function* streamAionChatGraphQL(
         });
         for (const event of events) {
           yield event;
+          if (isTerminalChatTransportEvent(event)) {
+            return;
+          }
         }
       }
     } catch (error) {
@@ -234,7 +240,20 @@ async function* streamAionChatGraphQL(
       }
     }
 
+    if (signal.aborted) {
+      return;
+    }
     if (!retryUnary) {
+      yield failedEvent(
+        request,
+        {
+          code: "incomplete_a2a_stream",
+          message: "The A2A stream closed before a terminal response.",
+          retryable: true,
+        },
+        eventId,
+        timestamp,
+      );
       return;
     }
   }

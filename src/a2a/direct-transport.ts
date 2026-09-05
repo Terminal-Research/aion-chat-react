@@ -1,4 +1,7 @@
-import type { ChatTransportEvent } from "../events";
+import {
+  type ChatTransportEvent,
+  isTerminalChatTransportEvent,
+} from "../events";
 import type { ChatError, ChatPart } from "../model";
 import type {
   AionChatRequest,
@@ -522,32 +525,6 @@ function normalizePayload(
   return events;
 }
 
-function isTerminal(event: ChatTransportEvent): boolean {
-  if (
-    event.type === "run.completed" ||
-    event.type === "run.failed" ||
-    event.type === "run.canceled"
-  ) {
-    return true;
-  }
-  if (
-    event.type !== "task.status-changed" &&
-    event.type !== "task.received"
-  ) {
-    return false;
-  }
-  const state =
-    event.type === "task.received" ? event.task.status.state : event.state;
-  return [
-    "input-required",
-    "auth-required",
-    "completed",
-    "failed",
-    "canceled",
-    "rejected",
-  ].includes(state);
-}
-
 async function resolveAgentCard(
   options: DirectAionA2AConnectionOptions,
   fetcher: typeof globalThis.fetch,
@@ -683,7 +660,6 @@ async function* directStream(
       throw httpError(response);
     }
 
-    let terminal = false;
     for await (const payload of responsePayloads(response, signal)) {
       const context = normalizationContext(request, createEventId, now);
       for (const event of normalizePayload(
@@ -691,20 +667,17 @@ async function* directStream(
         agentInterface.protocolBinding,
         context,
       )) {
-        terminal = isTerminal(event);
         yield event;
-        if (terminal) {
+        if (isTerminalChatTransportEvent(event)) {
           return;
         }
       }
     }
-    if (!terminal) {
-      throw transportError(
-        "incomplete_a2a_stream",
-        "The A2A stream closed before a terminal response.",
-        true,
-      );
-    }
+    throw transportError(
+      "incomplete_a2a_stream",
+      "The A2A stream closed before a terminal response.",
+      true,
+    );
   } catch (error) {
     if (signal.aborted) {
       return;

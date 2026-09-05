@@ -12,6 +12,15 @@ import type {
   TurnId,
 } from "./model";
 
+const TERMINAL_TASK_STATES: ReadonlySet<ChatTaskState> = new Set([
+  "input-required",
+  "auth-required",
+  "completed",
+  "failed",
+  "canceled",
+  "rejected",
+]);
+
 interface ChatTransportEventBase {
   readonly eventId: EventId;
   readonly requestId: RequestId;
@@ -94,3 +103,25 @@ export type ChatTransportEvent =
   | ChatRunCompletedEvent
   | ChatRunFailedEvent
   | ChatRunCanceledEvent;
+
+/** Whether an event ends the request and releases its active run. */
+export function isTerminalChatTransportEvent(
+  event: ChatTransportEvent,
+): boolean {
+  if (
+    event.type === "run.completed" ||
+    event.type === "run.failed" ||
+    event.type === "run.canceled"
+  ) {
+    return true;
+  }
+  if (
+    event.type !== "task.received" &&
+    event.type !== "task.status-changed"
+  ) {
+    return false;
+  }
+  const state =
+    event.type === "task.received" ? event.task.status.state : event.state;
+  return TERMINAL_TASK_STATES.has(state);
+}

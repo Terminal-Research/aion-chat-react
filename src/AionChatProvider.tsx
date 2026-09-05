@@ -8,7 +8,7 @@ import {
 } from "react";
 
 import type { AionAttachmentUploader } from "./attachments";
-import type { ChatTransportEvent } from "./events";
+import { isTerminalChatTransportEvent } from "./events";
 import { AionChatContext } from "./controller-context";
 import {
   type AttachmentId,
@@ -90,34 +90,6 @@ function defaultCreateId(): string {
 
 function defaultNow(): string {
   return new Date().toISOString();
-}
-
-function isTerminalEvent(event: ChatTransportEvent): boolean {
-  if (
-    event.type === "run.completed" ||
-    event.type === "run.failed" ||
-    event.type === "run.canceled"
-  ) {
-    return true;
-  }
-
-  if (
-    event.type === "task.received" ||
-    event.type === "task.status-changed"
-  ) {
-    const state =
-      event.type === "task.received" ? event.task.status.state : event.state;
-    return [
-      "input-required",
-      "auth-required",
-      "completed",
-      "failed",
-      "canceled",
-      "rejected",
-    ].includes(state);
-  }
-
-  return false;
 }
 
 function toChatError(error: unknown): ChatError {
@@ -480,7 +452,7 @@ export function AionChatProvider({
           if (event.type === "run.failed") {
             onError?.(event.error);
           }
-          terminal = isTerminalEvent(event);
+          terminal = isTerminalChatTransportEvent(event);
           if (terminal) {
             break;
           }
@@ -500,14 +472,21 @@ export function AionChatProvider({
             }),
           );
         } else if (!terminal) {
+          const error: ChatError = {
+            code: "incomplete_a2a_stream",
+            message: "The A2A stream closed before a terminal response.",
+            retryable: true,
+          };
           updateConversation((state) =>
             reduceChatConversation(state, {
-              type: "run.completed",
+              type: "run.failed",
               eventId: createId(),
               requestId,
               occurredAt: now(),
+              error,
             }),
           );
+          onError?.(error);
         }
       } catch (error) {
         if (!mountedRef.current) {
