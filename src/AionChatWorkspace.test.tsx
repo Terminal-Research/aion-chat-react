@@ -175,4 +175,37 @@ describe("AionChatWorkspace", () => {
     await waitFor(() => expect(confirmRemove).toHaveBeenCalledTimes(1));
     expect(await store.load("distribution-1", "context-1")).not.toBeNull();
   });
+
+  it("allows local history removal when a remote directory is present", async () => {
+    const confirmRemove = vi.fn().mockResolvedValue(true);
+    const directory: AionConversationDirectory = {
+      list: () => Promise.resolve({ contextIds: [] }),
+      load: () => Promise.reject(new Error("Not listed")),
+    };
+    render(
+      <AionChatWorkspace
+        fixedAgent={{
+          id: "distribution-1",
+          title: "Status agent",
+          availability: "available",
+        }}
+        conversationDirectory={directory}
+        transport={new FakeAionChatTransport(() => [])}
+        confirmRemoveConversation={confirmRemove}
+        createId={() => "context-new"}
+      />,
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "New" }));
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "Remove New conversation",
+      }),
+    );
+
+    await waitFor(() => expect(confirmRemove).toHaveBeenCalledTimes(1));
+    await waitFor(() => {
+      expect(screen.queryByText("New conversation")).toBeNull();
+    });
+  });
 });

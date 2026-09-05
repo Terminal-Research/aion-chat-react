@@ -154,6 +154,23 @@ function replaceSummary(
   ]);
 }
 
+function acknowledgeRemoteContexts(
+  optimisticByAgent: Map<string, Set<ContextId>>,
+  agentId: string,
+  contextIds: readonly ContextId[],
+): void {
+  const optimistic = optimisticByAgent.get(agentId);
+  if (!optimistic) {
+    return;
+  }
+  for (const contextId of contextIds) {
+    optimistic.delete(contextId);
+  }
+  if (optimistic.size === 0) {
+    optimisticByAgent.delete(agentId);
+  }
+}
+
 /** Coordinates local summaries, selection, and safe snapshot persistence. */
 export function useAionConversations({
   store,
@@ -310,6 +327,11 @@ export function useAionConversations({
         ) {
           return;
         }
+        acknowledgeRemoteContexts(
+          optimisticContextsRef.current,
+          agent.id,
+          remoteContextIds,
+        );
         updateState(() => ({
           agentId: agent.id,
           summaries,
@@ -403,7 +425,12 @@ export function useAionConversations({
       }));
       try {
         await mutationQueueRef.current.catch(() => undefined);
-        const remoteConversation = directory
+        const optimistic = optimisticContextsRef.current
+          .get(agent.id)
+          ?.has(contextId);
+        const listedRemotely = stateRef.current.remoteContextIds
+          .includes(contextId);
+        const remoteConversation = directory && (!optimistic || listedRemotely)
           ? await directory.load(agent, contextId, {
               signal: abortController.signal,
             })
@@ -553,6 +580,11 @@ export function useAionConversations({
       ) {
         return;
       }
+      acknowledgeRemoteContexts(
+        optimisticContextsRef.current,
+        agent.id,
+        page.contextIds,
+      );
       updateState((value) => {
         const remoteContextIds = [
           ...value.remoteContextIds,
@@ -597,6 +629,7 @@ export function useAionConversations({
       }
       try {
         await enqueueMutation(() => store.remove(agent.id, contextId));
+        optimisticContextsRef.current.get(agent.id)?.delete(contextId);
         if (
           !mountedRef.current ||
           agent.id !== stateRef.current.agentId

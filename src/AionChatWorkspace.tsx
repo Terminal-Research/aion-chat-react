@@ -236,13 +236,9 @@ export function AionChatWorkspace({
           onBack={returnToAgents}
           onNewConversation={createConversation}
           onSelectConversation={selectConversation}
-          onRemoveConversation={
-            conversationDirectory
-              ? undefined
-              : (contextId) => {
-                  void removeConversation(contextId);
-                }
-          }
+          onRemoveConversation={(contextId) => {
+            void removeConversation(contextId);
+          }}
           onRetryCatalog={catalogState.reload}
           onRetryConversations={conversations.reload}
           onLoadMoreConversations={() => {

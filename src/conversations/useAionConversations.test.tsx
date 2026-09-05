@@ -9,6 +9,7 @@ import {
 import type {
   AionConversationDirectory,
   AionConversationDirectoryListOptions,
+  AionConversationDirectoryLoadOptions,
 } from "./directory";
 import { createInMemoryAionConversationStore } from "./memory-store";
 import { createAionConversationSnapshot } from "./snapshot";
@@ -202,6 +203,56 @@ describe("useAionConversations", () => {
     expect(load).toHaveBeenCalledTimes(1);
     expect(result.current.conversation?.contextId).toBe("context-2");
     expect(await store.load("distribution-1", "context-2")).not.toBeNull();
+  });
+
+  it("reopens a new context locally until the directory lists it", async () => {
+    const store = createInMemoryAionConversationStore();
+    let remoteContextIds: readonly string[] = [];
+    let observedLoadSignal: AbortSignal | undefined;
+    const load = vi.fn(
+      (
+        _: ChatAgent,
+        contextId: string,
+        options?: AionConversationDirectoryLoadOptions,
+      ) => {
+        observedLoadSignal = options?.signal;
+        return Promise.resolve(remoteConversation(contextId));
+      },
+    );
+    const directory: AionConversationDirectory = {
+      list: () => Promise.resolve({ contextIds: remoteContextIds }),
+      load,
+    };
+    const { result } = renderHook(() =>
+      useAionConversations({
+        store,
+        directory,
+        agent: FIRST_AGENT,
+        createId: () => "context-new",
+      }),
+    );
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+
+    act(() => {
+      result.current.createConversation();
+      result.current.clearSelection();
+    });
+    await act(async () => result.current.selectConversation("context-new"));
+
+    expect(load).not.toHaveBeenCalled();
+    expect(result.current.conversation?.contextId).toBe("context-new");
+
+    remoteContextIds = ["context-new"];
+    act(() => result.current.reload());
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    await act(async () => result.current.selectConversation("context-new"));
+
+    expect(load).toHaveBeenCalledTimes(1);
+    expect(load.mock.calls[0]?.slice(0, 2)).toEqual([
+      FIRST_AGENT,
+      "context-new",
+    ]);
+    expect(observedLoadSignal).toBeInstanceOf(AbortSignal);
   });
 
   it("loads remote context pages in order", async () => {
