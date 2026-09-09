@@ -34,6 +34,8 @@ export interface AionChatComposerProps
   readonly value: string;
   readonly status: AionChatComposerStatus;
   readonly canSend: boolean;
+  /** Visible explanation when the composer is restricted to history access. */
+  readonly readOnlyReason?: string;
   readonly attachments: readonly ChatAttachmentDraft[];
   readonly attachmentInputProps?: AionChatAttachmentInputProps;
   readonly onChange: (value: string) => void;
@@ -60,6 +62,8 @@ export function AionChatComposer({
   value,
   status,
   canSend,
+  readOnly = false,
+  readOnlyReason,
   attachments,
   attachmentInputProps,
   onChange,
@@ -76,6 +80,8 @@ export function AionChatComposer({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isRunning = status === "running";
   const isUploading = status === "uploading";
+  const attachmentInputDisabled =
+    readOnly || attachmentInputProps?.disabled || status !== "idle";
 
   useLayoutEffect(() => {
     const textarea = textareaRef.current;
@@ -102,6 +108,7 @@ export function AionChatComposer({
     props.onKeyDown?.(event);
     if (
       event.defaultPrevented ||
+      readOnly ||
       event.key !== "Enter" ||
       event.shiftKey ||
       event.nativeEvent.isComposing ||
@@ -115,12 +122,16 @@ export function AionChatComposer({
     }
   };
 
-  const selectAttachments = () => fileInputRef.current?.click();
+  const selectAttachments = () => {
+    if (!readOnly) {
+      fileInputRef.current?.click();
+    }
+  };
 
   const onAttachmentChange = (event: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.currentTarget.files ?? []);
     event.currentTarget.value = "";
-    if (files.length > 0) {
+    if (!readOnly && files.length > 0) {
       onSelectAttachments?.(files);
       focusInput();
     }
@@ -130,9 +141,15 @@ export function AionChatComposer({
     <form
       className="aion-chat__composer"
       data-composer-status={status}
+      data-read-only={readOnly || undefined}
       aria-busy={status !== "idle"}
       onSubmit={submit}
     >
+      {readOnly && readOnlyReason ? (
+        <p className="aion-chat__composer-read-only" role="status">
+          {readOnlyReason}
+        </p>
+      ) : null}
       {attachments.length > 0 && (
         <div
           className="aion-chat__composer-attachments"
@@ -156,6 +173,7 @@ export function AionChatComposer({
                 className="aion-chat__composer-remove"
                 type="button"
                 aria-label={`Remove ${attachment.file.name}`}
+                disabled={readOnly}
                 onClick={() => {
                   onRemoveAttachment(attachment.id);
                   focusInput();
@@ -182,18 +200,14 @@ export function AionChatComposer({
               type="file"
               tabIndex={-1}
               multiple={attachmentInputProps?.multiple ?? true}
-              disabled={
-                attachmentInputProps?.disabled || status !== "idle"
-              }
+              disabled={attachmentInputDisabled}
               aria-hidden="true"
               onChange={onAttachmentChange}
             />
             <button
               className="aion-chat__composer-secondary-action"
               type="button"
-              disabled={
-                attachmentInputProps?.disabled || status !== "idle"
-              }
+              disabled={attachmentInputDisabled}
               aria-label="Attach files"
               onClick={selectAttachments}
             >
@@ -210,13 +224,18 @@ export function AionChatComposer({
           value={value}
           placeholder={placeholder}
           aria-label="Chat message"
+          readOnly={readOnly}
           rows={2}
-          onChange={(event) => onChange(event.currentTarget.value)}
+          onChange={(event) => {
+            if (!readOnly) {
+              onChange(event.currentTarget.value);
+            }
+          }}
           onKeyDown={onKeyDown}
         />
-        {children && (
+        {children && !readOnly ? (
           <div className="aion-chat__composer-extra-actions">{children}</div>
-        )}
+        ) : null}
         {isRunning ? (
           <button
             className="aion-chat__composer-action"

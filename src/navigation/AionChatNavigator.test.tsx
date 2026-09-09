@@ -71,6 +71,37 @@ describe("AionChatNavigator", () => {
     ).toBe(false);
   });
 
+  it("explains unavailable agents while allowing history selection", () => {
+    const onSelectAgent = vi.fn();
+    const unavailableReason = "The Playground distribution is inactive.";
+    render(
+      <AionAgentList
+        entries={[
+          {
+            ...AGENT,
+            agent: {
+              ...AGENT.agent,
+              availability: "unavailable",
+              unavailableReason,
+            },
+          },
+        ]}
+        onSelectAgent={onSelectAgent}
+      />,
+    );
+
+    const agentButton = screen.getByRole("button", {
+      name: /Status agent.*Unavailable.*inactive/u,
+    });
+    expect(agentButton.getAttribute("data-availability"))
+      .toBe("unavailable");
+    expect(agentButton.getAttribute("title")).toBe(unavailableReason);
+
+    fireEvent.click(agentButton);
+
+    expect(onSelectAgent).toHaveBeenCalledOnce();
+  });
+
   it("moves through one panel and restores focus on Back", () => {
     function Harness() {
       const [view, setView] = useState<AionChatNavigatorView>("agents");

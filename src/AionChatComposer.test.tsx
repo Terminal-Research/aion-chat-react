@@ -70,6 +70,46 @@ describe("AionChatComposer", () => {
     expect(onHostAction).toHaveBeenCalledOnce();
   });
 
+  it("presents unavailable conversations as read-only", () => {
+    const onChange = vi.fn();
+    const onSelectAttachments = vi.fn();
+    const onHostAction = vi.fn();
+    const reason = "This Playground distribution is not active.";
+    const view = render(
+      <AionChatComposer
+        {...DEFAULT_PROPS}
+        readOnly
+        readOnlyReason={reason}
+        onChange={onChange}
+        onSelectAttachments={onSelectAttachments}
+      >
+        <button type="button" onClick={onHostAction}>
+          Insert prompt
+        </button>
+      </AionChatComposer>,
+    );
+
+    const textarea = screen.getByRole("textbox", { name: "Chat message" });
+    expect(textarea).toHaveProperty("readOnly", true);
+    expect(screen.getByText(reason)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Attach files" }))
+      .toHaveProperty("disabled", true);
+    expect(screen.getByRole("button", { name: "Send" }))
+      .toHaveProperty("disabled", true);
+    expect(screen.queryByRole("button", { name: "Insert prompt" }))
+      .toBeNull();
+    expect(
+      view.container.querySelector<HTMLInputElement>("input[type=file]")
+        ?.disabled,
+    ).toBe(true);
+
+    fireEvent.change(textarea, { target: { value: "/help" } });
+
+    expect(onChange).not.toHaveBeenCalled();
+    expect(onSelectAttachments).not.toHaveBeenCalled();
+    expect(onHostAction).not.toHaveBeenCalled();
+  });
+
   it("removes an attachment draft and returns focus to the input", () => {
     const onRemoveAttachment = vi.fn();
     const file = new File(["draft"], "draft.txt", { type: "text/plain" });

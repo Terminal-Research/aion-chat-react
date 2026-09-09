@@ -212,9 +212,21 @@
   border-color: var(--aion-chat-color-border);
 }
 
-.aion-chat__navigation-item:disabled {
+.aion-chat__navigation-item[data-availability="unavailable"] {
   opacity: 0.55;
-  cursor: not-allowed;
+}
+
+.aion-chat__navigation-availability {
+  display: inline-flex;
+  align-items: center;
+  margin-inline-start: var(--aion-chat-space-2);
+  padding: 0 var(--aion-chat-space-1);
+  color: var(--aion-chat-color-muted);
+  border: 1px solid var(--aion-chat-color-border);
+  border-radius: var(--aion-chat-radius-small);
+  font-size: 0.75em;
+  font-weight: 600;
+  text-transform: uppercase;
 }
 
 .aion-chat__navigation-avatar {
@@ -721,6 +733,12 @@
   gap: var(--aion-chat-space-2);
 }
 
+.aion-chat__composer-read-only {
+  margin: 0;
+  color: var(--aion-chat-color-muted);
+  font-size: 0.875em;
+}
+
 .aion-chat__composer-attachments {
   display: flex;
   flex-wrap: wrap;
@@ -777,6 +795,12 @@
 
 .aion-chat__composer-input::placeholder {
   color: var(--aion-chat-color-muted);
+}
+
+.aion-chat__composer-input:read-only {
+  color: var(--aion-chat-color-muted);
+  background: var(--aion-chat-color-surface);
+  cursor: not-allowed;
 }
 
 .aion-chat__composer-input:focus-visible,

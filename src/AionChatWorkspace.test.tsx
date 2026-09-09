@@ -15,6 +15,11 @@ import {
 } from "./conversations/memory-store";
 import type { AionConversationDirectory } from "./conversations/directory";
 import { createAionConversationSnapshot } from "./conversations/snapshot";
+import {
+  type ChatAgent,
+  type ChatConversationState,
+  createChatConversationState,
+} from "./model";
 import { FakeAionChatTransport } from "./testing/fake-transport";
 
 const CATALOG: AionAgentCatalog = {
@@ -37,6 +42,27 @@ const CATALOG: AionAgentCatalog = {
 function createIds(): () => string {
   let value = 0;
   return () => `id-${++value}`;
+}
+
+function conversationWithMessage(
+  contextId: string,
+  agent: ChatAgent,
+  text: string,
+): ChatConversationState {
+  return {
+    ...createChatConversationState(contextId, agent),
+    contextId,
+    messages: [
+      {
+        id: `${contextId}-message`,
+        role: "user",
+        parts: [{ type: "text", text }],
+        contextId,
+        createdAt: "2026-09-03T12:00:00.000Z",
+      },
+    ],
+    transcript: [{ type: "message", id: `${contextId}-message` }],
+  };
 }
 
 afterEach(cleanup);
@@ -134,6 +160,109 @@ describe("AionChatWorkspace", () => {
 
     expect(await screen.findByRole("button", { name: "New" }))
       .toHaveProperty("disabled", true);
+  });
+
+  it("loads unavailable-agent history without invoking transport", async () => {
+    const unavailableReason =
+      "This Playground distribution is not active.";
+    const agent: ChatAgent = {
+      id: "distribution-1",
+      title: "Status agent",
+      availability: "unavailable",
+      unavailableReason,
+    };
+    const cachedConversation = conversationWithMessage(
+      "context-cached",
+      agent,
+      "Cached history",
+    );
+    const remoteConversation = conversationWithMessage(
+      "context-remote",
+      agent,
+      "Remote history",
+    );
+    const store = createInMemoryAionConversationStore([
+      createAionConversationSnapshot(cachedConversation, {
+        updatedAt: "2026-09-03T12:00:00.000Z",
+      }),
+    ]);
+    const list = vi.fn(() =>
+      Promise.resolve({
+        contextIds: ["context-cached", "context-remote"],
+      }),
+    );
+    const load = vi.fn(() => Promise.resolve(remoteConversation));
+    const directory: AionConversationDirectory = { list, load };
+    const catalog: AionAgentCatalog = {
+      list: () =>
+        Promise.resolve([
+          {
+            agent,
+            identityId: "identity-1",
+            distributionId: "distribution-1",
+            organizationId: "organization-1",
+            identityType: "Principal",
+          },
+        ]),
+    };
+    const transport = new FakeAionChatTransport(() => []);
+    const uploader = {
+      upload: vi.fn(() =>
+        Promise.resolve({ url: "https://example.com/image.png" }),
+      ),
+    };
+    const onLocalCommand = vi.fn();
+
+    render(
+      <AionChatWorkspace
+        catalog={catalog}
+        conversationStore={store}
+        conversationDirectory={directory}
+        transport={transport}
+        attachmentUploader={uploader}
+        onLocalCommand={onLocalCommand}
+      />,
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Status agent/u }),
+    );
+
+    expect(await screen.findAllByText("Cached history")).toHaveLength(2);
+    expect(screen.getByText("context-remote")).toBeTruthy();
+    expect(list).toHaveBeenCalledWith(agent, expect.any(Object));
+    expect(load).not.toHaveBeenCalled();
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /Conversation.*context-remote/u,
+      }),
+    );
+
+    const transcript = await screen.findByRole("log");
+    expect(await within(transcript).findByText("Remote history")).toBeTruthy();
+    expect(load).toHaveBeenCalledWith(
+      agent,
+      "context-remote",
+      expect.any(Object),
+    );
+
+    const composer = screen.getByRole("textbox", { name: "Chat message" });
+    expect(composer).toHaveProperty("readOnly", true);
+    expect(screen.getAllByText(unavailableReason)).toHaveLength(2);
+    expect(screen.getByRole("button", { name: "New" }))
+      .toHaveProperty("disabled", true);
+    expect(screen.getByRole("button", { name: "Attach files" }))
+      .toHaveProperty("disabled", true);
+    expect(screen.getByRole("button", { name: "Send" }))
+      .toHaveProperty("disabled", true);
+
+    fireEvent.change(composer, { target: { value: "/help" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+
+    expect(onLocalCommand).not.toHaveBeenCalled();
+    expect(uploader.upload).not.toHaveBeenCalled();
+    expect(transport.requests).toEqual([]);
   });
 
   it("confirms before removing local conversation history", async () => {

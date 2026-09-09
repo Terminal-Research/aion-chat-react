@@ -65,6 +65,11 @@ export function AionAgentList({
       <div className="aion-chat__navigation-list" role="list">
         {entries.map((entry) => {
           const selected = entry.agent.id === selectedAgentId;
+          const unavailable = entry.agent.availability === "unavailable";
+          const unavailableReason = unavailable
+            ? entry.agent.unavailableReason?.trim() ||
+              "This agent is currently unavailable."
+            : undefined;
           return (
             <div
               role="listitem"
@@ -75,8 +80,9 @@ export function AionAgentList({
                 type="button"
                 data-aion-agent-id={entry.agent.id}
                 data-selected={selected || undefined}
+                data-availability={entry.agent.availability}
                 aria-current={selected ? "true" : undefined}
-                disabled={entry.agent.availability === "unavailable"}
+                title={unavailableReason}
                 onClick={() => onSelectAgent(entry)}
               >
                 <span
@@ -88,11 +94,17 @@ export function AionAgentList({
                 <span className="aion-chat__navigation-copy">
                   <span className="aion-chat__navigation-title">
                     {entry.agent.title}
+                    {unavailable ? (
+                      <span className="aion-chat__navigation-availability">
+                        Unavailable
+                      </span>
+                    ) : null}
                   </span>
                   <span className="aion-chat__navigation-caption">
-                    {entry.atName
-                      ? `@${entry.atName.replace(/^@/u, "")}`
-                      : entry.agent.description ?? "Aion agent"}
+                    {unavailableReason ??
+                      (entry.atName
+                        ? `@${entry.atName.replace(/^@/u, "")}`
+                        : entry.agent.description ?? "Aion agent")}
                   </span>
                 </span>
               </button>

@@ -26,6 +26,8 @@ type ComposerOwnedProps =
   | "value"
   | "status"
   | "canSend"
+  | "readOnly"
+  | "readOnlyReason"
   | "attachments"
   | "onChange"
   | "onSelectAttachments"
@@ -66,6 +68,11 @@ export function AionChatView({
     : meta.isUploading
       ? "uploading"
       : "idle";
+  const readOnlyReason =
+    state.agent?.availability === "unavailable"
+      ? state.agent.unavailableReason?.trim() ||
+        "This agent is currently unavailable."
+      : undefined;
   const transcriptEntries = useMemo(() => {
     const activeRun = state.conversation.activeRun;
     const activeTurn = state.conversation.turns.find(
@@ -133,6 +140,8 @@ export function AionChatView({
         value={state.draft}
         status={composerStatus}
         canSend={meta.canSend}
+        readOnly={Boolean(readOnlyReason)}
+        readOnlyReason={readOnlyReason}
         attachments={state.attachments}
         onChange={actions.setDraft}
         onSelectAttachments={actions.addAttachments}
