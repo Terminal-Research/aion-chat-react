@@ -305,8 +305,10 @@ and reconnect behavior should all pass through the shared transport event
 model. There are no legacy-state compatibility shims in version 0.1; staging
 consumers should start with a clean conversation cache when adopting it.
 
-Run `npm run check` to validate the library, packed artifact, and both example
-fixtures. The fixtures can also be run independently:
+Install Chromium once with `npm exec playwright install chromium`, then run
+`npm run check` to validate the library, its browser behavior, the packed
+artifact, and both example fixtures. The fixtures can also be run
+independently:
 
 ```sh
 npm run dev --workspace \

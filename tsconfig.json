@@ -14,11 +14,13 @@
     "skipLibCheck": true,
     "strict": true,
     "target": "ES2022",
-    "types": ["vite/client", "vitest/globals"]
+    "types": ["node", "vite/client", "vitest/globals"]
   },
   "include": [
     "src",
     "eslint.config.js",
+    "playwright.config.ts",
+    "tests",
     "vite.config.ts",
     "vitest.config.ts"
   ]
