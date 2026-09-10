@@ -33,6 +33,7 @@ import {
   AionChatNavigator,
   type AionChatNavigatorView,
 } from "./navigation/AionChatNavigator";
+import { AionChatWorkspaceHeader } from "./navigation/AionChatWorkspaceHeader";
 import type { AionChatTransport } from "./transport";
 import { useAionAgentCatalog } from "./useAionAgentCatalog";
 
@@ -63,6 +64,8 @@ export interface AionChatWorkspaceProps
   readonly attachmentUploader?: AionAttachmentUploader;
   readonly chatViewProps?: AionChatViewProps;
   readonly onAgentChange?: (agent: ChatAgent | undefined) => void;
+  /** Opens the selected catalog identity in a host-owned profile view. */
+  readonly onViewAgentProfile?: (entry: AionAgentCatalogEntry) => void;
   readonly onContextChange?: (contextId: ContextId | undefined) => void;
   readonly onConversationChange?: (state: ChatConversationState) => void;
   readonly confirmRemoveConversation?: (
@@ -150,6 +153,7 @@ export function AionChatWorkspace({
   attachmentUploader,
   chatViewProps,
   onAgentChange,
+  onViewAgentProfile,
   onContextChange,
   onConversationChange,
   confirmRemoveConversation,
@@ -310,7 +314,6 @@ export function AionChatWorkspace({
           conversations={conversations.summaries}
           selectedAgentId={agent?.id}
           selectedContextId={conversations.selectedContextId}
-          agentTitle={agent?.title}
           catalogLoading={catalogState.status === "loading"}
           catalogError={catalogState.error}
           conversationsLoading={conversations.status === "loading"}
@@ -322,9 +325,6 @@ export function AionChatWorkspace({
           onBack={returnToAgents}
           onNewConversation={createConversation}
           onSelectConversation={selectConversation}
-          onRemoveConversation={(contextId) => {
-            void removeConversation(contextId);
-          }}
           onRetryCatalog={catalogState.reload}
           onRetryConversations={conversations.reload}
           onLoadMoreConversations={() => {
@@ -336,32 +336,50 @@ export function AionChatWorkspace({
         className="aion-chat__workspace-chat"
         aria-label="Conversation"
       >
-        {agent && conversations.conversation ? (
-          <AionChatProvider
-            key={`${agent.id}:${conversations.conversation.contextId}`}
-            transport={transport}
-            attachmentUploader={attachmentUploader}
+        {agent ? (
+          <AionChatWorkspaceHeader
             agent={agent}
-            conversation={conversations.conversation}
-            onConversationChange={updateConversation}
-            onRunStart={onRunStart}
-            onRunEnd={onRunEnd}
-            onError={onError}
-            onBeforeSend={onLocalCommand ? handleBeforeSend : undefined}
-            createId={createId}
-            now={now}
-          >
-            <AionChatView {...chatViewProps} />
-          </AionChatProvider>
-        ) : (
-          <div className="aion-chat__workspace-empty">
-            <p>
-              {agent
-                ? "Select or start a conversation."
-                : "Select an agent to begin."}
-            </p>
-          </div>
-        )}
+            catalogEntry={selectedEntry}
+            canRemoveConversation={Boolean(
+              conversations.selectedContextId,
+            )}
+            onViewAgentProfile={onViewAgentProfile}
+            onRemoveConversation={() => {
+              const contextId = conversations.selectedContextId;
+              if (contextId) {
+                void removeConversation(contextId);
+              }
+            }}
+          />
+        ) : null}
+        <div className="aion-chat__workspace-chat-content">
+          {agent && conversations.conversation ? (
+            <AionChatProvider
+              key={`${agent.id}:${conversations.conversation.contextId}`}
+              transport={transport}
+              attachmentUploader={attachmentUploader}
+              agent={agent}
+              conversation={conversations.conversation}
+              onConversationChange={updateConversation}
+              onRunStart={onRunStart}
+              onRunEnd={onRunEnd}
+              onError={onError}
+              onBeforeSend={onLocalCommand ? handleBeforeSend : undefined}
+              createId={createId}
+              now={now}
+            >
+              <AionChatView {...chatViewProps} />
+            </AionChatProvider>
+          ) : (
+            <div className="aion-chat__workspace-empty">
+              <p>
+                {agent
+                  ? "Select or start a conversation."
+                  : "Select an Aion to begin."}
+              </p>
+            </div>
+          )}
+        </div>
       </section>
     </div>
   );

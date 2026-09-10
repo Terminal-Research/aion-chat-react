@@ -122,7 +122,9 @@ test.describe("AionChatWorkspace browser behavior", () => {
     await expect(
       chat.getByText("This fixture agent is paused.", { exact: true }),
     ).toBeVisible();
-    await expect(page.getByRole("button", { name: "New" })).toBeDisabled();
+    await expect(
+      page.getByRole("button", { name: "New thread" }),
+    ).toBeDisabled();
     await expect(
       page.getByRole("button", { name: "Attach files" }),
     ).toBeDisabled();

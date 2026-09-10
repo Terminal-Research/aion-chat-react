@@ -89,7 +89,11 @@ export function AionAgentList({
                   className="aion-chat__navigation-avatar"
                   aria-hidden="true"
                 >
-                  {initials(entry.agent.title) || <ChatCircleDotsIcon />}
+                  {entry.avatarImageUrl ? (
+                    <img src={entry.avatarImageUrl} alt="" />
+                  ) : (
+                    initials(entry.agent.title) || <ChatCircleDotsIcon />
+                  )}
                 </span>
                 <span className="aion-chat__navigation-copy">
                   <span className="aion-chat__navigation-title">

@@ -68,6 +68,35 @@ function conversationWithMessage(
 afterEach(cleanup);
 
 describe("AionChatWorkspace", () => {
+  it("exposes selected-Aion header actions to the host", async () => {
+    const onViewAgentProfile = vi.fn();
+    render(
+      <AionChatWorkspace
+        catalog={CATALOG}
+        transport={new FakeAionChatTransport(() => [])}
+        onViewAgentProfile={onViewAgentProfile}
+      />,
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Status agent/u }),
+    );
+
+    expect(screen.getByRole("heading", { name: "Status agent" }))
+      .toBeTruthy();
+    expect(screen.getByRole("button", { name: "Start audio call" }))
+      .toHaveProperty("disabled", true);
+    expect(screen.getByRole("button", { name: "Email Aion" }))
+      .toHaveProperty("disabled", true);
+
+    fireEvent.click(screen.getByLabelText("Conversation options"));
+    fireEvent.click(screen.getByRole("button", { name: "View profile" }));
+
+    expect(onViewAgentProfile).toHaveBeenCalledWith(
+      expect.objectContaining({ identityId: "identity-1" }),
+    );
+  });
+
   it("selects an agent, creates a context, and persists the chat", async () => {
     const store = createInMemoryAionConversationStore();
     const transport = new FakeAionChatTransport(() => []);
@@ -84,7 +113,7 @@ describe("AionChatWorkspace", () => {
     fireEvent.click(
       await screen.findByRole("button", { name: /Status agent/u }),
     );
-    fireEvent.click(screen.getByRole("button", { name: "New" }));
+    fireEvent.click(screen.getByRole("button", { name: "New thread" }));
     const composer = screen.getByRole("textbox", { name: "Chat message" });
     fireEvent.change(composer, { target: { value: "What changed?" } });
     fireEvent.click(screen.getByRole("button", { name: "Send" }));
@@ -158,7 +187,7 @@ describe("AionChatWorkspace", () => {
       />,
     );
 
-    expect(await screen.findByRole("button", { name: "New" }))
+    expect(await screen.findByRole("button", { name: "New thread" }))
       .toHaveProperty("disabled", true);
   });
 
@@ -250,7 +279,7 @@ describe("AionChatWorkspace", () => {
     const composer = screen.getByRole("textbox", { name: "Chat message" });
     expect(composer).toHaveProperty("readOnly", true);
     expect(screen.getAllByText(unavailableReason)).toHaveLength(2);
-    expect(screen.getByRole("button", { name: "New" }))
+    expect(screen.getByRole("button", { name: "New thread" }))
       .toHaveProperty("disabled", true);
     expect(screen.getByRole("button", { name: "Attach files" }))
       .toHaveProperty("disabled", true);
@@ -297,10 +326,12 @@ describe("AionChatWorkspace", () => {
     );
 
     fireEvent.click(
-      await screen.findByRole("button", {
-        name: "Remove New conversation",
-      }),
+      await screen.findByRole("button", { name: /^New conversation/u }),
     );
+    fireEvent.click(
+      await screen.findByLabelText("Conversation options"),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Delete chat" }));
 
     await waitFor(() => expect(confirmRemove).toHaveBeenCalledTimes(1));
     expect(await store.load("distribution-1", "context-1")).not.toBeNull();
@@ -326,12 +357,13 @@ describe("AionChatWorkspace", () => {
       />,
     );
 
-    fireEvent.click(await screen.findByRole("button", { name: "New" }));
     fireEvent.click(
-      await screen.findByRole("button", {
-        name: "Remove New conversation",
-      }),
+      await screen.findByRole("button", { name: "New thread" }),
     );
+    fireEvent.click(
+      await screen.findByLabelText("Conversation options"),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Delete chat" }));
 
     await waitFor(() => expect(confirmRemove).toHaveBeenCalledTimes(1));
     await waitFor(() => {
@@ -358,7 +390,7 @@ describe("AionChatWorkspace", () => {
     fireEvent.click(
       await screen.findByRole("button", { name: /Status agent/u }),
     );
-    fireEvent.click(screen.getByRole("button", { name: "New" }));
+    fireEvent.click(screen.getByRole("button", { name: "New thread" }));
     const composer = screen.getByRole("textbox", { name: "Chat message" });
     fireEvent.change(composer, { target: { value: "/help" } });
     fireEvent.click(screen.getByRole("button", { name: "Send" }));

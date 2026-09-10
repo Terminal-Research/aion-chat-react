@@ -1,5 +1,5 @@
-import { ArrowLeftIcon } from "@phosphor-icons/react/ArrowLeft";
-import { PlusIcon } from "@phosphor-icons/react/Plus";
+import { CaretLeftIcon } from "@phosphor-icons/react/CaretLeft";
+import { NotePencilIcon } from "@phosphor-icons/react/NotePencil";
 import {
   type HTMLAttributes,
   useEffect,
@@ -22,7 +22,6 @@ export interface AionChatNavigatorProps
   readonly conversations: readonly AionConversationSummary[];
   readonly selectedAgentId?: string;
   readonly selectedContextId?: string;
-  readonly agentTitle?: string;
   readonly catalogLoading?: boolean;
   readonly catalogError?: Error;
   readonly conversationsLoading?: boolean;
@@ -49,7 +48,6 @@ export function AionChatNavigator({
   conversations,
   selectedAgentId,
   selectedContextId,
-  agentTitle,
   catalogLoading,
   catalogError,
   conversationsLoading,
@@ -112,15 +110,12 @@ export function AionChatNavigator({
       <div className="aion-chat__navigator-track">
         <section
           className="aion-chat__navigator-panel"
-          aria-label="Agents"
+          aria-label="Aions"
           aria-hidden={view !== "agents"}
           inert={view !== "agents" ? true : undefined}
         >
           <header className="aion-chat__navigator-header">
-            <div>
-              <h2>Agents</h2>
-              <p>Select who you want to chat with.</p>
-            </div>
+            <h2>Aions</h2>
           </header>
           <AionAgentList
             entries={agents}
@@ -133,7 +128,7 @@ export function AionChatNavigator({
         </section>
         <section
           className="aion-chat__navigator-panel"
-          aria-label="Conversations"
+          aria-label="Threads"
           aria-hidden={view !== "conversations"}
           inert={view !== "conversations" ? true : undefined}
         >
@@ -144,26 +139,24 @@ export function AionChatNavigator({
                   ref={conversationFocusRef}
                   className="aion-chat__navigator-icon-button"
                   type="button"
-                  aria-label="Back to agents"
+                  aria-label="Back to Aions"
                   onClick={onBack}
                 >
-                  <ArrowLeftIcon aria-hidden="true" />
+                  <CaretLeftIcon aria-hidden="true" />
                 </button>
               ) : null}
-              <div>
-                <h2>{agentTitle ?? "Conversations"}</h2>
-                <p>Recent conversations</p>
-              </div>
+              <h2>Threads</h2>
             </div>
             <button
               ref={showBack ? undefined : conversationFocusRef}
-              className="aion-chat__navigator-new"
+              className="aion-chat__navigator-icon-button"
               type="button"
+              aria-label="New thread"
+              title="New thread"
               disabled={newConversationDisabled}
               onClick={onNewConversation}
             >
-              <PlusIcon aria-hidden="true" />
-              New
+              <NotePencilIcon aria-hidden="true" />
             </button>
           </header>
           <AionConversationList

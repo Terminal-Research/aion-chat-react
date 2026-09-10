@@ -113,7 +113,6 @@ describe("AionChatNavigator", () => {
           selectedAgentId={
             view === "conversations" ? AGENT.agent.id : undefined
           }
-          agentTitle={AGENT.agent.title}
           onSelectAgent={() => setView("conversations")}
           onBack={() => setView("agents")}
           onNewConversation={() => undefined}
@@ -123,10 +122,12 @@ describe("AionChatNavigator", () => {
     }
     render(<Harness />);
 
+    expect(screen.getByRole("heading", { name: "Aions" })).toBeTruthy();
     const agentButton = screen.getByRole("button", { name: /Status agent/u });
     fireEvent.click(agentButton);
 
-    const back = screen.getByRole("button", { name: "Back to agents" });
+    expect(screen.getByRole("heading", { name: "Threads" })).toBeTruthy();
+    const back = screen.getByRole("button", { name: "Back to Aions" });
     expect(back).toBe(document.activeElement);
     expect(
       screen.getByRole("navigation").getAttribute("data-view"),
@@ -154,7 +155,6 @@ describe("AionChatNavigator", () => {
         agents={[AGENT]}
         conversations={[SUMMARY]}
         selectedAgentId={AGENT.agent.id}
-        agentTitle={AGENT.agent.title}
         conversationsError={new Error("hidden storage detail")}
         onSelectAgent={() => undefined}
         onBack={() => undefined}
@@ -165,7 +165,7 @@ describe("AionChatNavigator", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "New" }));
+    fireEvent.click(screen.getByRole("button", { name: "New thread" }));
     fireEvent.click(
       screen.getByRole("button", { name: /^Daily status/u }),
     );
