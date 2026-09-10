@@ -83,7 +83,7 @@ export function AionChatNavigator({
     }
     previousViewRef.current = view;
     if (view === "conversations") {
-      conversationFocusRef.current?.focus();
+      conversationFocusRef.current?.focus({ preventScroll: true });
       return;
     }
     const buttons = rootRef.current?.querySelectorAll<HTMLButtonElement>(
@@ -94,7 +94,7 @@ export function AionChatNavigator({
         (button) =>
           button.dataset.aionAgentId === focusedAgentIdRef.current,
       )
-      ?.focus();
+      ?.focus({ preventScroll: true });
   }, [selectedAgentId, view]);
 
   return (

@@ -97,6 +97,35 @@ test.describe("AionChatWorkspace browser behavior", () => {
     ).toBe(true);
   });
 
+  test("fills the navigation column with the selected Threads panel", async ({
+    page,
+  }) => {
+    await page.goto("/tests/browser/fixture/index.html");
+    await page.getByRole("button", {
+      name: "Available agent Aion agent",
+      exact: true,
+    }).click();
+
+    const navigation = page.getByRole("navigation", {
+      name: "Chat navigation",
+    });
+    const threads = page.getByRole("region", { name: "Threads" });
+    await expect.poll(
+      () => navigation.evaluate((element) => element.scrollLeft),
+    ).toBe(0);
+
+    await expect.poll(async () => {
+      const { leftBox: navigationBox, rightBox: threadsBox } =
+        await boxesFor(navigation, threads);
+      return Math.abs(threadsBox.x - navigationBox.x);
+    }).toBeLessThan(1);
+
+    const { leftBox: navigationBox, rightBox: threadsBox } =
+      await boxesFor(navigation, threads);
+    expect(Math.abs(threadsBox.width - navigationBox.width))
+      .toBeLessThanOrEqual(1);
+  });
+
   test("loads unavailable-agent history into a read-only chat", async ({
     page,
   }) => {
