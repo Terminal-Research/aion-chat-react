@@ -129,9 +129,10 @@ import {
 </AionChatTheme>;
 ```
 
-The catalog lists caller-visible A2A distributions. The optional conversation
-directory remotely pages A2A context IDs with `GetContexts` and hydrates only a
-selected context with `GetContext`. The separate store is a safe local cache;
+The catalog lists caller-visible distributions for its configured chat
+network. The optional conversation directory remotely pages A2A context IDs
+with `GetContexts` and hydrates only a selected context with `GetContext`. The
+separate store is a safe local cache;
 use the in-memory implementation by default or import the browser store from
 `@terminal-research/aion-chat-react/storage/browser` with an opaque,
 user-scoped key. Never use a bearer token as that key.
@@ -199,7 +200,11 @@ import {
   createApolloAionConversationDirectory,
 } from "@terminal-research/aion-chat-react/graphql";
 
-const catalog = createApolloAionAgentCatalog({ client, organizationId });
+const catalog = createApolloAionAgentCatalog({
+  client,
+  organizationId,
+  networkType: "A2A",
+});
 const conversationDirectory = createApolloAionConversationDirectory({
   client,
 });
@@ -227,7 +232,10 @@ const client = createStandaloneAionGraphQLClient({
   getBearerToken: async () => getCurrentUserJwt(),
 });
 const transport = createStandaloneAionChatTransport({ client });
-const catalog = createStandaloneAionAgentCatalog({ client });
+const catalog = createStandaloneAionAgentCatalog({
+  client,
+  networkType: "A2A",
+});
 const conversationDirectory = createStandaloneAionConversationDirectory({
   client,
 });

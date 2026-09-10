@@ -3,7 +3,10 @@ import type { ChatAgent } from "./model";
 /** Identity kinds exposed as selectable Aion chat agents. */
 export type AionAgentCatalogIdentityType = "Personal" | "Principal";
 
-/** One selectable A2A distribution and its parent identity presentation. */
+/** Distribution networks supported by the authenticated chat catalog. */
+export type AionAgentCatalogNetworkType = "A2A" | "Playground";
+
+/** One selectable chat distribution and its parent identity presentation. */
 export interface AionAgentCatalogEntry {
   readonly agent: ChatAgent;
   readonly identityId: string;
@@ -20,13 +23,13 @@ export interface AionAgentCatalogListOptions {
   readonly signal?: AbortSignal;
 }
 
-/** Caller-scoped source of selectable Aion agents. */
+/** Caller-scoped source of selectable Aion chat distributions. */
 export interface AionAgentCatalog {
   /**
-   * Lists the caller-visible identities that have active A2A distributions.
+   * Lists caller-visible identities for the catalog's distribution network.
    *
    * @param options Cancellation for this catalog read.
-   * @return One entry per active A2A distribution.
+   * @return One entry per matching distribution.
    */
   list(
     options?: AionAgentCatalogListOptions,

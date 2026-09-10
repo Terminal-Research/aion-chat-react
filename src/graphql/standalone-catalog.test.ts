@@ -13,14 +13,20 @@ describe("createStandaloneAionAgentCatalog", () => {
       execute,
     } as unknown as AionStandaloneGraphQLClient;
     const controller = new AbortController();
-    const catalog = createStandaloneAionAgentCatalog({ client });
+    const catalog = createStandaloneAionAgentCatalog({
+      client,
+      networkType: "Playground",
+    });
 
     await expect(
       catalog.list({ signal: controller.signal }),
     ).resolves.toEqual([]);
     expect(execute).toHaveBeenCalledWith(
       expect.objectContaining({
-        variables: { organizationId: "organization-1" },
+        variables: {
+          organizationId: "organization-1",
+          networkType: "Playground",
+        },
         operationName: "AionChatAgentCatalog",
       }),
       { signal: controller.signal },
@@ -34,7 +40,10 @@ describe("createStandaloneAionAgentCatalog", () => {
       organizationId: "organization-1",
       execute,
     } as unknown as AionStandaloneGraphQLClient;
-    const catalog = createStandaloneAionAgentCatalog({ client });
+    const catalog = createStandaloneAionAgentCatalog({
+      client,
+      networkType: "A2A",
+    });
 
     await expect(catalog.list()).rejects.toBe(aborted);
   });

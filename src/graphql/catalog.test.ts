@@ -72,14 +72,22 @@ describe("Aion agent catalog", () => {
     expect(AION_AGENT_CATALOG_QUERY_SOURCE).toContain(
       "types: [Principal, Personal]",
     );
-    expect(AION_AGENT_CATALOG_QUERY_SOURCE).toContain("networkTypes: [A2A]");
+    expect(AION_AGENT_CATALOG_QUERY_SOURCE).toContain(
+      "networkTypes: [$networkType]",
+    );
     expect(AION_AGENT_CATALOG_QUERY_SOURCE).toContain(
       "includePersonalSelf: false",
     );
   });
 
-  it("normalizes one deterministic entry per active A2A distribution", () => {
-    expect(normalizeAionAgentCatalog(VALID_RESULT, "organization-1")).toEqual([
+  it("normalizes one deterministic entry per matching A2A distribution", () => {
+    expect(
+      normalizeAionAgentCatalog(
+        VALID_RESULT,
+        "organization-1",
+        "A2A",
+      ),
+    ).toEqual([
       {
         agent: {
           id: "distribution-1a",
@@ -140,7 +148,11 @@ describe("Aion agent catalog", () => {
     };
 
     expect(() =>
-      normalizeAionAgentCatalog(crossOrganization, "organization-1"),
+      normalizeAionAgentCatalog(
+        crossOrganization,
+        "organization-1",
+        "A2A",
+      ),
     ).toThrowError(
       expect.objectContaining({
         code: "invalid_response",
@@ -148,8 +160,57 @@ describe("Aion agent catalog", () => {
       }),
     );
     expect(() =>
-      normalizeAionAgentCatalog({ data: {} }, "organization-1"),
+      normalizeAionAgentCatalog(
+        { data: {} },
+        "organization-1",
+        "A2A",
+      ),
     ).toThrowError(AionAgentCatalogError);
+  });
+
+  it("normalizes only the requested Playground distributions", () => {
+    const entries = normalizeAionAgentCatalog(
+      {
+        data: {
+          agentIdentityDetails: [
+            {
+              identity: {
+                id: "identity-1",
+                agentType: "Principal",
+                organizationId: "organization-1",
+                name: "Gemma",
+              },
+              distributionUsages: [
+                {
+                  distributionId: "distribution-playground",
+                  networkType: "Playground",
+                },
+                {
+                  distributionId: "distribution-a2a",
+                  networkType: "A2A",
+                },
+              ],
+            },
+          ],
+        },
+      },
+      "organization-1",
+      "Playground",
+    );
+
+    expect(entries).toEqual([
+      {
+        agent: {
+          id: "distribution-playground",
+          title: "Gemma",
+          availability: "available",
+        },
+        identityId: "identity-1",
+        distributionId: "distribution-playground",
+        organizationId: "organization-1",
+        identityType: "Principal",
+      },
+    ]);
   });
 
   it("classifies authentication errors without exposing server details", () => {

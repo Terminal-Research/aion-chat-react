@@ -3,6 +3,11 @@
 All notable changes to this package are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+- Allow authenticated agent catalogs to select A2A or Playground
+  distributions explicitly.
+
 ## 0.1.0 - 2026-09-03
 
 Initial pre-1.0 release of the Aion React chat library.

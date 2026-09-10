@@ -16,7 +16,10 @@ describe("createApolloAionAgentCatalog", () => {
               name: "Analyst",
             },
             distributionUsages: [
-              { distributionId: "distribution-1", networkType: "A2A" },
+              {
+                distributionId: "distribution-1",
+                networkType: "Playground",
+              },
             ],
           },
         ],
@@ -31,6 +34,7 @@ describe("createApolloAionAgentCatalog", () => {
     const catalog = createApolloAionAgentCatalog({
       client,
       organizationId: " organization-1 ",
+      networkType: "Playground",
     });
 
     const entries = await catalog.list();
@@ -38,7 +42,10 @@ describe("createApolloAionAgentCatalog", () => {
     expect(entries[0]?.agent.id).toBe("distribution-1");
     expect(query).toHaveBeenCalledWith(
       expect.objectContaining({
-        variables: { organizationId: "organization-1" },
+        variables: {
+          organizationId: "organization-1",
+          networkType: "Playground",
+        },
         fetchPolicy: "network-only",
         errorPolicy: "all",
       }),
@@ -57,6 +64,7 @@ describe("createApolloAionAgentCatalog", () => {
     const catalog = createApolloAionAgentCatalog({
       client,
       organizationId: "organization-1",
+      networkType: "A2A",
     });
 
     await catalog.list({ signal: controller.signal });

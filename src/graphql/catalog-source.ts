@@ -1,10 +1,13 @@
 /** Authenticated Aion identity catalog limited to chat presentation fields. */
 export const AION_AGENT_CATALOG_QUERY_SOURCE = `
-  query AionChatAgentCatalog($organizationId: ID!) {
+  query AionChatAgentCatalog(
+    $organizationId: ID!
+    $networkType: EndpointTypeGQL!
+  ) {
     agentIdentityDetails(
       organizationId: $organizationId
       types: [Principal, Personal]
-      networkTypes: [A2A]
+      networkTypes: [$networkType]
       includePersonalSelf: false
     ) {
       identity {

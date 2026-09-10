@@ -2,6 +2,7 @@ import {
   AionAgentCatalogError,
   type AionAgentCatalogEntry,
   type AionAgentCatalogIdentityType,
+  type AionAgentCatalogNetworkType,
 } from "../catalog";
 import { collectGraphQLErrorMessages } from "./error-messages";
 import type { AionGraphQLResult } from "./types";
@@ -9,6 +10,7 @@ import type { AionGraphQLResult } from "./types";
 /** Variables required by the authenticated agent-catalog operation. */
 export interface AionAgentCatalogGraphQLVariables {
   readonly organizationId: string;
+  readonly networkType: AionAgentCatalogNetworkType;
 }
 
 /** Minimal response selected by the authenticated agent-catalog operation. */
@@ -62,6 +64,7 @@ function compareEntries(
 export function normalizeAionAgentCatalog(
   result: AionGraphQLResult<AionAgentCatalogGraphQLData>,
   organizationId: string,
+  expectedNetworkType: AionAgentCatalogNetworkType,
 ): readonly AionAgentCatalogEntry[] {
   if (result.errors?.length) {
     throw toAionAgentCatalogError(result.errors);
@@ -96,11 +99,11 @@ export function normalizeAionAgentCatalog(
     for (const rawUsage of usages) {
       const usage = record(rawUsage);
       const distributionId = requiredString(usage?.distributionId);
-      const networkType = requiredString(usage?.networkType);
-      if (!usage || !distributionId || !networkType) {
+      const distributionNetworkType = requiredString(usage?.networkType);
+      if (!usage || !distributionId || !distributionNetworkType) {
         throw invalidResponse();
       }
-      if (networkType !== "A2A") {
+      if (distributionNetworkType !== expectedNetworkType) {
         continue;
       }
       const entry: AionAgentCatalogEntry = {

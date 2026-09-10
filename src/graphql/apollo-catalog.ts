@@ -1,6 +1,9 @@
 import type { DocumentNode } from "graphql";
 
-import type { AionAgentCatalog } from "../catalog";
+import type {
+  AionAgentCatalog,
+  AionAgentCatalogNetworkType,
+} from "../catalog";
 import {
   type ApolloAionQueryClient,
   asApolloQueryClient,
@@ -15,8 +18,13 @@ import { AION_AGENT_CATALOG_QUERY } from "./catalog-operation";
 
 /** Options for a catalog using a caller-owned Apollo client. */
 export interface ApolloAionAgentCatalogOptions {
+  /** Application-owned Apollo query client. */
   readonly client: ApolloAionQueryClient;
+  /** Organization whose caller-visible identities should be listed. */
   readonly organizationId: string;
+  /** Distribution network that agents must expose. */
+  readonly networkType: AionAgentCatalogNetworkType;
+  /** Optional compatible operation override. */
   readonly operation?: DocumentNode;
 }
 
@@ -33,6 +41,7 @@ export function createApolloAionAgentCatalog(
   options: ApolloAionAgentCatalogOptions,
 ): AionAgentCatalog {
   const organizationId = assertOrganizationId(options.organizationId);
+  const { networkType } = options;
   const operation = options.operation ?? AION_AGENT_CATALOG_QUERY;
   const client = asApolloQueryClient(options.client);
   return {
@@ -44,7 +53,7 @@ export function createApolloAionAgentCatalog(
           AionAgentCatalogGraphQLVariables
         >({
           query: operation,
-          variables: { organizationId },
+          variables: { organizationId, networkType },
           fetchPolicy: "network-only",
           errorPolicy: "all",
           context: listOptions.signal
@@ -60,6 +69,7 @@ export function createApolloAionAgentCatalog(
             })),
           },
           organizationId,
+          networkType,
         );
       } catch (error) {
         throw toAionAgentCatalogError(error);

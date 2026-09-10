@@ -49,6 +49,7 @@ export type {
   AionAgentCatalogErrorCode,
   AionAgentCatalogIdentityType,
   AionAgentCatalogListOptions,
+  AionAgentCatalogNetworkType,
 } from "./catalog";
 export { AionAgentCatalogError } from "./catalog";
 export type {
