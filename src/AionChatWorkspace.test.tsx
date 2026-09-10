@@ -162,6 +162,156 @@ describe("AionChatWorkspace", () => {
     await waitFor(() => expect(document.body.contains(dialog)).toBe(false));
   });
 
+  it("selects the available distribution for a controlled identity", async () => {
+    const unavailableEntry = {
+      agent: {
+        id: "distribution-unavailable",
+        title: "Unavailable status agent",
+        availability: "unavailable" as const,
+      },
+      identityId: "identity-1",
+      distributionId: "distribution-unavailable",
+      organizationId: "organization-1",
+      identityType: "Principal" as const,
+    };
+    const availableEntry = {
+      ...unavailableEntry,
+      agent: {
+        id: "distribution-available",
+        title: "Available status agent",
+        availability: "available" as const,
+      },
+      distributionId: "distribution-available",
+    };
+    const list = vi.fn(() => Promise.resolve({ contextIds: [] }));
+    const directory: AionConversationDirectory = {
+      list,
+      load: () => Promise.reject(new Error("Not listed")),
+    };
+    const transport = new FakeAionChatTransport(() => []);
+    const onAgentChange = vi.fn();
+
+    render(
+      <AionChatWorkspace
+        catalog={{
+          list: () => Promise.resolve([
+            unavailableEntry,
+            availableEntry,
+          ]),
+        }}
+        conversationDirectory={directory}
+        selectedAgentIdentityId="identity-1"
+        transport={transport}
+        onAgentChange={onAgentChange}
+      />,
+    );
+
+    expect(await screen.findByRole("heading", {
+      name: "Available status agent",
+    })).toBeTruthy();
+    expect(list).toHaveBeenCalledWith(
+      availableEntry.agent,
+      expect.any(Object),
+    );
+    expect(onAgentChange).toHaveBeenCalledWith(
+      availableEntry.agent,
+      availableEntry,
+    );
+    expect(transport.requests).toEqual([]);
+  });
+
+  it("keeps catalog order when a controlled identity is unavailable", async () => {
+    const firstAgent: ChatAgent = {
+      id: "distribution-first",
+      title: "First unavailable agent",
+      availability: "unavailable",
+    };
+    const secondAgent: ChatAgent = {
+      ...firstAgent,
+      id: "distribution-second",
+      title: "Second unavailable agent",
+    };
+
+    render(
+      <AionChatWorkspace
+        catalog={{
+          list: () => Promise.resolve([
+            {
+              agent: firstAgent,
+              identityId: "identity-1",
+              distributionId: firstAgent.id,
+              organizationId: "organization-1",
+              identityType: "Principal",
+            },
+            {
+              agent: secondAgent,
+              identityId: "identity-1",
+              distributionId: secondAgent.id,
+              organizationId: "organization-1",
+              identityType: "Principal",
+            },
+          ]),
+        }}
+        selectedAgentIdentityId="identity-1"
+        transport={new FakeAionChatTransport(() => [])}
+      />,
+    );
+
+    expect(await screen.findByRole("heading", {
+      name: "First unavailable agent",
+    })).toBeTruthy();
+  });
+
+  it("reports controlled selection and return requests to the host", async () => {
+    const onAgentChange = vi.fn();
+    const view = render(
+      <AionChatWorkspace
+        catalog={CATALOG}
+        selectedAgentIdentityId={null}
+        transport={new FakeAionChatTransport(() => [])}
+        onAgentChange={onAgentChange}
+      />,
+    );
+
+    const agentButton = await screen.findByRole("button", {
+      name: /Status agent/u,
+    });
+    fireEvent.click(agentButton);
+    expect(onAgentChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ id: "distribution-1" }),
+      expect.objectContaining({ identityId: "identity-1" }),
+    );
+    expect(screen.queryByRole("heading", { name: "Status agent" }))
+      .toBeNull();
+
+    view.rerender(
+      <AionChatWorkspace
+        catalog={CATALOG}
+        selectedAgentIdentityId="identity-1"
+        transport={new FakeAionChatTransport(() => [])}
+        onAgentChange={onAgentChange}
+      />,
+    );
+    expect(await screen.findByRole("heading", { name: "Status agent" }))
+      .toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Back to Aions" }));
+    expect(onAgentChange).toHaveBeenLastCalledWith(undefined);
+
+    view.rerender(
+      <AionChatWorkspace
+        catalog={CATALOG}
+        selectedAgentIdentityId="missing-identity"
+        transport={new FakeAionChatTransport(() => [])}
+        onAgentChange={onAgentChange}
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Aions" })).toBeTruthy();
+      expect(onAgentChange).toHaveBeenLastCalledWith(undefined, undefined);
+    });
+  });
+
   it("selects an agent, creates a context, and persists the chat", async () => {
     const store = createInMemoryAionConversationStore();
     const transport = new FakeAionChatTransport(() => []);

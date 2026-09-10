@@ -1204,7 +1204,10 @@ the contained workspace from Subtask AA and without completing Subtasks Q or R.
   before implementation. Do not place Aion user JWTs or signing secrets in the
   installation snippet.
 
-### Subtask AH — Share Aion profiles and portable channel links (status: in progress)
+### Subtask AH — Share Aion profiles and portable channel links (status: done)
+
+- Commit ID (aion-chat-react): `ae39ff7`
+- Commit ID (aion-agent-cloud): `dcdf6e9f4`
 
 - In `aion-chat-react`, provide one reusable Aion profile component that accepts
   preloaded details or lazily loads an identity detail, renders host-supplied
@@ -1222,7 +1225,7 @@ the contained workspace from Subtask AA and without completing Subtasks Q or R.
   lazy profile loading, additional insight rows, Catalog rendering, and the
   rendered Agent Card route.
 
-### Subtask AI — Deep-link Playground agent selection (status: not started)
+### Subtask AI — Deep-link Playground agent selection (status: in progress)
 
 - Add `/aions/playground/:agentIdentityId` alongside the unselected Playground
   route and make the route parameter control the workspace's selected catalog

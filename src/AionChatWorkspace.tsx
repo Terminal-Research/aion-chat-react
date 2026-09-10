@@ -68,6 +68,8 @@ export interface AionChatWorkspaceProps
   readonly conversationDirectory?: AionConversationDirectory;
   readonly fixedAgent?: ChatAgent;
   readonly fixedContextId?: ContextId;
+  /** Controls catalog selection by identity; null selects the Aion list. */
+  readonly selectedAgentIdentityId?: string | null;
   readonly startNewConversation?: boolean;
   readonly showNavigator?: boolean;
   readonly attachmentUploader?: AionAttachmentUploader;
@@ -76,7 +78,10 @@ export interface AionChatWorkspaceProps
   readonly agentProfileSource?: AionAgentProfileSource;
   /** Overrides the production Aion application root used by profile links. */
   readonly agentProfileAppBaseUrl?: string;
-  readonly onAgentChange?: (agent: ChatAgent | undefined) => void;
+  readonly onAgentChange?: (
+    agent: ChatAgent | undefined,
+    entry?: AionAgentCatalogEntry,
+  ) => void;
   /** Overrides the built-in profile action with a host-owned profile view. */
   readonly onViewAgentProfile?: (entry: AionAgentCatalogEntry) => void;
   readonly onContextChange?: (contextId: ContextId | undefined) => void;
@@ -135,6 +140,7 @@ function commandText(parts: readonly ChatPart[]): string | undefined {
 function configurationError(
   fixedAgent: ChatAgent | undefined,
   fixedContextId: string | undefined,
+  selectedAgentIdentityId: string | null | undefined,
   startNewConversation: boolean,
   catalog: AionAgentCatalog | undefined,
 ): void {
@@ -149,6 +155,20 @@ function configurationError(
       "fixedContextId and startNewConversation cannot be combined.",
     );
   }
+  if (fixedAgent && selectedAgentIdentityId !== undefined) {
+    throw new Error(
+      "selectedAgentIdentityId cannot be combined with fixedAgent.",
+    );
+  }
+}
+
+function preferredIdentityEntry(
+  entries: readonly AionAgentCatalogEntry[],
+  identityId: string,
+): AionAgentCatalogEntry | undefined {
+  const matches = entries.filter((entry) => entry.identityId === identityId);
+  return matches.find((entry) => entry.agent.availability === "available") ??
+    matches[0];
 }
 
 /**
@@ -161,6 +181,7 @@ export function AionChatWorkspace({
   conversationDirectory,
   fixedAgent,
   fixedContextId,
+  selectedAgentIdentityId,
   startNewConversation = false,
   showNavigator,
   attachmentUploader,
@@ -184,6 +205,7 @@ export function AionChatWorkspace({
   configurationError(
     fixedAgent,
     fixedContextId,
+    selectedAgentIdentityId,
     startNewConversation,
     catalog,
   );
@@ -212,10 +234,50 @@ export function AionChatWorkspace({
     now,
   });
   const startedAgentRef = useRef<string | undefined>(undefined);
+  const appliedIdentityIdRef = useRef<string | null | undefined>(undefined);
   const navigatorVisible =
     !fixedContextId &&
     !startNewConversation &&
     (showNavigator ?? true);
+
+  useEffect(() => {
+    if (
+      selectedAgentIdentityId === undefined ||
+      catalogState.status !== "ready"
+    ) {
+      return;
+    }
+    const entry = selectedAgentIdentityId
+      ? preferredIdentityEntry(
+          catalogState.entries,
+          selectedAgentIdentityId,
+        )
+      : undefined;
+    if (
+      appliedIdentityIdRef.current === selectedAgentIdentityId &&
+      selectedAgentId === entry?.agent.id &&
+      navigatorView === (entry ? "conversations" : "agents")
+    ) {
+      return;
+    }
+
+    appliedIdentityIdRef.current = selectedAgentIdentityId;
+    conversations.clearSelection();
+    setProfileIdentityId(undefined);
+    setSelectedAgentId(entry?.agent.id);
+    setNavigatorView(entry ? "conversations" : "agents");
+    onAgentChange?.(entry?.agent, entry);
+    onContextChange?.(undefined);
+  }, [
+    catalogState.entries,
+    catalogState.status,
+    conversations,
+    navigatorView,
+    onAgentChange,
+    onContextChange,
+    selectedAgentId,
+    selectedAgentIdentityId,
+  ]);
 
   useEffect(() => {
     if (
@@ -240,15 +302,23 @@ export function AionChatWorkspace({
   ]);
 
   const selectAgent = (entry: AionAgentCatalogEntry) => {
+    if (selectedAgentIdentityId !== undefined) {
+      onAgentChange?.(entry.agent, entry);
+      return;
+    }
     conversations.clearSelection();
     setProfileIdentityId(undefined);
     setSelectedAgentId(entry.agent.id);
     setNavigatorView("conversations");
-    onAgentChange?.(entry.agent);
+    onAgentChange?.(entry.agent, entry);
     onContextChange?.(undefined);
   };
 
   const returnToAgents = () => {
+    if (selectedAgentIdentityId !== undefined) {
+      onAgentChange?.(undefined);
+      return;
+    }
     conversations.clearSelection();
     setProfileIdentityId(undefined);
     setNavigatorView("agents");
