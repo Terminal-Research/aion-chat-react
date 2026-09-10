@@ -111,6 +111,7 @@ export function normalizeAionAgentCatalog(
           id: distributionId,
           title: name,
           description: optionalString(identity.biography),
+          avatarImageUrl: optionalString(identity.avatarImageUrl),
           availability: "available",
         },
         identityId,
@@ -119,7 +120,6 @@ export function normalizeAionAgentCatalog(
         identityType: type,
         atName: optionalString(identity.atName),
         a2aUrl: optionalString(identity.a2aUrl),
-        avatarImageUrl: optionalString(identity.avatarImageUrl),
       };
       const existing = entries.get(distributionId);
       if (existing && existing.identityId !== identityId) {

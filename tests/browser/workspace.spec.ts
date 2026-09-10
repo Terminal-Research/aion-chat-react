@@ -101,14 +101,24 @@ test.describe("AionChatWorkspace browser behavior", () => {
     page,
   }) => {
     await page.goto("/tests/browser/fixture/index.html");
+    const navigation = page.getByRole("navigation", {
+      name: "Chat navigation",
+    });
+    const aionsTitle = page.getByRole("heading", { name: "Aions" });
+    const { leftBox: navigationBox, rightBox: aionsTitleBox } =
+      await boxesFor(navigation, aionsTitle);
+    expect(
+      Math.abs(
+        aionsTitleBox.x + aionsTitleBox.width / 2 -
+          (navigationBox.x + navigationBox.width / 2),
+      ),
+    ).toBeLessThan(1);
+
     await page.getByRole("button", {
       name: "Available agent Aion agent",
       exact: true,
     }).click();
 
-    const navigation = page.getByRole("navigation", {
-      name: "Chat navigation",
-    });
     const threads = page.getByRole("region", { name: "Threads" });
     await expect.poll(
       () => navigation.evaluate((element) => element.scrollLeft),
@@ -120,10 +130,79 @@ test.describe("AionChatWorkspace browser behavior", () => {
       return Math.abs(threadsBox.x - navigationBox.x);
     }).toBeLessThan(1);
 
-    const { leftBox: navigationBox, rightBox: threadsBox } =
+    const { leftBox: settledNavigationBox, rightBox: threadsBox } =
       await boxesFor(navigation, threads);
-    expect(Math.abs(threadsBox.width - navigationBox.width))
+    expect(Math.abs(threadsBox.width - settledNavigationBox.width))
       .toBeLessThanOrEqual(1);
+    const threadsTitle = page.getByRole("heading", { name: "Threads" });
+    const threadsTitleBox = await threadsTitle.boundingBox();
+    expect(threadsTitleBox).not.toBeNull();
+    expect(
+      Math.abs(
+        threadsTitleBox!.x + threadsTitleBox!.width / 2 -
+          (settledNavigationBox.x + settledNavigationBox.width / 2),
+      ),
+    ).toBeLessThan(1);
+
+    const workspaceHeader = page.locator(".aion-chat__workspace-header");
+    const workspaceAvatar = workspaceHeader.locator(
+      ".aion-chat__workspace-avatar",
+    );
+    const workspaceTitle = workspaceHeader.getByRole("heading", {
+      name: "Available agent",
+    });
+    const { leftBox: avatarBox, rightBox: workspaceTitleBox } =
+      await boxesFor(workspaceAvatar, workspaceTitle);
+    expect(avatarBox.x + avatarBox.width).toBeLessThanOrEqual(
+      workspaceTitleBox.x,
+    );
+    const avatarHeight = await workspaceHeader.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return (
+        Number.parseFloat(style.lineHeight) +
+        Number.parseFloat(style.paddingTop) +
+        Number.parseFloat(style.paddingBottom)
+      );
+    });
+    expect(Math.abs(avatarBox.height - avatarHeight)).toBeLessThan(1);
+  });
+
+  test("grows the composer from one line through five lines", async ({
+    page,
+  }) => {
+    await page.goto("/tests/browser/fixture/index.html");
+    await page.getByRole("button", {
+      name: "Available agent Aion agent",
+      exact: true,
+    }).click();
+    await page.getByRole("button", { name: "New thread" }).click();
+
+    const composer = page.getByRole("textbox", { name: "Chat message" });
+    await expect(composer).toHaveAttribute("placeholder", "Enter message...");
+    await expect(composer).toHaveAttribute("rows", "1");
+    const initialHeight = await composer.evaluate(
+      (element) => element.getBoundingClientRect().height,
+    );
+
+    await composer.fill("One\nTwo\nThree\nFour\nFive\nSix");
+
+    const expanded = await composer.evaluate((element) => {
+      const style = getComputedStyle(element);
+      const lineHeight = Number.parseFloat(style.lineHeight);
+      const frame =
+        Number.parseFloat(style.paddingTop) +
+        Number.parseFloat(style.paddingBottom) +
+        Number.parseFloat(style.borderTopWidth) +
+        Number.parseFloat(style.borderBottomWidth);
+      return {
+        height: element.getBoundingClientRect().height,
+        maximumHeight: lineHeight * 5 + frame,
+        overflowY: style.overflowY,
+      };
+    });
+    expect(expanded.height).toBeGreaterThan(initialHeight);
+    expect(Math.abs(expanded.height - expanded.maximumHeight)).toBeLessThan(1);
+    expect(expanded.overflowY).toBe("auto");
   });
 
   test("loads unavailable-agent history into a read-only chat", async ({
@@ -161,5 +240,77 @@ test.describe("AionChatWorkspace browser behavior", () => {
     await expect(
       page.getByRole("textbox", { name: "Chat message" }),
     ).toHaveJSProperty("readOnly", true);
+  });
+
+  test("copies completed responses and opens response details", async ({
+    context,
+    page,
+  }) => {
+    await context.grantPermissions(["clipboard-read", "clipboard-write"], {
+      origin: "http://127.0.0.1:4174",
+    });
+    await page.goto("/tests/browser/fixture/index.html");
+    await page.getByRole("button", {
+      name: "Available agent Aion agent",
+      exact: true,
+    }).click();
+    await page.getByRole("button", {
+      name: /Conversation available-context-01/i,
+    }).click();
+
+    const responseText =
+      "Historical response 63 for available-context-01.";
+    const response = page
+      .locator(".aion-chat__message--assistant")
+      .filter({ hasText: responseText });
+    const copy = response.getByRole("button", { name: "Copy response" });
+    const details = response.getByRole("button", {
+      name: "View response details",
+    });
+
+    await expect(copy).toBeVisible();
+    await expect
+      .poll(() =>
+        response
+          .locator(".aion-chat__response-actions")
+          .evaluate((element) => getComputedStyle(element).columnGap),
+      )
+      .toBe("2px");
+    await expect
+      .poll(() =>
+        copy.evaluate((element) => getComputedStyle(element).color),
+      )
+      .toBe("rgb(152, 162, 179)");
+    await expect(details).not.toHaveAttribute("title", /.+/);
+    await details.click();
+
+    const dialog = page.getByRole("dialog", { name: "Response Details" });
+    await expect(dialog).toBeVisible();
+    const dialogBox = await dialog.boundingBox();
+    const viewport = page.viewportSize();
+    expect(dialogBox).not.toBeNull();
+    expect(viewport).not.toBeNull();
+    expect(
+      Math.abs(dialogBox!.x + dialogBox!.width / 2 - viewport!.width / 2),
+    ).toBeLessThan(1);
+    expect(
+      Math.abs(dialogBox!.y + dialogBox!.height / 2 - viewport!.height / 2),
+    ).toBeLessThan(1);
+    await expect(dialog).toContainText("Task IDNot available");
+    await expect(dialog).toContainText(
+      "Context IDavailable-context-01",
+    );
+    await dialog.getByRole("button", {
+      name: "Close response details",
+    }).click();
+    await expect(dialog).toBeHidden();
+
+    await copy.click();
+    await expect(
+      response.getByRole("button", { name: "Copied response" }),
+    ).toHaveAttribute("data-copy-status", "copied");
+    await expect
+      .poll(() => page.evaluate(() => navigator.clipboard.readText()))
+      .toBe(responseText);
   });
 });

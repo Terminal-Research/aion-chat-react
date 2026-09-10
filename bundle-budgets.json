@@ -1,13 +1,14 @@
 {
   "dist/a2a/direct.js": { "rawBytes": 28672, "gzipBytes": 9216 },
-  "dist/index.js": { "rawBytes": 81920, "gzipBytes": 20480 },
-  "dist/graphql/apollo.js": { "rawBytes": 28672, "gzipBytes": 10240 },
+  "dist/index.js": { "rawBytes": 81920, "gzipBytes": 22528 },
+  "dist/profile.js": { "rawBytes": 16384, "gzipBytes": 5120 },
+  "dist/graphql/apollo.js": { "rawBytes": 32768, "gzipBytes": 11264 },
   "dist/graphql/standalone.js": {
-    "rawBytes": 32768,
-    "gzipBytes": 11264
+    "rawBytes": 36864,
+    "gzipBytes": 12288
   },
   "dist/testing.js": { "rawBytes": 2048, "gzipBytes": 1024 },
   "dist/uploads.js": { "rawBytes": 8192, "gzipBytes": 3072 },
   "dist/storage/browser.js": { "rawBytes": 16384, "gzipBytes": 5120 },
-  "dist/styles.css": { "rawBytes": 24576, "gzipBytes": 4096 }
+  "dist/styles.css": { "rawBytes": 32768, "gzipBytes": 5120 }
 }

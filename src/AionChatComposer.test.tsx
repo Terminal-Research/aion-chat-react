@@ -20,19 +20,26 @@ const DEFAULT_PROPS: AionChatComposerProps = {
 };
 
 describe("AionChatComposer", () => {
-  it("autosizes controlled multiline input", () => {
+  it("starts at one line and caps growth at five lines", () => {
     const view = render(<AionChatComposer {...DEFAULT_PROPS} />);
     const textarea = screen.getByRole("textbox", { name: "Chat message" });
+    expect(textarea).toHaveProperty("rows", 1);
+    expect(textarea).toHaveProperty("placeholder", "Enter message...");
+    textarea.style.lineHeight = "20px";
     Object.defineProperty(textarea, "scrollHeight", {
       configurable: true,
-      value: 96,
+      value: 140,
     });
 
     view.rerender(
-      <AionChatComposer {...DEFAULT_PROPS} value={"First line\nSecond line"} />,
+      <AionChatComposer
+        {...DEFAULT_PROPS}
+        value={"One\nTwo\nThree\nFour\nFive\nSix"}
+      />,
     );
 
-    expect(textarea.style.height).toBe("96px");
+    expect(textarea.style.height).toBe("100px");
+    expect(textarea.style.overflowY).toBe("auto");
   });
 
   it("restores input focus after a button submission", () => {
@@ -47,6 +54,7 @@ describe("AionChatComposer", () => {
     );
     const textarea = screen.getByRole("textbox", { name: "Chat message" });
     const send = screen.getByRole("button", { name: "Send" });
+    expect(send.querySelector("svg")).not.toBeNull();
     send.focus();
 
     fireEvent.click(send);

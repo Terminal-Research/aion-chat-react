@@ -12,7 +12,7 @@ import { AionChatProvider } from "./AionChatProvider";
 import { AionChatTranscript } from "./AionChatTranscript";
 import { AionChatView } from "./AionChatView";
 import type { AionChatMessageProps } from "./AionChatMessage";
-import type { ChatMessage } from "./model";
+import type { ChatConversationState, ChatMessage } from "./model";
 import { FakeAionChatTransport } from "./testing/fake-transport";
 
 const AGENT = {
@@ -29,6 +29,73 @@ function createIds(): () => string {
 }
 
 describe("AionChatView", () => {
+  it("keeps task activity out of chat while retaining response details", () => {
+    const message: ChatMessage = {
+      id: "message-assistant-1",
+      role: "assistant",
+      parts: [{ type: "text", text: "Current status" }],
+      createdAt: "2026-08-31T12:00:01.000Z",
+    };
+    const conversation: ChatConversationState = {
+      id: "conversation-1",
+      agent: AGENT,
+      contextId: "context-1",
+      turns: [
+        {
+          id: "turn-1",
+          userMessageId: "message-user-1",
+          requestIds: ["request-1"],
+          assistantMessageIds: [message.id],
+          taskIds: ["task-1"],
+          artifactIds: [],
+          status: "running",
+          createdAt: "2026-08-31T12:00:00.000Z",
+          updatedAt: "2026-08-31T12:00:01.000Z",
+        },
+      ],
+      messages: [message],
+      transcript: [
+        { type: "message", id: message.id },
+        { type: "task", id: "task-1" },
+        { type: "task", id: "task-input" },
+      ],
+      tasks: {
+        "task-1": {
+          id: "task-1",
+          contextId: "context-1",
+          status: { state: "working" },
+          history: [],
+          artifactIds: [],
+        },
+        "task-input": {
+          id: "task-input",
+          contextId: "context-1",
+          status: { state: "input-required" },
+          history: [],
+          artifactIds: [],
+        },
+      },
+      artifacts: {},
+      seenEventIds: {},
+    };
+    render(
+      <AionChatProvider
+        transport={new FakeAionChatTransport(() => [])}
+        conversation={conversation}
+      >
+        <AionChatView />
+      </AionChatProvider>,
+    );
+
+    expect(screen.queryByText("Agent is working")).toBeNull();
+    expect(screen.getByText("More information needed")).toBeTruthy();
+    fireEvent.click(
+      screen.getByRole("button", { name: "View response details" }),
+    );
+    expect(screen.getByRole("dialog").textContent).toContain("task-1");
+    expect(screen.getByRole("dialog").textContent).toContain("context-1");
+  });
+
   it("sends from the composer and renders a streamed response", async () => {
     const transport = new FakeAionChatTransport((request) => [
       {
@@ -67,6 +134,8 @@ describe("AionChatView", () => {
     fireEvent.click(screen.getByRole("button", { name: "Send" }));
 
     await screen.findByText("Here is the status.");
+    expect(screen.getByRole("button", { name: "Copy response" }))
+      .toBeTruthy();
     expect(screen.getByText("What changed?")).toBeTruthy();
     expect(transport.requests[0]?.message.parts).toEqual([
       { type: "text", text: "What changed?" },

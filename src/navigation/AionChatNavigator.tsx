@@ -133,20 +133,18 @@ export function AionChatNavigator({
           inert={view !== "conversations" ? true : undefined}
         >
           <header className="aion-chat__navigator-header">
-            <div className="aion-chat__navigator-heading">
-              {showBack ? (
-                <button
-                  ref={conversationFocusRef}
-                  className="aion-chat__navigator-icon-button"
-                  type="button"
-                  aria-label="Back to Aions"
-                  onClick={onBack}
-                >
-                  <CaretLeftIcon aria-hidden="true" />
-                </button>
-              ) : null}
-              <h2>Threads</h2>
-            </div>
+            {showBack ? (
+              <button
+                ref={conversationFocusRef}
+                className="aion-chat__navigator-icon-button"
+                type="button"
+                aria-label="Back to Aions"
+                onClick={onBack}
+              >
+                <CaretLeftIcon aria-hidden="true" />
+              </button>
+            ) : null}
+            <h2>Threads</h2>
             <button
               ref={showBack ? undefined : conversationFocusRef}
               className="aion-chat__navigator-icon-button"

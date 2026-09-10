@@ -3,7 +3,7 @@ name: Aion Chat React Library
 date_created: 2026-08-31
 date_started: 2026-08-31
 date_completed: <incomplete>
-date_updated: 2026-09-04
+date_updated: 2026-09-10
 ---
 
 # Aion Chat React Library
@@ -1203,6 +1203,36 @@ the contained workspace from Subtask AA and without completing Subtasks Q or R.
   anonymous session ownership, and scoped authenticated embed credentials
   before implementation. Do not place Aion user JWTs or signing secrets in the
   installation snippet.
+
+### Subtask AH — Share Aion profiles and portable channel links (status: in progress)
+
+- In `aion-chat-react`, provide one reusable Aion profile component that accepts
+  preloaded details or lazily loads an identity detail, renders host-supplied
+  additional detail rows, and exposes safe actionable channel destinations.
+- Resolve Aion-owned destinations against an overridable `appBaseUrl` that
+  defaults to `https://app.aion.to`. Open Playground and rendered Agent Card
+  destinations in a new tab without importing a host router or modal system.
+- In `aion-agent-cloud`, add a rendered Agent Card route keyed by distribution
+  ID, because `IdentityDistributionUsage` does not expose an Agent Card URL.
+  The page owns API resolution and reuses the existing `AgentCardPanel`.
+- Replace the Catalog's duplicate profile body with the shared component while
+  retaining Catalog scene navigation, insight calculations, metrics, and
+  transition ownership in the frontend.
+- Verify profile links against production defaults and overridden origins,
+  lazy profile loading, additional insight rows, Catalog rendering, and the
+  rendered Agent Card route.
+
+### Subtask AI — Deep-link Playground agent selection (status: not started)
+
+- Add `/aions/playground/:agentIdentityId` alongside the unselected Playground
+  route and make the route parameter control the workspace's selected catalog
+  identity after the catalog loads.
+- Update the route when the user selects an Aion or returns to the Aion list so
+  direct links and browser history remain aligned with the visible workspace.
+- When one identity has multiple Playground distributions, prefer an available
+  entry and otherwise select the first entry in stable catalog order.
+- Verify direct initial selection, route changes while mounted, unknown IDs,
+  ordinary in-workspace selection, and return-to-catalog navigation.
 
 ## 3) Package Hierarchy + Responsibilities
 

@@ -123,6 +123,7 @@ import {
   <AionChatWorkspace
     catalog={catalog}
     transport={transport}
+    agentProfileSource={agentProfileSource}
     conversationDirectory={conversationDirectory}
     conversationStore={createInMemoryAionConversationStore()}
   />
@@ -140,6 +141,15 @@ user-scoped key. Never use a bearer token as that key.
 The workspace also supports `fixedAgent`, `fixedContextId`, and
 `startNewConversation`. A remote directory is intentionally optional so known
 public agents can chat without exposing anonymous conversation history.
+Supplying `agentProfileSource` enables the workspace's profile action. The
+selected identity detail and active distribution usages are then loaded only
+when that action opens. Hosts that already hold a detail record can render
+`AionAgentProfile` from `@terminal-research/aion-chat-react/profile` directly
+with `detail` instead of an identity ID and source; `additionalDetails` appends
+host-specific rows without changing the shared profile model. Aion-owned
+channel links default to `https://app.aion.to`; set `appBaseUrl` on the profile
+or `agentProfileAppBaseUrl` on the workspace so local and staging hosts link to
+their own Playground and rendered Agent Card pages.
 
 To enable the default attachment picker, inject an `AionAttachmentUploader`
 into `AionChatProvider`. The controller uploads selected files through that
@@ -197,6 +207,7 @@ conversation directory without opening another HTTP or WebSocket connection:
 ```tsx
 import {
   createApolloAionAgentCatalog,
+  createApolloAionAgentProfileSource,
   createApolloAionConversationDirectory,
 } from "@terminal-research/aion-chat-react/graphql";
 
@@ -208,6 +219,7 @@ const catalog = createApolloAionAgentCatalog({
 const conversationDirectory = createApolloAionConversationDirectory({
   client,
 });
+const agentProfileSource = createApolloAionAgentProfileSource({ client });
 ```
 
 ## Standalone GraphQL integration
@@ -220,6 +232,7 @@ other checked-in GraphQL operations without creating duplicate sockets.
 ```tsx
 import {
   createStandaloneAionAgentCatalog,
+  createStandaloneAionAgentProfileSource,
   createStandaloneAionChatTransport,
   createStandaloneAionConversationDirectory,
   createStandaloneAionGraphQLClient,
@@ -239,6 +252,7 @@ const catalog = createStandaloneAionAgentCatalog({
 const conversationDirectory = createStandaloneAionConversationDirectory({
   client,
 });
+const agentProfileSource = createStandaloneAionAgentProfileSource({ client });
 ```
 
 The client sends no cookies. Aion's current WebSocket authentication requires

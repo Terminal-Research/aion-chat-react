@@ -13,6 +13,7 @@ export default defineConfig({
           import.meta.dirname,
           "src/graphql/standalone.ts",
         ),
+        profile: resolve(import.meta.dirname, "src/profile/index.ts"),
         styles: resolve(import.meta.dirname, "src/styles/aion-chat.css"),
         "storage/browser": resolve(
           import.meta.dirname,

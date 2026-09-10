@@ -15,7 +15,6 @@ export interface AionAgentCatalogEntry {
   readonly identityType: AionAgentCatalogIdentityType;
   readonly atName?: string;
   readonly a2aUrl?: string;
-  readonly avatarImageUrl?: string;
 }
 
 /** Options for one agent-catalog read. */

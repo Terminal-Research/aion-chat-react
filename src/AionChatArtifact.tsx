@@ -8,7 +8,8 @@ import {
   AionChatParts,
   type AionChatDataPartRenderers,
 } from "./AionChatMessage";
-import type { ChatArtifact } from "./model";
+import { getChatText, type ChatArtifact } from "./model";
+import { AionChatResponseActions } from "./AionChatResponseActions";
 import { AionShimmerText } from "./motion/AionShimmerText";
 import { AionStreamingText } from "./motion/AionStreamingText";
 
@@ -84,6 +85,15 @@ export const AionChatArtifact = memo(function AionChatArtifact({
               ? content
               : "This artifact has no previewable content."}
           </div>
+          {artifact.lastChunk ? (
+            <AionChatResponseActions
+              text={getChatText(artifact.parts)}
+              metadata={{
+                contextId: artifact.contextId,
+                taskId: artifact.taskId,
+              }}
+            />
+          ) : null}
         </>
       )}
     </article>

@@ -59,6 +59,10 @@
     "./graphql/standalone": {
       "types": "./dist/graphql/standalone.d.ts",
       "import": "./dist/graphql/standalone.js"
+    },
+    "./profile": {
+      "types": "./dist/profile/index.d.ts",
+      "import": "./dist/profile.js"
     }
   },
   "scripts": {

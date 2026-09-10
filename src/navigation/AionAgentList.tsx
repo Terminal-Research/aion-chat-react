@@ -1,6 +1,6 @@
-import { ChatCircleDotsIcon } from "@phosphor-icons/react/ChatCircleDots";
 import type { HTMLAttributes } from "react";
 
+import { AionAgentAvatar } from "../AionAgentAvatar";
 import type { AionAgentCatalogEntry } from "../catalog";
 
 /** Controlled agent-list presentation. */
@@ -12,15 +12,6 @@ export interface AionAgentListProps
   readonly error?: Error;
   readonly onSelectAgent: (entry: AionAgentCatalogEntry) => void;
   readonly onRetry?: () => void;
-}
-
-function initials(value: string): string {
-  return value
-    .split(/\s+/u)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("");
 }
 
 /** Renders the authenticated agent catalog without owning selection. */
@@ -85,16 +76,11 @@ export function AionAgentList({
                 title={unavailableReason}
                 onClick={() => onSelectAgent(entry)}
               >
-                <span
+                <AionAgentAvatar
                   className="aion-chat__navigation-avatar"
-                  aria-hidden="true"
-                >
-                  {entry.avatarImageUrl ? (
-                    <img src={entry.avatarImageUrl} alt="" />
-                  ) : (
-                    initials(entry.agent.title) || <ChatCircleDotsIcon />
-                  )}
-                </span>
+                  title={entry.agent.title}
+                  imageUrl={entry.agent.avatarImageUrl}
+                />
                 <span className="aion-chat__navigation-copy">
                   <span className="aion-chat__navigation-title">
                     {entry.agent.title}

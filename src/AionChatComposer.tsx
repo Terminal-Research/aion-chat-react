@@ -3,6 +3,7 @@
  * packages/react-core/src/v2/components/chat/CopilotChatInput.tsx
  * pinned at 65bd05e3682ced8f424023f75627f8f833e52745 (MIT).
  */
+import { PaperPlaneTiltIcon } from "@phosphor-icons/react/PaperPlaneTilt";
 import {
   type ChangeEvent,
   type FormEvent,
@@ -15,6 +16,9 @@ import {
 } from "react";
 
 import type { ChatAttachmentDraft } from "./model";
+
+const DEFAULT_LINE_HEIGHT_PX = 20;
+const MAX_COMPOSER_ROWS = 5;
 
 /** Visible processing state for the default composer. */
 export type AionChatComposerStatus = "idle" | "uploading" | "running";
@@ -57,6 +61,39 @@ function attachmentStatus(attachment: ChatAttachmentDraft): string {
   }
 }
 
+function pixelValue(value: string): number {
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function resizeTextarea(
+  textarea: HTMLTextAreaElement,
+  minimumRows: number,
+): void {
+  const styles = getComputedStyle(textarea);
+  const lineHeight =
+    pixelValue(styles.lineHeight) ||
+    pixelValue(styles.fontSize) * 1.5 ||
+    DEFAULT_LINE_HEIGHT_PX;
+  const padding =
+    pixelValue(styles.paddingTop) + pixelValue(styles.paddingBottom);
+  const border =
+    pixelValue(styles.borderTopWidth) +
+    pixelValue(styles.borderBottomWidth);
+  const minimumHeight = lineHeight * minimumRows + padding + border;
+  const maximumRows = Math.max(minimumRows, MAX_COMPOSER_ROWS);
+  const maximumHeight = lineHeight * maximumRows + padding + border;
+
+  textarea.style.height = "auto";
+  const contentHeight = textarea.scrollHeight + border;
+  textarea.style.height = `${Math.min(
+    Math.max(contentHeight, minimumHeight),
+    maximumHeight,
+  )}px`;
+  textarea.style.overflowY =
+    contentHeight > maximumHeight ? "auto" : "hidden";
+}
+
 /** Controlled multiline composer with send and stop behavior. */
 export function AionChatComposer({
   value,
@@ -73,7 +110,8 @@ export function AionChatComposer({
   onStop,
   children,
   className,
-  placeholder = "Message the agent",
+  placeholder = "Enter message...",
+  rows = 1,
   ...props
 }: AionChatComposerProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -82,17 +120,15 @@ export function AionChatComposer({
   const isUploading = status === "uploading";
   const attachmentInputDisabled =
     readOnly || attachmentInputProps?.disabled || status !== "idle";
+  const minimumRows = Math.max(1, Math.floor(rows));
 
   useLayoutEffect(() => {
     const textarea = textareaRef.current;
     if (!textarea) {
       return;
     }
-    textarea.style.height = "auto";
-    if (textarea.scrollHeight > 0) {
-      textarea.style.height = `${textarea.scrollHeight}px`;
-    }
-  }, [value]);
+    resizeTextarea(textarea, minimumRows);
+  }, [minimumRows, value]);
 
   const focusInput = () => textareaRef.current?.focus();
 
@@ -225,7 +261,7 @@ export function AionChatComposer({
           placeholder={placeholder}
           aria-label="Chat message"
           readOnly={readOnly}
-          rows={2}
+          rows={minimumRows}
           onChange={(event) => {
             if (!readOnly) {
               onChange(event.currentTarget.value);
@@ -253,7 +289,14 @@ export function AionChatComposer({
             type="submit"
             disabled={!canSend}
           >
-            {isUploading ? "Uploading…" : "Send"}
+            {isUploading ? (
+              "Uploading…"
+            ) : (
+              <>
+                <PaperPlaneTiltIcon aria-hidden="true" />
+                Send
+              </>
+            )}
           </button>
         )}
       </div>

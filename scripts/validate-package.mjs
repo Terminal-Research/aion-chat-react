@@ -177,11 +177,13 @@ try {
       import { FakeAionChatTransport } from "${packageName}/testing";
       import {
         createApolloAionAgentCatalog,
+        createApolloAionAgentProfileSource,
         createApolloAionChatTransport,
         createApolloAionConversationDirectory,
       } from "${packageName}/graphql";
       import {
         createStandaloneAionAgentCatalog,
+        createStandaloneAionAgentProfileSource,
         createStandaloneAionConversationDirectory,
         createStandaloneAionGraphQLClient,
       } from "${packageName}/graphql/standalone";
@@ -191,6 +193,7 @@ try {
       import {
         createBrowserAionConversationStore,
       } from "${packageName}/storage/browser";
+      import { AionAgentProfile } from "${packageName}/profile";
 
       if (typeof AionChatView !== "object" &&
           typeof AionChatView !== "function") throw new Error("root export");
@@ -202,6 +205,9 @@ try {
       }
       if (typeof AionChatWorkspace !== "function") {
         throw new Error("workspace export");
+      }
+      if (typeof AionAgentProfile !== "function") {
+        throw new Error("profile export");
       }
       if (typeof createInMemoryAionConversationStore !== "function") {
         throw new Error("memory storage export");
@@ -221,6 +227,9 @@ try {
       if (typeof createApolloAionAgentCatalog !== "function") {
         throw new Error("apollo catalog export");
       }
+      if (typeof createApolloAionAgentProfileSource !== "function") {
+        throw new Error("apollo profile export");
+      }
       if (typeof createApolloAionConversationDirectory !== "function") {
         throw new Error("apollo directory export");
       }
@@ -229,6 +238,9 @@ try {
       }
       if (typeof createStandaloneAionAgentCatalog !== "function") {
         throw new Error("standalone catalog export");
+      }
+      if (typeof createStandaloneAionAgentProfileSource !== "function") {
+        throw new Error("standalone profile export");
       }
       if (typeof createStandaloneAionConversationDirectory !== "function") {
         throw new Error("standalone directory export");
@@ -271,6 +283,9 @@ try {
         BrowserAionConversationStoreOptions,
       } from "${packageName}/storage/browser";
       import type {
+        AionAgentProfileProps,
+      } from "${packageName}/profile";
+      import type {
         AionFilesAttachmentUploaderOptions,
       } from "${packageName}/uploads";
 
@@ -282,6 +297,7 @@ try {
       declare const standaloneOptions: AionStandaloneGraphQLClientOptions;
       declare const browserOptions: BrowserAionConversationStoreOptions;
       declare const uploadOptions: AionFilesAttachmentUploaderOptions;
+      declare const profileProps: AionAgentProfileProps;
       void [
         catalog,
         transport,
@@ -291,6 +307,7 @@ try {
         standaloneOptions,
         browserOptions,
         uploadOptions,
+        profileProps,
       ];
     `,
   );
@@ -326,6 +343,7 @@ try {
     access(join(installedPackage, "THIRD_PARTY_NOTICES.md")),
     access(join(installedPackage, "LICENSES", "CopilotKit-MIT.txt")),
     access(join(installedPackage, "dist", "index.d.ts")),
+    access(join(installedPackage, "dist", "profile", "index.d.ts")),
   ]);
 
   const consumerRequire = createRequire(join(consumerRoot, "package.json"));

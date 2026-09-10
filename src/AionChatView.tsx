@@ -19,8 +19,16 @@ import type {
   AionChatTranscriptSlots,
 } from "./AionChatTranscript";
 import { AionChatTranscript } from "./AionChatTranscript";
+import type { ChatTaskState } from "./model";
 import { useAionChat } from "./hooks";
 import type { AionSlotValue } from "./slots";
+import type { AionChatResponseMetadata } from "./AionChatResponseActions";
+
+const HIDDEN_TASK_ACTIVITY_STATES: ReadonlySet<ChatTaskState> = new Set([
+  "submitted",
+  "working",
+  "completed",
+]);
 
 type ComposerOwnedProps =
   | "value"
@@ -86,16 +94,35 @@ export function AionChatView({
     const messagesById = new Map(
       state.conversation.messages.map((message) => [message.id, message]),
     );
+    const turnsByAssistantMessageId = new Map(
+      state.conversation.turns.flatMap((turn) =>
+        turn.assistantMessageIds.map((messageId) => [messageId, turn] as const),
+      ),
+    );
     return state.conversation.transcript.flatMap<AionChatTranscriptEntry>(
       (item) => {
         if (item.type === "message") {
           const message = messagesById.get(item.id);
+          const turn = turnsByAssistantMessageId.get(item.id);
+          const inferredTaskId =
+            turn?.taskIds.length === 1 ? turn.taskIds[0] : undefined;
+          const taskId = message?.taskId ?? inferredTaskId;
+          const responseMetadata: AionChatResponseMetadata = {
+            contextId:
+              message?.contextId ??
+              (taskId
+                ? state.conversation.tasks[taskId]?.contextId
+                : undefined) ??
+              state.conversation.contextId,
+            taskId,
+          };
           return message
             ? [
                 {
                   type: "message" as const,
                   message,
                   streaming: streamingMessageIds.has(message.id),
+                  responseMetadata,
                 },
               ]
             : [];
@@ -105,13 +132,16 @@ export function AionChatView({
           return artifact ? [{ type: "artifact" as const, artifact }] : [];
         }
         const task = state.conversation.tasks[item.id];
-        return task ? [{ type: "task" as const, task }] : [];
+        return task && !HIDDEN_TASK_ACTIVITY_STATES.has(task.status.state)
+          ? [{ type: "task" as const, task }]
+          : [];
       },
     );
   }, [
     state.conversation.artifacts,
     state.conversation.activeRun,
     state.conversation.messages,
+    state.conversation.contextId,
     state.conversation.tasks,
     state.conversation.transcript,
     state.conversation.turns,

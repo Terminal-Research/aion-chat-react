@@ -20,6 +20,7 @@ import {
   type ChatConversationState,
   createChatConversationState,
 } from "./model";
+import type { AionAgentProfileSource } from "./profile";
 import { FakeAionChatTransport } from "./testing/fake-transport";
 
 const CATALOG: AionAgentCatalog = {
@@ -29,6 +30,7 @@ const CATALOG: AionAgentCatalog = {
         agent: {
           id: "distribution-1",
           title: "Status agent",
+          avatarImageUrl: "https://images.example/status.png",
           availability: "available",
         },
         identityId: "identity-1",
@@ -70,7 +72,7 @@ afterEach(cleanup);
 describe("AionChatWorkspace", () => {
   it("exposes selected-Aion header actions to the host", async () => {
     const onViewAgentProfile = vi.fn();
-    render(
+    const view = render(
       <AionChatWorkspace
         catalog={CATALOG}
         transport={new FakeAionChatTransport(() => [])}
@@ -84,17 +86,80 @@ describe("AionChatWorkspace", () => {
 
     expect(screen.getByRole("heading", { name: "Status agent" }))
       .toBeTruthy();
+    const avatar = view.container.querySelector(
+      ".aion-chat__agent-avatar.aion-chat__workspace-avatar",
+    );
+    expect(avatar?.querySelector("img")?.getAttribute("src"))
+      .toBe("https://images.example/status.png");
+    expect(view.container.querySelector(".aion-chat__message-avatar"))
+      .toBeNull();
     expect(screen.getByRole("button", { name: "Start audio call" }))
       .toHaveProperty("disabled", true);
     expect(screen.getByRole("button", { name: "Email Aion" }))
       .toHaveProperty("disabled", true);
-
     fireEvent.click(screen.getByLabelText("Conversation options"));
+    const deleteChat = screen.getByRole("button", { name: "Delete chat" });
+    expect(
+      deleteChat.classList.contains("aion-chat__workspace-menu-danger"),
+    ).toBe(true);
+
     fireEvent.click(screen.getByRole("button", { name: "View profile" }));
 
     expect(onViewAgentProfile).toHaveBeenCalledWith(
       expect.objectContaining({ identityId: "identity-1" }),
     );
+  });
+
+  it("loads the built-in identity profile only after it is opened", async () => {
+    const load = vi.fn<AionAgentProfileSource["load"]>(() =>
+      Promise.resolve({
+        identity: {
+          id: "identity-1",
+          agentType: "Principal" as const,
+          organizationId: "organization-1",
+          name: "Status agent",
+          biography: "Summarizes project status.",
+        },
+        channels: [
+          {
+            distributionId: "distribution-1",
+            networkType: "Slack" as const,
+            projectId: "project-1",
+            projectName: "Status",
+          },
+        ],
+      }),
+    );
+    const source: AionAgentProfileSource = { load };
+    render(
+      <AionChatWorkspace
+        catalog={CATALOG}
+        transport={new FakeAionChatTransport(() => [])}
+        agentProfileSource={source}
+      />,
+    );
+
+    expect(load).not.toHaveBeenCalled();
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Status agent/u }),
+    );
+    expect(load).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByLabelText("Conversation options"));
+    fireEvent.click(screen.getByRole("button", { name: "View profile" }));
+
+    await waitFor(() => expect(load).toHaveBeenCalledTimes(1));
+    expect(load.mock.calls[0]?.[0]).toBe("identity-1");
+    expect(load.mock.calls[0]?.[1]?.signal).toBeInstanceOf(AbortSignal);
+    const dialog = await screen.findByRole("dialog", {
+      name: "Aion Profile",
+    });
+    expect(within(dialog).getByText("Summarizes project status."))
+      .toBeTruthy();
+    expect(within(dialog).getByText("Slack")).toBeTruthy();
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Close Aion profile" }),
+    );
+    await waitFor(() => expect(document.body.contains(dialog)).toBe(false));
   });
 
   it("selects an agent, creates a context, and persists the chat", async () => {

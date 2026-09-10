@@ -21,6 +21,7 @@ export interface ChatAgent {
   readonly id: AgentId;
   readonly title: string;
   readonly description?: string;
+  readonly avatarImageUrl?: string;
   readonly availability: ChatAgentAvailability;
   readonly unavailableReason?: string;
   readonly metadata?: Readonly<Record<string, unknown>>;

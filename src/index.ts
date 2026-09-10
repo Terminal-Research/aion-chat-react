@@ -53,6 +53,18 @@ export type {
 } from "./catalog";
 export { AionAgentCatalogError } from "./catalog";
 export type {
+  AionAgentProfileChannel,
+  AionAgentProfileDetail,
+  AionAgentProfileErrorCode,
+  AionAgentProfileIdentity,
+  AionAgentProfileIdentityType,
+  AionAgentProfileLoadOptions,
+  AionAgentProfileNetworkType,
+  AionAgentProfileServiceIdentity,
+  AionAgentProfileSource,
+} from "./profile";
+export { AionAgentProfileError } from "./profile";
+export type {
   AionConversationSnapshot,
   AionConversationSnapshotOptions,
   AionConversationStore,
@@ -111,6 +123,11 @@ export type {
   AionChatComposerStatus,
 } from "./AionChatComposer";
 export { AionChatComposer } from "./AionChatComposer";
+export type {
+  AionChatResponseActionsProps,
+  AionChatResponseMetadata,
+} from "./AionChatResponseActions";
+export { AionChatResponseActions } from "./AionChatResponseActions";
 export type { AionChatArtifactProps } from "./AionChatArtifact";
 export { AionChatArtifact } from "./AionChatArtifact";
 export type {

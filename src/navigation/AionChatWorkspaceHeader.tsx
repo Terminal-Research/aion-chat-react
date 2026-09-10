@@ -5,6 +5,7 @@ import { TrashIcon } from "@phosphor-icons/react/Trash";
 import { UserCircleIcon } from "@phosphor-icons/react/UserCircle";
 import { useRef } from "react";
 
+import { AionAgentAvatar } from "../AionAgentAvatar";
 import type { AionAgentCatalogEntry } from "../catalog";
 import type { ChatAgent } from "../model";
 
@@ -45,7 +46,14 @@ export function AionChatWorkspaceHeader({
 
   return (
     <header className="aion-chat__workspace-header">
-      <h2 className="aion-chat__workspace-title">{agent.title}</h2>
+      <div className="aion-chat__workspace-identity">
+        <AionAgentAvatar
+          className="aion-chat__workspace-avatar"
+          title={agent.title}
+          imageUrl={agent.avatarImageUrl}
+        />
+        <h2 className="aion-chat__workspace-title">{agent.title}</h2>
+      </div>
       <div className="aion-chat__workspace-actions">
         <button
           className="aion-chat__workspace-action"
@@ -83,6 +91,7 @@ export function AionChatWorkspaceHeader({
               View profile
             </button>
             <button
+              className="aion-chat__workspace-menu-danger"
               type="button"
               disabled={!canRemoveConversation}
               onClick={removeConversation}

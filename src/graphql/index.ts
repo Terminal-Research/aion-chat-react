@@ -9,6 +9,12 @@ export { createApolloAionChatTransport } from "./apollo-transport";
 export type { ApolloAionAgentCatalogOptions } from "./apollo-catalog";
 export { createApolloAionAgentCatalog } from "./apollo-catalog";
 export type {
+  ApolloAionAgentProfileSourceOptions,
+} from "./apollo-profile";
+export {
+  createApolloAionAgentProfileSource,
+} from "./apollo-profile";
+export type {
   ApolloAionQueryClient,
   ApolloAionSubscriptionClient,
 } from "./apollo-client";
@@ -22,6 +28,10 @@ export {
   AION_AGENT_CATALOG_QUERY,
   AION_AGENT_CATALOG_QUERY_SOURCE,
 } from "./catalog-operation";
+export {
+  AION_AGENT_PROFILE_QUERY,
+  AION_AGENT_PROFILE_QUERY_SOURCE,
+} from "./profile-operation";
 export { buildAionChatGraphQLVariables } from "./chat-transport";
 export type {
   AionChatGraphQLServiceParameters,

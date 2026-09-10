@@ -115,6 +115,7 @@ describe("Aion agent catalog", () => {
           id: "distribution-2",
           title: "Writer",
           description: "Drafts concise prose.",
+          avatarImageUrl: "https://images.example/writer.png",
           availability: "available",
         },
         identityId: "identity-2",
@@ -123,7 +124,6 @@ describe("Aion agent catalog", () => {
         identityType: "Principal",
         atName: "writer",
         a2aUrl: "https://agents.example/writer",
-        avatarImageUrl: "https://images.example/writer.png",
       },
     ]);
   });

@@ -1,5 +1,7 @@
 import {
   type HTMLAttributes,
+  lazy,
+  Suspense,
   useEffect,
   useMemo,
   useRef,
@@ -29,6 +31,7 @@ import type {
   ChatPart,
   ContextId,
 } from "./model";
+import type { AionAgentProfileSource } from "./profile";
 import {
   AionChatNavigator,
   type AionChatNavigatorView,
@@ -36,6 +39,12 @@ import {
 import { AionChatWorkspaceHeader } from "./navigation/AionChatWorkspaceHeader";
 import type { AionChatTransport } from "./transport";
 import { useAionAgentCatalog } from "./useAionAgentCatalog";
+
+const AionAgentProfileDialog = lazy(() =>
+  import("./AionAgentProfile").then((module) => ({
+    default: module.AionAgentProfileDialog,
+  })),
+);
 
 /** Candidate text supplied to a host-owned local command handler. */
 export interface AionChatLocalCommandContext {
@@ -63,8 +72,12 @@ export interface AionChatWorkspaceProps
   readonly showNavigator?: boolean;
   readonly attachmentUploader?: AionAttachmentUploader;
   readonly chatViewProps?: AionChatViewProps;
+  /** Enables the built-in lazy identity profile for selected catalog entries. */
+  readonly agentProfileSource?: AionAgentProfileSource;
+  /** Overrides the production Aion application root used by profile links. */
+  readonly agentProfileAppBaseUrl?: string;
   readonly onAgentChange?: (agent: ChatAgent | undefined) => void;
-  /** Opens the selected catalog identity in a host-owned profile view. */
+  /** Overrides the built-in profile action with a host-owned profile view. */
   readonly onViewAgentProfile?: (entry: AionAgentCatalogEntry) => void;
   readonly onContextChange?: (contextId: ContextId | undefined) => void;
   readonly onConversationChange?: (state: ChatConversationState) => void;
@@ -152,6 +165,8 @@ export function AionChatWorkspace({
   showNavigator,
   attachmentUploader,
   chatViewProps,
+  agentProfileSource,
+  agentProfileAppBaseUrl,
   onAgentChange,
   onViewAgentProfile,
   onContextChange,
@@ -181,6 +196,7 @@ export function AionChatWorkspace({
   const currentTime = now ?? defaultNow;
   const catalogState = useAionAgentCatalog(fixedAgent ? undefined : catalog);
   const [selectedAgentId, setSelectedAgentId] = useState<string>();
+  const [profileIdentityId, setProfileIdentityId] = useState<string>();
   const [navigatorView, setNavigatorView] =
     useState<AionChatNavigatorView>(fixedAgent ? "conversations" : "agents");
   const selectedEntry = catalogState.entries.find(
@@ -225,6 +241,7 @@ export function AionChatWorkspace({
 
   const selectAgent = (entry: AionAgentCatalogEntry) => {
     conversations.clearSelection();
+    setProfileIdentityId(undefined);
     setSelectedAgentId(entry.agent.id);
     setNavigatorView("conversations");
     onAgentChange?.(entry.agent);
@@ -233,6 +250,7 @@ export function AionChatWorkspace({
 
   const returnToAgents = () => {
     conversations.clearSelection();
+    setProfileIdentityId(undefined);
     setNavigatorView("agents");
     setSelectedAgentId(undefined);
     onAgentChange?.(undefined);
@@ -299,6 +317,14 @@ export function AionChatWorkspace({
     }
   };
 
+  const viewAgentProfile =
+    onViewAgentProfile ??
+    (agentProfileSource
+      ? (entry: AionAgentCatalogEntry) => {
+          setProfileIdentityId(entry.identityId);
+        }
+      : undefined);
+
   return (
     <div
       className={["aion-chat__workspace", className]
@@ -343,7 +369,7 @@ export function AionChatWorkspace({
             canRemoveConversation={Boolean(
               conversations.selectedContextId,
             )}
-            onViewAgentProfile={onViewAgentProfile}
+            onViewAgentProfile={viewAgentProfile}
             onRemoveConversation={() => {
               const contextId = conversations.selectedContextId;
               if (contextId) {
@@ -381,6 +407,17 @@ export function AionChatWorkspace({
           )}
         </div>
       </section>
+      {profileIdentityId && agentProfileSource ? (
+        <Suspense fallback={null}>
+          <AionAgentProfileDialog
+            open
+            identityId={profileIdentityId}
+            source={agentProfileSource}
+            appBaseUrl={agentProfileAppBaseUrl}
+            onClose={() => setProfileIdentityId(undefined)}
+          />
+        </Suspense>
+      ) : null}
     </div>
   );
 }

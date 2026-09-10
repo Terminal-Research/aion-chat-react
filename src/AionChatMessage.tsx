@@ -13,12 +13,17 @@ import {
   AionChatMarkdown,
   type AionChatMarkdownComponent,
 } from "./AionChatMarkdown";
-import type {
-  ChatDataPart,
-  ChatFilePart,
-  ChatMessage,
-  ChatPart,
+import {
+  getChatText,
+  type ChatDataPart,
+  type ChatFilePart,
+  type ChatMessage,
+  type ChatPart,
 } from "./model";
+import {
+  AionChatResponseActions,
+  type AionChatResponseMetadata,
+} from "./AionChatResponseActions";
 import { AionStreamingText } from "./motion/AionStreamingText";
 
 /** Props supplied to a structured-data part renderer. */
@@ -50,6 +55,7 @@ export interface AionChatPartsProps {
 export interface AionChatMessageProps extends HTMLAttributes<HTMLDivElement> {
   readonly message: ChatMessage;
   readonly streaming?: boolean;
+  readonly responseMetadata?: AionChatResponseMetadata;
   readonly markdownComponent?: AionChatMarkdownComponent;
   readonly dataRenderers?: AionChatDataPartRenderers;
 }
@@ -191,6 +197,7 @@ export const AionChatParts = memo(function AionChatParts({
 export const AionChatMessage = memo(function AionChatMessage({
   message,
   streaming = false,
+  responseMetadata,
   markdownComponent = AionChatMarkdown,
   dataRenderers,
   className,
@@ -230,6 +237,15 @@ export const AionChatMessage = memo(function AionChatMessage({
           />
         )}
       </div>
+      {message.role === "assistant" && !streaming ? (
+        <AionChatResponseActions
+          text={getChatText(message.parts)}
+          metadata={{
+            contextId: responseMetadata?.contextId ?? message.contextId,
+            taskId: responseMetadata?.taskId ?? message.taskId,
+          }}
+        />
+      ) : null}
     </div>
   );
 });
