@@ -1225,7 +1225,10 @@ the contained workspace from Subtask AA and without completing Subtasks Q or R.
   lazy profile loading, additional insight rows, Catalog rendering, and the
   rendered Agent Card route.
 
-### Subtask AI — Deep-link Playground agent selection (status: in progress)
+### Subtask AI — Deep-link Playground agent selection (status: done)
+
+- Commit ID (aion-chat-react): `16d185c`
+- Commit ID (aion-agent-cloud): `e4a293d6f`
 
 - Add `/aions/playground/:agentIdentityId` alongside the unselected Playground
   route and make the route parameter control the workspace's selected catalog
