@@ -1337,7 +1337,12 @@ the contained workspace from Subtask AA and without completing Subtasks Q or R.
 - Verify non-UTC formatting in the library and the host-to-library parameter
   handoff in the Playground integration.
 
-### Subtask AP — Default thread activity to the runtime timezone (status: in progress)
+### Subtask AP — Default thread activity to the runtime timezone (status: done)
+
+- Commit ID (aion-chat-react):
+  `a0bbfdd7034de2ad3a67118da6cfa59c07b53900`
+- Commit ID (aion-agent-cloud):
+  `5a3f7eee14ab87b1df82b760cb717295bbf08405`
 
 - Keep the explicit IANA timezone override optional and use the timezone
   resolved by the browser or runtime when the host omits it.
