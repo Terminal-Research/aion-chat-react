@@ -1,5 +1,6 @@
 .aion-chat-theme {
   --aion-chat-font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --aion-chat-font-heading: var(--aion-chat-font-family);
   --aion-chat-font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
   --aion-chat-font-size: 1rem;
   --aion-chat-line-height: 1.5;
@@ -12,6 +13,14 @@
   --aion-chat-color-border: #d7dce5;
   --aion-chat-color-accent: #315efb;
   --aion-chat-color-accent-contrast: #ffffff;
+  --aion-chat-color-success: #039855;
+  --aion-chat-color-info: #1570ef;
+  --aion-chat-color-secondary-control: #667085;
+  --aion-chat-color-secondary-control-contrast: #ffffff;
+  --aion-chat-avatar-background: var(--aion-chat-color-accent);
+  --aion-chat-avatar-border-color: transparent;
+  --aion-chat-avatar-border-width: 0;
+  --aion-chat-avatar-color: var(--aion-chat-color-accent-contrast);
   --aion-chat-color-assistant-message: #f5f6f8;
   --aion-chat-color-user-message: #eef2ff;
   --aion-chat-color-danger: #b42318;
@@ -57,6 +66,8 @@
 .aion-chat__response-action,
 .aion-chat__dialog,
 .aion-chat__dialog *,
+.aion-chat__profile,
+.aion-chat__profile *,
 .aion-chat__workspace,
 .aion-chat__workspace-header,
 .aion-chat__workspace-header *,
@@ -372,8 +383,10 @@
   place-items: center;
   flex: 0 0 auto;
   overflow: hidden;
-  color: var(--aion-chat-color-accent-contrast);
-  background: var(--aion-chat-color-accent);
+  color: var(--aion-chat-avatar-color);
+  background: var(--aion-chat-avatar-background);
+  border: var(--aion-chat-avatar-border-width) solid
+    var(--aion-chat-avatar-border-color);
   border-radius: 50%;
   font-weight: 700;
 }
@@ -740,47 +753,45 @@
 }
 
 .aion-chat__profile {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  color: var(--aion-chat-color-text);
+  background: var(--aion-chat-color-background);
+}
+
+.aion-chat__profile-dialog .aion-chat__profile {
   max-height: calc(100vh - 6rem);
-  overflow: auto;
-}
-
-.aion-chat__profile-background {
-  height: 8rem;
-  border-bottom: 1px solid var(--aion-chat-color-border);
-}
-
-.aion-chat__profile-background img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
 }
 
 .aion-chat__profile-summary {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: var(--aion-chat-space-3);
-  padding: var(--aion-chat-space-4);
-}
-
-.aion-chat__profile-background + .aion-chat__profile-summary {
-  padding-top: 0;
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--aion-chat-space-4);
+  padding: var(--aion-chat-space-5) var(--aion-chat-space-5)
+    var(--aion-chat-space-4);
 }
 
 .aion-chat__profile-avatar {
-  width: 4.5rem;
-  height: 4.5rem;
-  margin-top: -2.25rem;
-  background: var(--aion-chat-color-background);
-  border: 0.25rem solid var(--aion-chat-color-background);
+  width: 5.5rem;
+  height: 5.5rem;
+  border-radius: 1.571rem;
 }
 
-.aion-chat__profile-summary:first-child .aion-chat__profile-avatar {
-  margin-top: 0;
+.aion-chat__profile-identity {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .aion-chat__profile-heading {
+  display: flex;
+  min-height: 3.25rem;
+  flex-direction: column;
+  justify-content: center;
   min-width: 0;
-  align-self: center;
 }
 
 .aion-chat__profile-heading h3,
@@ -791,41 +802,72 @@
   margin: 0;
 }
 
+.aion-chat__profile-type {
+  display: inline-flex;
+  margin-bottom: var(--aion-chat-space-1);
+  padding: 0.25em 0.55em;
+  color: var(--aion-chat-color-accent);
+  background: color-mix(
+    in srgb,
+    var(--aion-chat-color-accent) 12%,
+    transparent
+  );
+  border-radius: var(--aion-chat-radius-small);
+  font-size: 0.75em;
+  font-weight: 600;
+  line-height: 1;
+}
+
 .aion-chat__profile-heading h3 {
   overflow: hidden;
-  font-size: 1.125rem;
+  color: var(--aion-chat-color-text);
+  font-family: var(--aion-chat-font-heading);
+  font-size: clamp(1.7rem, 3cqi, 2.3rem);
+  font-weight: 700;
+  line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.aion-chat__profile-heading p,
-.aion-chat__profile-channel-content > span,
-.aion-chat__profile-channels > p {
+.aion-chat__profile-heading p {
+  margin-top: 0.2rem;
   color: var(--aion-chat-color-muted);
-  font-size: 0.875em;
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.aion-chat__profile-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 var(--aion-chat-space-5) 6rem;
 }
 
 .aion-chat__profile-biography {
-  grid-column: 1 / -1;
+  margin-bottom: var(--aion-chat-space-4);
+  line-height: 1.65;
   white-space: pre-wrap;
 }
 
 .aion-chat__profile-details {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--aion-chat-space-4);
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--aion-chat-space-2);
   margin: 0;
-  padding: var(--aion-chat-space-4);
-  background: var(--aion-chat-color-surface);
-  border-block: 1px solid var(--aion-chat-color-border);
+  padding-block: var(--aion-chat-space-4);
+  border-top: 1px solid var(--aion-chat-color-border);
 }
 
-.aion-chat__profile-details > div {
+.aion-chat__profile-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
+  align-content: start;
+  align-items: start;
+  gap: var(--aion-chat-space-2);
   min-width: 0;
 }
 
 .aion-chat__profile-details dt {
-  margin-bottom: var(--aion-chat-space-1);
   color: var(--aion-chat-color-muted);
   font-size: 0.75em;
   font-weight: 600;
@@ -833,27 +875,61 @@
 }
 
 .aion-chat__profile-details dd {
+  min-width: 0;
   margin: 0;
   overflow-wrap: anywhere;
 }
 
-.aion-chat__profile-details a {
-  display: inline-flex;
+.aion-chat__profile-contact {
+  display: flex;
   align-items: center;
-  gap: var(--aion-chat-space-1);
-  color: var(--aion-chat-color-accent);
+  gap: var(--aion-chat-space-2);
+  min-width: 0;
 }
 
-.aion-chat__profile-details svg {
-  width: 1rem;
-  height: 1rem;
+.aion-chat__profile-contact-link {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--aion-chat-color-accent);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.aion-chat__profile-copy {
+  display: grid;
+  width: 1.75rem;
+  height: 1.75rem;
   flex: 0 0 auto;
+  place-items: center;
+  margin-inline-start: auto;
+  padding: 0;
+  color: var(--aion-chat-color-secondary-control-contrast);
+  background: var(--aion-chat-color-secondary-control);
+  border: 1px solid var(--aion-chat-color-secondary-control);
+  border-radius: var(--aion-chat-radius-small);
+  cursor: pointer;
+}
+
+.aion-chat__profile-copy:hover,
+.aion-chat__profile-copy:focus-visible {
+  border-color: var(--aion-chat-color-secondary-control-contrast);
+}
+
+.aion-chat__profile-copy:focus-visible {
+  outline: none;
+  box-shadow: var(--aion-chat-focus-ring);
+}
+
+.aion-chat__profile-copy svg {
+  width: 0.875rem;
+  height: 0.875rem;
 }
 
 .aion-chat__profile-channels {
   display: grid;
-  gap: var(--aion-chat-space-3);
-  padding: var(--aion-chat-space-4);
+  gap: var(--aion-chat-space-4);
+  padding-top: var(--aion-chat-space-4);
+  border-top: 1px solid var(--aion-chat-color-border);
 }
 
 .aion-chat__profile-channels h3 {
@@ -862,53 +938,113 @@
 
 .aion-chat__profile-channels ul {
   display: grid;
-  gap: var(--aion-chat-space-2);
+  gap: var(--aion-chat-space-3);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .aion-chat__profile-channel {
+  --aion-chat-profile-channel-color: var(--aion-chat-color-accent);
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: var(--aion-chat-space-3);
-  padding: var(--aion-chat-space-3);
-  background: var(--aion-chat-color-surface);
-  border: 1px solid var(--aion-chat-color-border);
+  width: 100%;
+  padding: 0.7rem;
+  color: var(--aion-chat-color-text);
+  background: color-mix(
+    in srgb,
+    var(--aion-chat-color-surface) 35%,
+    transparent
+  );
+  border: 1px solid color-mix(
+    in srgb,
+    var(--aion-chat-color-border) 65%,
+    transparent
+  );
   border-radius: var(--aion-chat-radius-small);
-  color: inherit;
+  text-align: left;
   text-decoration: none;
+  transition: background 180ms ease, border-color 180ms ease;
+}
+
+.aion-chat__profile-channel[data-network="Twitter"],
+.aion-chat__profile-channel[data-network="GitHub"] {
+  --aion-chat-profile-channel-color: var(--aion-chat-color-text);
+}
+
+.aion-chat__profile-channel[data-network="Playground"],
+.aion-chat__profile-channel[data-network="Voice"] {
+  --aion-chat-profile-channel-color: var(--aion-chat-color-success);
+}
+
+.aion-chat__profile-channel[data-network="Telegram"],
+.aion-chat__profile-channel[data-network="TelegramBot"] {
+  --aion-chat-profile-channel-color: var(--aion-chat-color-info);
+}
+
+.aion-chat__profile-channel[data-network="Slack"] {
+  --aion-chat-profile-channel-color: var(--aion-chat-color-danger);
 }
 
 .aion-chat__profile-channel:is(a):hover {
-  background: var(--aion-chat-color-surface-emphasis);
+  color: var(--aion-chat-color-text);
+  background: color-mix(
+    in srgb,
+    var(--aion-chat-profile-channel-color) 10%,
+    transparent
+  );
+  border-color: var(--aion-chat-profile-channel-color);
 }
 
 .aion-chat__profile-channel:is(a):focus-visible {
   outline: none;
+  border-color: var(--aion-chat-profile-channel-color);
   box-shadow: var(--aion-chat-focus-ring);
 }
 
 .aion-chat__profile-channel-icon {
   display: grid;
-  width: 2rem;
-  height: 2rem;
+  width: 2.75rem;
+  height: 2.75rem;
   flex: 0 0 auto;
   place-items: center;
-  color: var(--aion-chat-color-muted);
-  background: var(--aion-chat-color-background);
-  border-radius: 50%;
+  color: var(--aion-chat-profile-channel-color);
+  background: color-mix(
+    in srgb,
+    var(--aion-chat-profile-channel-color) 16%,
+    transparent
+  );
+  border-radius: calc(var(--aion-chat-radius-small) * 1.5);
 }
 
 .aion-chat__profile-channel-icon svg {
-  width: 1rem;
-  height: 1rem;
+  width: 1.5rem;
+  height: 1.5rem;
 }
 
 .aion-chat__profile-channel-content {
   display: grid;
   flex: 1 1 auto;
   min-width: 0;
+  gap: 0.15rem;
+}
+
+.aion-chat__profile-channel-content strong {
+  overflow: hidden;
+  font-family: var(--aion-chat-font-heading);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.aion-chat__profile-channel-content > span,
+.aion-chat__profile-channels > p {
+  overflow: hidden;
+  color: var(--aion-chat-color-muted);
+  font-size: 0.875em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .aion-chat__profile-channel-action {
@@ -923,19 +1059,6 @@
 .aion-chat__profile-channel-action svg {
   width: 1rem;
   height: 1rem;
-}
-
-.aion-chat__profile-channel-heading {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--aion-chat-space-3);
-}
-
-.aion-chat__profile-channel-heading strong {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .aion-chat__profile-status {
@@ -1409,9 +1532,6 @@
     border-bottom: 1px solid var(--aion-chat-color-border);
   }
 
-  .aion-chat__profile-details {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {

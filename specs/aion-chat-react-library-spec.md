@@ -1240,6 +1240,20 @@ the contained workspace from Subtask AA and without completing Subtasks Q or R.
 - Verify direct initial selection, route changes while mounted, unknown IDs,
   ordinary in-workspace selection, and return-to-catalog navigation.
 
+### Subtask AJ — Restore shared profile presentation parity (status: in progress)
+
+- Make the shared profile own the established Catalog presentation structure:
+  rounded-square identity avatar, type badge and handle/name hierarchy,
+  biography, single-column detail list with label/value rows, contact copy
+  actions, and compact two-line channel rows.
+- Keep portable channel destinations from Subtask AH while restoring the
+  previous channel labels, account fallback order, and contextual tooltips.
+- Expose the profile's visual decisions through semantic `--aion-chat-*`
+  custom properties. The `aion-agent-cloud` integration may map application
+  theme tokens but must not style shared profile internals directly.
+- Verify the shared structure, copy behavior, channel destinations, lazy
+  loading, Catalog insight rows, and host-theme integration.
+
 ## 3) Package Hierarchy + Responsibilities
 
 The names below are provisional but establish dependency direction. Modules may
@@ -2277,3 +2291,12 @@ API connections and conversation state. The loader owns only host-page
 placement and a narrow, origin-validated `postMessage` bridge. Public agents
 may run anonymously; authenticated embeds require a separately designed
 short-lived, scoped credential flow rather than an Aion user JWT in the page.
+
+Q: Who owns the structure and application theming of the shared Aion profile?
+
+A: The React library owns the complete profile structure and its default
+presentation, including identity hierarchy, details, copy controls, and
+channel rows. Hosts configure that surface through the same semantic
+`--aion-chat-*` theme variables used by the rest of the library. They should
+not need selectors that reach into profile internals to recreate an
+application-specific layout.

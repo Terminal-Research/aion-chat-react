@@ -313,4 +313,71 @@ test.describe("AionChatWorkspace browser behavior", () => {
       .poll(() => page.evaluate(() => navigator.clipboard.readText()))
       .toBe(responseText);
   });
+
+  test("keeps the shared Aion profile in the established Catalog layout", async ({
+    page,
+  }) => {
+    await page.goto("/tests/browser/fixture/index.html");
+    await page.getByRole("button", {
+      name: "Available agent Aion agent",
+      exact: true,
+    }).click();
+    await page.getByLabel("Conversation options").click();
+    await page.getByRole("button", { name: "View profile" }).click();
+
+    const dialog = page.getByRole("dialog", { name: "Aion Profile" });
+    const profile = dialog.getByRole("article", {
+      name: "Available agent profile",
+    });
+    await expect(profile).toBeVisible();
+    await expect(profile.getByRole("heading", { name: "available-agent" }))
+      .toBeVisible();
+    await expect(profile.getByText("Available agent", { exact: true }))
+      .toBeVisible();
+    await expect(profile.getByText("Principal", { exact: true }))
+      .toBeVisible();
+
+    const avatar = profile.locator(".aion-chat__profile-avatar");
+    const avatarStyle = await avatar.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return {
+        borderRadius: Number.parseFloat(style.borderRadius),
+        height: Number.parseFloat(style.height),
+        width: Number.parseFloat(style.width),
+      };
+    });
+    expect(avatarStyle.width).toBe(88);
+    expect(avatarStyle.height).toBe(88);
+    expect(avatarStyle.borderRadius).toBeGreaterThan(24);
+    expect(avatarStyle.borderRadius).toBeLessThan(26);
+
+    const details = profile.locator(".aion-chat__profile-details");
+    await expect
+      .poll(() =>
+        details.evaluate((element) => getComputedStyle(element).backgroundColor),
+      )
+      .toBe("rgba(0, 0, 0, 0)");
+    const firstField = details.locator(".aion-chat__profile-field").first();
+    const label = firstField.getByRole("term");
+    const value = firstField.getByRole("definition");
+    const { leftBox: labelBox, rightBox: valueBox } = await boxesFor(
+      label,
+      value,
+    );
+    expect(labelBox.x + labelBox.width).toBeLessThanOrEqual(valueBox.x);
+    await expect(profile.getByRole("button", { name: "Copy email" }))
+      .toBeVisible();
+
+    const channel = profile.getByRole("link", {
+      name: "Open Playground: Browser fixture",
+    });
+    await expect(channel.getByText("Playground", { exact: true }))
+      .toBeVisible();
+    await expect(channel.getByText("Browser fixture", { exact: true }))
+      .toBeVisible();
+    await expect(channel).toHaveAttribute(
+      "title",
+      "Open Playground · Browser fixture · Production",
+    );
+  });
 });

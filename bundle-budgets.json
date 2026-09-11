@@ -1,7 +1,7 @@
 {
   "dist/a2a/direct.js": { "rawBytes": 28672, "gzipBytes": 9216 },
   "dist/index.js": { "rawBytes": 81920, "gzipBytes": 22528 },
-  "dist/profile.js": { "rawBytes": 16384, "gzipBytes": 5120 },
+  "dist/profile.js": { "rawBytes": 18432, "gzipBytes": 6144 },
   "dist/graphql/apollo.js": { "rawBytes": 32768, "gzipBytes": 11264 },
   "dist/graphql/standalone.js": {
     "rawBytes": 36864,

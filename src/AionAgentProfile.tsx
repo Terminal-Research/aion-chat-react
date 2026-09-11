@@ -1,9 +1,8 @@
 import { BrowserIcon } from "@phosphor-icons/react/Browser";
-import { ArrowSquareOutIcon } from "@phosphor-icons/react/ArrowSquareOut";
+import { ArrowUpRightIcon } from "@phosphor-icons/react/ArrowUpRight";
 import { ChatCircleDotsIcon } from "@phosphor-icons/react/ChatCircleDots";
 import { EnvelopeSimpleIcon } from "@phosphor-icons/react/EnvelopeSimple";
 import { GithubLogoIcon } from "@phosphor-icons/react/GithubLogo";
-import { GlobeIcon } from "@phosphor-icons/react/Globe";
 import { PhoneIcon } from "@phosphor-icons/react/Phone";
 import { SlackLogoIcon } from "@phosphor-icons/react/SlackLogo";
 import { TelegramLogoIcon } from "@phosphor-icons/react/TelegramLogo";
@@ -19,6 +18,7 @@ import {
 
 import { AionAgentAvatar } from "./AionAgentAvatar";
 import { AionChatDialog } from "./AionChatDialog";
+import { AionCopyButton } from "./AionCopyButton";
 import {
   AionAgentProfileError,
   type AionAgentProfileChannel,
@@ -79,11 +79,18 @@ function displayName(detail: AionAgentProfileDetail): string {
   return detail.identity.name ?? detail.identity.atName ?? detail.identity.id;
 }
 
-function atName(value: string | undefined): string | undefined {
-  if (!value) {
-    return undefined;
+interface IdentityHeading {
+  readonly primary: string;
+  readonly secondary?: string;
+}
+
+function identityHeading(detail: AionAgentProfileDetail): IdentityHeading {
+  const name = detail.identity.name?.trim();
+  const handle = detail.identity.atName?.trim().replace(/^@/u, "");
+  if (handle && name) {
+    return { primary: handle, secondary: name };
   }
-  return `@${value.replace(/^@/u, "")}`;
+  return { primary: handle || name || detail.identity.id };
 }
 
 function websiteHref(value: string | undefined): string | undefined {
@@ -130,12 +137,39 @@ function channelIcon(networkType: AionAgentProfileNetworkType): ReactNode {
   }
 }
 
-function channelName(channel: AionAgentProfileChannel): string {
+function channelTitle(networkType: AionAgentProfileNetworkType): string {
+  switch (networkType) {
+    case "AgentMail":
+      return "Email";
+    case "Meet":
+      return "Google Meet";
+    case "TelegramBot":
+      return "Telegram Bot";
+    case "Twitter":
+      return "X";
+    case "Voice":
+      return "Telephone";
+    default:
+      return networkType;
+  }
+}
+
+function channelAccount(channel: AionAgentProfileChannel): string {
+  const identity = channel.serviceIdentity;
   return (
-    channel.serviceIdentity?.name ??
-    channel.serviceIdentity?.userName ??
-    channel.networkType
+    identity?.userName?.trim() ||
+    identity?.name?.trim() ||
+    identity?.networkUserId?.trim() ||
+    channel.projectName
   );
+}
+
+function channelTooltip(
+  action: string | undefined,
+  scope: string,
+): string {
+  const label = action ?? "Native link unavailable";
+  return scope ? `${label} · ${scope}` : label;
 }
 
 interface ChannelProps {
@@ -144,8 +178,8 @@ interface ChannelProps {
 }
 
 function Channel({ appBaseUrl, channel }: ChannelProps) {
-  const name = channelName(channel);
-  const username = atName(channel.serviceIdentity?.userName);
+  const title = channelTitle(channel.networkType);
+  const account = channelAccount(channel);
   const scope = [channel.projectName, channel.agentEnvironmentName]
     .filter(Boolean)
     .join(" · ");
@@ -159,18 +193,16 @@ function Channel({ appBaseUrl, channel }: ChannelProps) {
         {channelIcon(channel.networkType)}
       </span>
       <span className="aion-chat__profile-channel-content">
-        <span className="aion-chat__profile-channel-heading">
-          <strong>{name}</strong>
-          {name === channel.networkType ? null : (
-            <span>{channel.networkType}</span>
-          )}
-        </span>
-        {username ? <span>{username}</span> : null}
-        {scope ? <span>{scope}</span> : null}
+        <strong>{title}</strong>
+        <span>{account}</span>
       </span>
       {destination ? (
         <span className="aion-chat__profile-channel-action" aria-hidden="true">
-          <ArrowSquareOutIcon />
+          {destination.target === "telephone" ? (
+            <PhoneIcon />
+          ) : (
+            <ArrowUpRightIcon />
+          )}
         </span>
       ) : null}
     </>
@@ -183,15 +215,67 @@ function Channel({ appBaseUrl, channel }: ChannelProps) {
           href={destination.href}
           rel="noreferrer"
           target={destination.target === "external" ? "_blank" : undefined}
-          title={destination.label}
-          aria-label={`${destination.label}: ${name}`}
+          title={channelTooltip(destination.label, scope)}
+          aria-label={`${destination.label}: ${account}`}
+          data-network={channel.networkType}
         >
           {content}
         </a>
       ) : (
-        <div className="aion-chat__profile-channel">{content}</div>
+        <div
+          className="aion-chat__profile-channel"
+          data-network={channel.networkType}
+          title={channelTooltip(undefined, scope)}
+        >
+          {content}
+        </div>
       )}
     </li>
+  );
+}
+
+interface ProfileFieldProps {
+  readonly children: ReactNode;
+  readonly label: string;
+  readonly title?: string;
+}
+
+function ProfileField({ children, label, title }: ProfileFieldProps) {
+  return (
+    <div className="aion-chat__profile-field">
+      <dt title={title}>{label}</dt>
+      <dd>{children}</dd>
+    </div>
+  );
+}
+
+interface ProfileContactProps {
+  readonly href: string;
+  readonly label: string;
+  readonly target?: "_blank";
+  readonly value: string;
+}
+
+function ProfileContact({ href, label, target, value }: ProfileContactProps) {
+  return (
+    <ProfileField label={label}>
+      <span className="aion-chat__profile-contact">
+        <a
+          className="aion-chat__profile-contact-link"
+          href={href}
+          rel={target ? "noreferrer" : undefined}
+          target={target}
+          title={value}
+        >
+          {value}
+        </a>
+        <AionCopyButton
+          className="aion-chat__profile-copy"
+          label={label.toLowerCase()}
+          text={value}
+        />
+      </span>
+    </ProfileField>
   );
 }
 
@@ -209,93 +293,86 @@ function ProfileContent({
   const { identity, channels } = detail;
   const channelsTitleId = useId();
   const name = displayName(detail);
-  const username = atName(identity.atName);
+  const heading = identityHeading(detail);
   const biography = identity.biography?.trim();
   const email = identity.email?.trim();
-  const website = websiteHref(identity.website);
+  const websiteValue = identity.website?.trim();
+  const website = websiteHref(websiteValue);
+  const hasDetails = Boolean(
+    email || website || additionalDetails.length,
+  );
   return (
     <article
       className={["aion-chat__profile", className].filter(Boolean).join(" ")}
       aria-label={`${name} profile`}
       {...props}
     >
-      {identity.backgroundImageUrl ? (
-        <div className="aion-chat__profile-background" aria-hidden="true">
-          <img src={identity.backgroundImageUrl} alt="" />
-        </div>
-      ) : null}
-      <section className="aion-chat__profile-summary">
+      <header className="aion-chat__profile-summary">
         <AionAgentAvatar
           className="aion-chat__profile-avatar"
           title={name}
           imageUrl={identity.avatarImageUrl}
         />
-        <div className="aion-chat__profile-heading">
-          <h3>{name}</h3>
-          {username ? <p>{username}</p> : null}
+        <div className="aion-chat__profile-identity">
+          <span className="aion-chat__profile-type">
+            {identity.agentType}
+          </span>
+          <div className="aion-chat__profile-heading">
+            <h3>{heading.primary}</h3>
+            {heading.secondary ? <p>{heading.secondary}</p> : null}
+          </div>
         </div>
+      </header>
+      <div className="aion-chat__profile-body">
         {biography ? (
           <p className="aion-chat__profile-biography">
             {biography}
           </p>
         ) : null}
-      </section>
-      <dl className="aion-chat__profile-details">
-        <div>
-          <dt>Type</dt>
-          <dd>{identity.agentType}</dd>
-        </div>
-        {identity.identityNetwork ? (
-          <div>
-            <dt>Network</dt>
-            <dd>{identity.identityNetwork}</dd>
-          </div>
-        ) : null}
-        {email ? (
-          <div>
-            <dt>Email</dt>
-            <dd>
-              <a href={`mailto:${email}`}>{email}</a>
-            </dd>
-          </div>
-        ) : null}
-        {website ? (
-          <div>
-            <dt>Website</dt>
-            <dd>
-              <a href={website} target="_blank" rel="noreferrer">
-                {identity.website}
-                <GlobeIcon aria-hidden="true" />
-              </a>
-            </dd>
-          </div>
-        ) : null}
-        {additionalDetails.map((item) => (
-          <div key={item.id} title={item.title}>
-            <dt>{item.label}</dt>
-            <dd>{item.value}</dd>
-          </div>
-        ))}
-      </dl>
-      <section
-        className="aion-chat__profile-channels"
-        aria-labelledby={channelsTitleId}
-      >
-        <h3 id={channelsTitleId}>Channels</h3>
-        {channels.length ? (
-          <ul>
-            {channels.map((channel) => (
-              <Channel
-                key={channel.distributionId}
-                appBaseUrl={appBaseUrl}
-                channel={channel}
+        {hasDetails ? (
+          <dl className="aion-chat__profile-details">
+            {email ? (
+              <ProfileContact
+                href={`mailto:${email}`}
+                label="Email"
+                value={email}
               />
+            ) : null}
+            {website && websiteValue ? (
+              <ProfileContact
+                href={website}
+                label="Website"
+                target="_blank"
+                value={websiteValue}
+              />
+            ) : null}
+            {additionalDetails.map((item) => (
+              <ProfileField key={item.id} label={item.label} title={item.title}>
+                {item.value}
+              </ProfileField>
             ))}
-          </ul>
-        ) : (
-          <p>No active channels.</p>
-        )}
-      </section>
+          </dl>
+        ) : null}
+        <section
+          className="aion-chat__profile-channels"
+          aria-labelledby={channelsTitleId}
+        >
+          <h3 id={channelsTitleId}>Channels</h3>
+          {channels.length ? (
+            <ul>
+              {channels.map((channel) => (
+                <Channel
+                  key={channel.distributionId}
+                  appBaseUrl={appBaseUrl}
+                  channel={channel}
+                />
+              ))}
+            </ul>
+          ) : (
+            <p>No active distribution connections.</p>
+          )}
+        </section>
+      </div>
     </article>
   );
 }

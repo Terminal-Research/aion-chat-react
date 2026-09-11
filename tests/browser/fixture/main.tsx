@@ -5,6 +5,7 @@ import {
   AionChatTheme,
   AionChatWorkspace,
   type AionAgentCatalog,
+  type AionAgentProfileSource,
   type AionConversationDirectory,
   type ChatAgent,
   type ChatConversationState,
@@ -106,6 +107,31 @@ const directory: AionConversationDirectory = {
   load: (agent, contextId) => Promise.resolve(conversation(agent, contextId)),
 };
 
+const profileSource: AionAgentProfileSource = {
+  load: (identityId) =>
+    Promise.resolve({
+      identity: {
+        id: identityId,
+        agentType: "Principal",
+        organizationId: "browser-fixture",
+        name: "Available agent",
+        atName: "available-agent",
+        biography: "A browser fixture agent.",
+        email: "available@example.test",
+        website: "https://example.test/available-agent",
+      },
+      channels: [
+        {
+          distributionId: "available-agent-distribution",
+          networkType: "Playground",
+          projectId: "browser-fixture-project",
+          projectName: "Browser fixture",
+          agentEnvironmentName: "Production",
+        },
+      ],
+    }),
+};
+
 const transport = new FakeAionChatTransport(() => []);
 const store = createBrowserAionConversationStore({
   scopeKey: "browser-fixture",
@@ -117,6 +143,7 @@ createRoot(document.getElementById("root")!).render(
       <AionChatTheme className="browser-fixture__theme">
         <AionChatWorkspace
           catalog={catalog}
+          agentProfileSource={profileSource}
           conversationDirectory={directory}
           conversationStore={store}
           transport={transport}

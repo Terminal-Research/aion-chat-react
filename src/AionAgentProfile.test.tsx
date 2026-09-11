@@ -1,13 +1,24 @@
-import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AionAgentProfile } from "./AionAgentProfile";
 import { AionAgentProfileError } from "./profile";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
 describe("AionAgentProfile", () => {
-  it("renders preloaded details, channels, and host-defined rows", () => {
+  it("preserves the established profile hierarchy and controls", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal("navigator", { clipboard: { writeText } });
     render(
       <AionAgentProfile
         detail={{
@@ -41,16 +52,35 @@ describe("AionAgentProfile", () => {
 
     expect(screen.getByRole("article", { name: "Status agent profile" }))
       .toBeTruthy();
-    expect(screen.getByText("@status-agent")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "status-agent" })).toBeTruthy();
+    expect(screen.getByText("Status agent")).toBeTruthy();
+    expect(screen.getByText("Principal")).toBeTruthy();
     expect(screen.getByText("Summarizes project status.")).toBeTruthy();
+    expect(screen.getAllByRole("term").map((term) => term.textContent))
+      .toEqual(["Email", "Website", "Responses"]);
     expect(screen.getByRole("link", { name: /example.com\/status/u }))
       .toHaveProperty("href", "https://example.com/status");
-    expect(screen.getByText("Status · Production")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Open Playground: Playground" }))
+    const emailCopy = screen.getByRole("button", { name: "Copy email" });
+    fireEvent.click(emailCopy);
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Copied email" }))
+        .toBeTruthy();
+    });
+    expect(writeText).toHaveBeenCalledWith("status@example.com");
+    expect(screen.getByText("Playground")).toBeTruthy();
+    expect(screen.getByText("Status")).toBeTruthy();
+    const playground = screen.getByRole("link", {
+      name: "Open Playground: Status",
+    });
+    expect(playground)
       .toHaveProperty(
         "href",
         "https://staging.app.aion.to/aions/playground",
       );
+    expect(playground).toHaveProperty(
+      "title",
+      "Open Playground · Status · Production",
+    );
     expect(screen.getByText("Responses")).toBeTruthy();
     expect(screen.getByText("42")).toBeTruthy();
   });

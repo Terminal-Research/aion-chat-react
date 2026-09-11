@@ -8,12 +8,10 @@ interface AionAgentAvatarProps
 }
 
 function initials(value: string): string {
-  return value
+  const [first = "", second = ""] = value
     .split(/\s+/u)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("");
+    .filter(Boolean);
+  return `${first[0] ?? ""}${second[0] ?? first[1] ?? ""}`.toUpperCase();
 }
 
 /** Renders a decorative Aion image with an initials fallback. */
