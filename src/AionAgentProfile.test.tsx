@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import {
   cleanup,
   fireEvent,
@@ -8,7 +11,27 @@ import {
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AionAgentProfile } from "./AionAgentProfile";
-import { AionAgentProfileError } from "./profile";
+import {
+  AionAgentProfileError,
+  type AionAgentProfileNetworkType,
+} from "./profile";
+
+function profileChannelColor(
+  css: string,
+  networkType: AionAgentProfileNetworkType,
+): string | undefined {
+  const selector = `[data-network="${networkType}"]`;
+  const selectorIndex = css.indexOf(selector);
+  if (selectorIndex < 0) {
+    return undefined;
+  }
+  const ruleEnd = css.indexOf("}", selectorIndex);
+  if (ruleEnd < 0) {
+    return undefined;
+  }
+  const rule = css.slice(selectorIndex, ruleEnd);
+  return /--aion-chat-profile-channel-color:\s*([^;]+);/u.exec(rule)?.[1];
+}
 
 afterEach(() => {
   cleanup();
@@ -40,6 +63,18 @@ describe("AionAgentProfile", () => {
               projectId: "project-1",
               projectName: "Status",
               agentEnvironmentName: "Production",
+            },
+            {
+              distributionId: "distribution-voice",
+              networkType: "Voice",
+              projectId: "project-1",
+              projectName: "Status",
+              serviceIdentity: {
+                id: "service-voice",
+                identityNetwork: "Twilio",
+                networkUserId: "+14155550123",
+                systemIdentity: true,
+              },
             },
           ],
         }}
@@ -81,6 +116,12 @@ describe("AionAgentProfile", () => {
       "title",
       "Open Playground · Status · Production",
     );
+    const voice = screen.getByRole("link", {
+      name: "Call number: +14155550123",
+    });
+    const actionSelector = ".aion-chat__profile-channel-action svg";
+    expect(voice.querySelector(actionSelector)?.innerHTML)
+      .toBe(playground.querySelector(actionSelector)?.innerHTML);
     expect(screen.getByText("Responses")).toBeTruthy();
     expect(screen.getByText("42")).toBeTruthy();
   });
@@ -107,4 +148,27 @@ describe("AionAgentProfile", () => {
     );
     expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
   });
+
+  it("reserves accent for Aion channels and distinguishes email and Meet", () => {
+    const css = readFileSync(
+      join(process.cwd(), "src/styles/aion-chat.css"),
+      "utf8",
+    );
+    const channelCss = css.slice(css.indexOf(".aion-chat__profile-channel {"));
+
+    expect(profileChannelColor(channelCss, "A2A"))
+      .toBe("var(--aion-chat-color-accent)");
+    expect(profileChannelColor(channelCss, "Aion"))
+      .toBe("var(--aion-chat-color-accent)");
+    expect(profileChannelColor(channelCss, "AgentMail"))
+      .toBe("var(--aion-chat-color-info)");
+    expect(profileChannelColor(channelCss, "Meet"))
+      .toBe("var(--aion-chat-color-success)");
+    expect(
+      channelCss.match(
+        /--aion-chat-profile-channel-color: var\(--aion-chat-color-accent\);/gu,
+      ),
+    ).toHaveLength(1);
+  });
+
 });

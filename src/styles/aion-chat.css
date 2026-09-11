@@ -945,7 +945,7 @@
 }
 
 .aion-chat__profile-channel {
-  --aion-chat-profile-channel-color: var(--aion-chat-color-accent);
+  --aion-chat-profile-channel-color: var(--aion-chat-color-text);
   display: flex;
   align-items: center;
   gap: var(--aion-chat-space-3);
@@ -971,6 +971,19 @@
 .aion-chat__profile-channel[data-network="Twitter"],
 .aion-chat__profile-channel[data-network="GitHub"] {
   --aion-chat-profile-channel-color: var(--aion-chat-color-text);
+}
+
+.aion-chat__profile-channel[data-network="A2A"],
+.aion-chat__profile-channel[data-network="Aion"] {
+  --aion-chat-profile-channel-color: var(--aion-chat-color-accent);
+}
+
+.aion-chat__profile-channel[data-network="AgentMail"] {
+  --aion-chat-profile-channel-color: var(--aion-chat-color-info);
+}
+
+.aion-chat__profile-channel[data-network="Meet"] {
+  --aion-chat-profile-channel-color: var(--aion-chat-color-success);
 }
 
 .aion-chat__profile-channel[data-network="Playground"],

@@ -198,11 +198,7 @@ function Channel({ appBaseUrl, channel }: ChannelProps) {
       </span>
       {destination ? (
         <span className="aion-chat__profile-channel-action" aria-hidden="true">
-          {destination.target === "telephone" ? (
-            <PhoneIcon />
-          ) : (
-            <ArrowUpRightIcon />
-          )}
+          <ArrowUpRightIcon />
         </span>
       ) : null}
     </>

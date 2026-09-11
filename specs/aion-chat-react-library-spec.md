@@ -1259,6 +1259,17 @@ the contained workspace from Subtask AA and without completing Subtasks Q or R.
 - Verify the shared structure, copy behavior, channel destinations, lazy
   loading, Catalog insight rows, and host-theme integration.
 
+### Subtask AK — Refine profile channel presentation (status: in progress)
+
+- Reserve the accent channel color for A2A and Aion. Use the semantic info
+  color for AgentMail and the semantic success color for Google Meet so those
+  channels remain distinct without introducing channel-specific host styles.
+- Render the same open-channel action icon for every actionable destination,
+  including telephone links. Retain the telephone icon as the Voice channel's
+  identifying icon.
+- Verify the per-network semantic color mapping and consistent destination
+  action glyph without changing channel navigation behavior.
+
 ## 3) Package Hierarchy + Responsibilities
 
 The names below are provisional but establish dependency direction. Modules may
@@ -2305,3 +2316,11 @@ channel rows. Hosts configure that surface through the same semantic
 `--aion-chat-*` theme variables used by the rest of the library. They should
 not need selectors that reach into profile internals to recreate an
 application-specific layout.
+
+Q: How should profile channel colors and destination action icons be assigned?
+
+A: Reserve the accent token for Aion-owned A2A and Aion channels. AgentMail
+uses the semantic info token and Google Meet uses the semantic success token;
+the remaining established channel mappings stay unchanged. Every actionable
+channel uses the same open-channel glyph, while its leading icon continues to
+identify the channel itself.
