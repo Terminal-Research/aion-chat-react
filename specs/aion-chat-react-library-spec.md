@@ -1321,7 +1321,12 @@ the contained workspace from Subtask AA and without completing Subtasks Q or R.
 - Commit ID (aion-docs-mintlify):
   `494f12b831ba765083f3b433733a573c977557c2`
 
-### Subtask AO — Localize thread activity for the host user (status: in progress)
+### Subtask AO — Localize thread activity for the host user (status: done)
+
+- Commit ID (aion-chat-react):
+  `cc531c57343fc883e5168319696fe508dbe79170`
+- Commit ID (aion-agent-cloud):
+  `1fb352db807e89b37824aa73f3bc4f038525bfca`
 
 - Add an explicit IANA timezone parameter to the conversation list, navigator,
   and workspace while preserving UTC as the library default.
