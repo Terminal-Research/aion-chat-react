@@ -1312,6 +1312,14 @@ the contained workspace from Subtask AA and without completing Subtasks Q or R.
   browser fixture tests for the new extension response shape.
 - Record the backend, library, and pinned `aion-agent-cloud` commits under this
   subtask.
+- Commit ID (aion-api2):
+  `98ec5be0dca9115c46ec988e221f46f8dafc83ce`
+- Commit ID (aion-chat-react):
+  `953558836d0d96c85ab90e64cbc1baaebb0cbbb0`
+- Commit ID (aion-agent-cloud):
+  `cf857de278baed56e4ef5544f24872d6479f5b774`
+- Commit ID (aion-docs-mintlify):
+  `494f12b831ba765083f3b433733a573c977557c2`
 
 ## 3) Package Hierarchy + Responsibilities
 
