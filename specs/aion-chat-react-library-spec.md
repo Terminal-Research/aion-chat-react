@@ -1259,7 +1259,10 @@ the contained workspace from Subtask AA and without completing Subtasks Q or R.
 - Verify the shared structure, copy behavior, channel destinations, lazy
   loading, Catalog insight rows, and host-theme integration.
 
-### Subtask AK — Refine profile channel presentation (status: in progress)
+### Subtask AK — Refine profile channel presentation (status: done)
+
+- Commit ID (aion-chat-react): `dc6e8ea`
+- Commit ID (aion-agent-cloud): `23df577f8`
 
 - Reserve the accent channel color for A2A and Aion. Use the semantic info
   color for AgentMail and the semantic success color for Google Meet so those
