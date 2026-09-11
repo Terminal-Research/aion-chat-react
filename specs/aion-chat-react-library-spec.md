@@ -1321,6 +1321,17 @@ the contained workspace from Subtask AA and without completing Subtasks Q or R.
 - Commit ID (aion-docs-mintlify):
   `494f12b831ba765083f3b433733a573c977557c2`
 
+### Subtask AO — Localize thread activity for the host user (status: in progress)
+
+- Add an explicit IANA timezone parameter to the conversation list, navigator,
+  and workspace while preserving UTC as the library default.
+- Keep context activity as an ISO-8601 UTC instant in transport and state; use
+  the timezone only when formatting the thread timestamp for presentation.
+- Have `aion-agent-cloud` prefer the authenticated user's timezone and fall
+  back to the selected organization's timezone.
+- Verify non-UTC formatting in the library and the host-to-library parameter
+  handoff in the Playground integration.
+
 ## 3) Package Hierarchy + Responsibilities
 
 The names below are provisional but establish dependency direction. Modules may

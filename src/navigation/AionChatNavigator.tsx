@@ -29,6 +29,8 @@ export interface AionChatNavigatorProps
   readonly conversationsError?: Error;
   readonly showBack?: boolean;
   readonly newConversationDisabled?: boolean;
+  /** IANA timezone used to display conversation activity. */
+  readonly timeZone?: string;
   readonly onSelectAgent: (entry: AionAgentCatalogEntry) => void;
   readonly onBack: () => void;
   readonly onNewConversation: () => void;
@@ -55,6 +57,7 @@ export function AionChatNavigator({
   conversationsError,
   showBack = true,
   newConversationDisabled = false,
+  timeZone,
   onSelectAgent,
   onBack,
   onNewConversation,
@@ -167,6 +170,7 @@ export function AionChatNavigator({
             onRemoveConversation={onRemoveConversation}
             onRetry={onRetryConversations}
             onLoadMore={onLoadMoreConversations}
+            timeZone={timeZone}
           />
         </section>
       </div>

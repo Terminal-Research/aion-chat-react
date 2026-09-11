@@ -72,6 +72,8 @@ export interface AionChatWorkspaceProps
   readonly selectedAgentIdentityId?: string | null;
   readonly startNewConversation?: boolean;
   readonly showNavigator?: boolean;
+  /** IANA timezone used to display conversation activity. */
+  readonly timeZone?: string;
   readonly attachmentUploader?: AionAttachmentUploader;
   readonly chatViewProps?: AionChatViewProps;
   /** Enables the built-in lazy identity profile for selected catalog entries. */
@@ -184,6 +186,7 @@ export function AionChatWorkspace({
   selectedAgentIdentityId,
   startNewConversation = false,
   showNavigator,
+  timeZone,
   attachmentUploader,
   chatViewProps,
   agentProfileSource,
@@ -426,6 +429,7 @@ export function AionChatWorkspace({
           onLoadMoreConversations={() => {
             void conversations.loadMoreConversations();
           }}
+          timeZone={timeZone}
         />
       ) : null}
       <section

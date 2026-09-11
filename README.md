@@ -128,6 +128,7 @@ import {
     agentProfileSource={agentProfileSource}
     conversationDirectory={conversationDirectory}
     conversationStore={createInMemoryAionConversationStore()}
+    timeZone={user.timezone ?? organization.timezone}
   />
 </AionChatTheme>;
 ```
@@ -139,6 +140,10 @@ selected context with `GetContext`. The separate store is a safe local cache;
 use the in-memory implementation by default or import the browser store from
 `@terminal-research/aion-chat-react/storage/browser` with an opaque,
 user-scoped key. Never use a bearer token as that key.
+
+Context activity timestamps remain UTC instants on the wire. Supply an IANA
+`timeZone`, such as `America/Los_Angeles`, to format them for the current user.
+The workspace defaults to UTC when the host does not provide a display zone.
 
 The workspace also supports `fixedAgent`, `fixedContextId`, and
 `startNewConversation`. A remote directory is intentionally optional so known

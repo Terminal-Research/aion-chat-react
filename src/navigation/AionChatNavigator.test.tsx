@@ -180,4 +180,22 @@ describe("AionChatNavigator", () => {
     expect(onRetry).toHaveBeenCalledTimes(1);
     expect(screen.queryByText("hidden storage detail")).toBeNull();
   });
+
+  it("formats conversation activity in the host timezone", () => {
+    render(
+      <AionChatNavigator
+        view="conversations"
+        agents={[AGENT]}
+        conversations={[SUMMARY]}
+        selectedAgentId={AGENT.agent.id}
+        timeZone="America/Los_Angeles"
+        onSelectAgent={() => undefined}
+        onBack={() => undefined}
+        onNewConversation={() => undefined}
+        onSelectConversation={() => undefined}
+      />,
+    );
+
+    expect(screen.getByText("Sep 3, 2026, 05:00")).toBeTruthy();
+  });
 });

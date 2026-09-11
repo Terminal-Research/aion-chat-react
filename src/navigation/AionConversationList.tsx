@@ -1,5 +1,5 @@
 import { TrashIcon } from "@phosphor-icons/react/Trash";
-import type { HTMLAttributes } from "react";
+import { type HTMLAttributes, useMemo } from "react";
 
 import type { AionConversationSummary } from "../conversations/types";
 
@@ -15,21 +15,21 @@ export interface AionConversationListProps
   readonly onRemoveConversation?: (contextId: string) => void;
   readonly onRetry?: () => void;
   readonly onLoadMore?: () => void;
+  /** IANA timezone used to display conversation activity. */
+  readonly timeZone?: string;
   readonly formatTimestamp?: (timestamp: string) => string;
 }
 
-const DEFAULT_TIMESTAMP_FORMATTER = new Intl.DateTimeFormat("en", {
-  year: "numeric",
-  month: "short",
-  day: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-  hourCycle: "h23",
-  timeZone: "UTC",
-});
-
-function defaultFormatTimestamp(value: string): string {
-  return DEFAULT_TIMESTAMP_FORMATTER.format(new Date(value));
+function timestampFormatter(timeZone: string): Intl.DateTimeFormat {
+  return new Intl.DateTimeFormat("en", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+    timeZone,
+  });
 }
 
 /** Renders locally known A2A contexts without owning selection or storage. */
@@ -43,10 +43,19 @@ export function AionConversationList({
   onRemoveConversation,
   onRetry,
   onLoadMore,
-  formatTimestamp = defaultFormatTimestamp,
+  timeZone = "UTC",
+  formatTimestamp,
   className,
   ...props
 }: AionConversationListProps) {
+  const defaultFormatter = useMemo(
+    () => timestampFormatter(timeZone),
+    [timeZone],
+  );
+  const renderTimestamp =
+    formatTimestamp ??
+    ((timestamp: string) => defaultFormatter.format(new Date(timestamp)));
+
   return (
     <div
       className={["aion-chat__conversation-list", className]
@@ -99,7 +108,7 @@ export function AionConversationList({
                     className="aion-chat__navigation-time"
                     dateTime={summary.updatedAt}
                   >
-                    {formatTimestamp(summary.updatedAt)}
+                    {renderTimestamp(summary.updatedAt)}
                   </time>
                 ) : null}
               </button>
