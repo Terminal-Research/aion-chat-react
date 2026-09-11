@@ -1285,6 +1285,17 @@ the contained workspace from Subtask AA and without completing Subtasks Q or R.
 - Verify default and overridden roots, URL encoding, rendered profile links,
   and the pinned frontend Catalog integration.
 
+### Subtask AM — Simplify Playground route navigation (status: done)
+
+- Commit ID (aion-agent-cloud): `4aab422fa`
+
+- Treat the Playground as a top-level application destination whose breadcrumb
+  contains only Home and Playground, independent of the selected Aion.
+- Make the breadcrumb Escape action return to the application homepage while
+  retaining the shared workspace's own Aion and thread navigation controls.
+- Verify the breadcrumb hierarchy and Escape destination from an
+  identity-specific Playground route.
+
 ## 3) Package Hierarchy + Responsibilities
 
 The names below are provisional but establish dependency direction. Modules may
@@ -2346,3 +2357,10 @@ A: It should open the existing identity-specific Playground route using the
 parent profile identity ID: `/aions/playground/:agentIdentityId`. The shared
 destination helper requires that identity rather than falling back to the
 generic Playground catalog, and URL-encodes it before constructing the link.
+
+Q: How should the Playground appear in application breadcrumbs?
+
+A: Treat it as a top-level destination. Its breadcrumb is Home then Playground
+even when an Aion is selected, and Escape returns to `/home`. Aion and thread
+selection remain internal to the shared workspace rather than extending the
+application breadcrumb hierarchy.
