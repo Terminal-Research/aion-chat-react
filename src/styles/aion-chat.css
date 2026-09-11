@@ -1,4 +1,4 @@
-.aion-chat-theme {
+:where(.aion-chat-theme) {
   --aion-chat-font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
   --aion-chat-font-heading: var(--aion-chat-font-family);
   --aion-chat-font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;

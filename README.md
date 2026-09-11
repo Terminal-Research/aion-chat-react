@@ -63,7 +63,9 @@ class, or a stylesheet. The main groups are `--aion-chat-color-*`,
 `--aion-chat-font-*`, `--aion-chat-space-*`, `--aion-chat-radius*`,
 `--aion-chat-shadow`, and `--aion-chat-focus-ring`. The example workspace maps
 these properties to both standard Bootstrap 5.3 variables and Aion Cloud's
-`--ins-*` equivalents.
+`--ins-*` equivalents. Library defaults use a zero-specificity theme selector,
+so one host class can override the variables without depending on stylesheet
+load order or styling component internals.
 
 Interaction motion uses the same CSS-variable boundary. Hosts can tune
 `--aion-chat-motion-shimmer-duration`,
