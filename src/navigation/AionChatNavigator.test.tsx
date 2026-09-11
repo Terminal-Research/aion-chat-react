@@ -198,4 +198,51 @@ describe("AionChatNavigator", () => {
 
     expect(screen.getByText("Sep 3, 2026, 05:00")).toBeTruthy();
   });
+
+  it("defaults conversation activity to the runtime timezone", () => {
+    vi.spyOn(Intl.DateTimeFormat.prototype, "resolvedOptions")
+      .mockReturnValue({
+        locale: "en-US",
+        calendar: "gregory",
+        numberingSystem: "latn",
+        timeZone: "America/New_York",
+      });
+
+    render(
+      <AionChatNavigator
+        view="conversations"
+        agents={[AGENT]}
+        conversations={[SUMMARY]}
+        selectedAgentId={AGENT.agent.id}
+        onSelectAgent={() => undefined}
+        onBack={() => undefined}
+        onNewConversation={() => undefined}
+        onSelectConversation={() => undefined}
+      />,
+    );
+
+    expect(screen.getByText("Sep 3, 2026, 08:00")).toBeTruthy();
+  });
+
+  it("uses UTC when the runtime timezone cannot be resolved", () => {
+    vi.spyOn(Intl.DateTimeFormat.prototype, "resolvedOptions")
+      .mockImplementation(() => {
+        throw new Error("Timezone unavailable");
+      });
+
+    render(
+      <AionChatNavigator
+        view="conversations"
+        agents={[AGENT]}
+        conversations={[SUMMARY]}
+        selectedAgentId={AGENT.agent.id}
+        onSelectAgent={() => undefined}
+        onBack={() => undefined}
+        onNewConversation={() => undefined}
+        onSelectConversation={() => undefined}
+      />,
+    );
+
+    expect(screen.getByText("Sep 3, 2026, 12:00")).toBeTruthy();
+  });
 });

@@ -15,7 +15,7 @@ export interface AionConversationListProps
   readonly onRemoveConversation?: (contextId: string) => void;
   readonly onRetry?: () => void;
   readonly onLoadMore?: () => void;
-  /** IANA timezone used to display conversation activity. */
+  /** IANA display timezone; omit to use the runtime timezone or UTC. */
   readonly timeZone?: string;
   readonly formatTimestamp?: (timestamp: string) => string;
 }
@@ -32,6 +32,14 @@ function timestampFormatter(timeZone: string): Intl.DateTimeFormat {
   });
 }
 
+function runtimeTimeZone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  } catch {
+    return "UTC";
+  }
+}
+
 /** Renders locally known A2A contexts without owning selection or storage. */
 export function AionConversationList({
   summaries,
@@ -43,13 +51,13 @@ export function AionConversationList({
   onRemoveConversation,
   onRetry,
   onLoadMore,
-  timeZone = "UTC",
+  timeZone,
   formatTimestamp,
   className,
   ...props
 }: AionConversationListProps) {
   const defaultFormatter = useMemo(
-    () => timestampFormatter(timeZone),
+    () => timestampFormatter(timeZone ?? runtimeTimeZone()),
     [timeZone],
   );
   const renderTimestamp =

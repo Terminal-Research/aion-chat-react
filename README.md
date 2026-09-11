@@ -143,7 +143,10 @@ user-scoped key. Never use a bearer token as that key.
 
 Context activity timestamps remain UTC instants on the wire. Supply an IANA
 `timeZone`, such as `America/Los_Angeles`, to format them for the current user.
-The workspace defaults to UTC when the host does not provide a display zone.
+When the host omits the display zone, the workspace uses the timezone resolved
+by the browser or runtime and falls back to UTC when it cannot resolve one.
+Hosts should pass an explicit zone when applying a user or organization
+preference, or when server-rendered output must be deterministic.
 
 The workspace also supports `fixedAgent`, `fixedContextId`, and
 `startNewConversation`. A remote directory is intentionally optional so known

@@ -1337,6 +1337,15 @@ the contained workspace from Subtask AA and without completing Subtasks Q or R.
 - Verify non-UTC formatting in the library and the host-to-library parameter
   handoff in the Playground integration.
 
+### Subtask AP — Default thread activity to the runtime timezone (status: in progress)
+
+- Keep the explicit IANA timezone override optional and use the timezone
+  resolved by the browser or runtime when the host omits it.
+- Fall back to UTC when runtime timezone resolution is unavailable while
+  leaving all transport and state timestamps as UTC instants.
+- Document when hosts should provide an explicit timezone and verify both the
+  library fallback and the pinned frontend dependency.
+
 ## 3) Package Hierarchy + Responsibilities
 
 The names below are provisional but establish dependency direction. Modules may
