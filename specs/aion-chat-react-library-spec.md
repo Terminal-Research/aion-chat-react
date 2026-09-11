@@ -1240,7 +1240,12 @@ the contained workspace from Subtask AA and without completing Subtasks Q or R.
 - Verify direct initial selection, route changes while mounted, unknown IDs,
   ordinary in-workspace selection, and return-to-catalog navigation.
 
-### Subtask AJ — Restore shared profile presentation parity (status: in progress)
+### Subtask AJ — Restore shared profile presentation parity (status: done)
+
+- Commit ID (aion-chat-react): `d336c7d`
+- Commit ID (aion-chat-react): `b391f6f`
+- Commit ID (aion-chat-react): `25a6c12`
+- Commit ID (aion-agent-cloud): `9771e5335`
 
 - Make the shared profile own the established Catalog presentation structure:
   rounded-square identity avatar, type badge and handle/name hierarchy,
