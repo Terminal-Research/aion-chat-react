@@ -906,7 +906,7 @@
   color: var(--aion-chat-color-secondary-control-contrast);
   background: var(--aion-chat-color-secondary-control);
   border: 1px solid var(--aion-chat-color-secondary-control);
-  border-radius: var(--aion-chat-radius-small);
+  border-radius: 9999px;
   cursor: pointer;
 }
 
