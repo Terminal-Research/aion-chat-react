@@ -12,11 +12,14 @@ const CHANNEL: AionAgentProfileChannel = {
   projectId: "project-1",
   projectName: "Support",
 };
+const OPTIONS = { agentIdentityId: "identity/one" } as const;
 
 describe("getAionAgentProfileChannelDestination", () => {
-  it("uses the production application root by default", () => {
-    expect(getAionAgentProfileChannelDestination(CHANNEL)).toEqual({
-      href: `${DEFAULT_AION_APP_BASE_URL}/aions/playground`,
+  it("deep-links the identity from the production application root", () => {
+    expect(getAionAgentProfileChannelDestination(CHANNEL, OPTIONS)).toEqual({
+      href:
+        `${DEFAULT_AION_APP_BASE_URL}/aions/playground/` +
+        "identity%2Fone",
       label: "Open Playground",
       target: "external",
     });
@@ -26,7 +29,10 @@ describe("getAionAgentProfileChannelDestination", () => {
     expect(
       getAionAgentProfileChannelDestination(
         { ...CHANNEL, networkType: "A2A" },
-        "https://staging.app.aion.to/nested",
+        {
+          agentIdentityId: "identity-1",
+          appBaseUrl: "https://staging.app.aion.to/nested",
+        },
       ),
     ).toEqual({
       href:
@@ -39,17 +45,20 @@ describe("getAionAgentProfileChannelDestination", () => {
 
   it("derives native links from matching service identities", () => {
     expect(
-      getAionAgentProfileChannelDestination({
-        ...CHANNEL,
-        networkType: "Twitter",
-        serviceIdentity: {
-          id: "identity-1",
-          identityNetwork: "Twitter",
-          networkUserId: "123",
-          userName: "@aion",
-          systemIdentity: false,
+      getAionAgentProfileChannelDestination(
+        {
+          ...CHANNEL,
+          networkType: "Twitter",
+          serviceIdentity: {
+            id: "identity-1",
+            identityNetwork: "Twitter",
+            networkUserId: "123",
+            userName: "@aion",
+            systemIdentity: false,
+          },
         },
-      }),
+        OPTIONS,
+      ),
     ).toEqual({
       href: "https://x.com/aion",
       label: "Open X profile",
@@ -59,20 +68,26 @@ describe("getAionAgentProfileChannelDestination", () => {
 
   it("rejects invalid application roots and mismatched native identities", () => {
     expect(() =>
-      getAionAgentProfileChannelDestination(CHANNEL, "javascript:alert(1)"),
+      getAionAgentProfileChannelDestination(CHANNEL, {
+        ...OPTIONS,
+        appBaseUrl: "javascript:alert(1)",
+      }),
     ).toThrow("appBaseUrl must be an absolute HTTP or HTTPS URL.");
     expect(
-      getAionAgentProfileChannelDestination({
-        ...CHANNEL,
-        networkType: "GitHub",
-        serviceIdentity: {
-          id: "identity-1",
-          identityNetwork: "Twitter",
-          networkUserId: "123",
-          userName: "octocat",
-          systemIdentity: false,
+      getAionAgentProfileChannelDestination(
+        {
+          ...CHANNEL,
+          networkType: "GitHub",
+          serviceIdentity: {
+            id: "identity-1",
+            identityNetwork: "Twitter",
+            networkUserId: "123",
+            userName: "octocat",
+            systemIdentity: false,
+          },
         },
-      }),
+        OPTIONS,
+      ),
     ).toBeUndefined();
   });
 });

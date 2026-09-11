@@ -175,9 +175,10 @@ function channelTooltip(
 interface ChannelProps {
   readonly appBaseUrl: string;
   readonly channel: AionAgentProfileChannel;
+  readonly identityId: string;
 }
 
-function Channel({ appBaseUrl, channel }: ChannelProps) {
+function Channel({ appBaseUrl, channel, identityId }: ChannelProps) {
   const title = channelTitle(channel.networkType);
   const account = channelAccount(channel);
   const scope = [channel.projectName, channel.agentEnvironmentName]
@@ -185,7 +186,7 @@ function Channel({ appBaseUrl, channel }: ChannelProps) {
     .join(" · ");
   const destination = getAionAgentProfileChannelDestination(
     channel,
-    appBaseUrl,
+    { agentIdentityId: identityId, appBaseUrl },
   );
   const content = (
     <>
@@ -361,6 +362,7 @@ function ProfileContent({
                   key={channel.distributionId}
                   appBaseUrl={appBaseUrl}
                   channel={channel}
+                  identityId={identity.id}
                 />
               ))}
             </ul>

@@ -10,6 +10,12 @@ export interface AionAgentProfileChannelDestination {
   readonly target: "external" | "telephone";
 }
 
+/** Inputs shared by Aion-owned profile channel destinations. */
+export interface AionAgentProfileChannelDestinationOptions {
+  readonly agentIdentityId: string;
+  readonly appBaseUrl?: string;
+}
+
 const WEB_PROTOCOLS: ReadonlySet<string> = new Set(["http:", "https:"]);
 const X_HOSTS: ReadonlySet<string> = new Set([
   "x.com",
@@ -74,16 +80,22 @@ function nativeWebsite(
  * Resolves one channel to a safe native or Aion-owned destination.
  *
  * @param channel Channel whose service identity supplies native addressing.
- * @param appBaseUrl Aion application root for Playground and Agent Card pages.
+ * @param options Parent identity and application root for Aion-owned pages.
  * @returns An actionable destination, or undefined for informational channels.
  */
 export function getAionAgentProfileChannelDestination(
   channel: AionAgentProfileChannel,
-  appBaseUrl = DEFAULT_AION_APP_BASE_URL,
+  {
+    agentIdentityId,
+    appBaseUrl = DEFAULT_AION_APP_BASE_URL,
+  }: AionAgentProfileChannelDestinationOptions,
 ): AionAgentProfileChannelDestination | undefined {
   if (channel.networkType === "Playground") {
     return {
-      href: applicationUrl("/aions/playground", appBaseUrl),
+      href: applicationUrl(
+        `/aions/playground/${encodeURIComponent(agentIdentityId)}`,
+        appBaseUrl,
+      ),
       label: "Open Playground",
       target: "external",
     };

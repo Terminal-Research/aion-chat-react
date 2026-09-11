@@ -379,5 +379,9 @@ test.describe("AionChatWorkspace browser behavior", () => {
       "title",
       "Open Playground · Browser fixture · Production",
     );
+    await expect(channel).toHaveAttribute(
+      "href",
+      "https://app.aion.to/aions/playground/available-agent-identity",
+    );
   });
 });

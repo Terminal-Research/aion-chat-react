@@ -1273,6 +1273,15 @@ the contained workspace from Subtask AA and without completing Subtasks Q or R.
 - Verify the per-network semantic color mapping and consistent destination
   action glyph without changing channel navigation behavior.
 
+### Subtask AL — Deep-link profile Playground channels (status: in progress)
+
+- Require profile channel destination resolution to receive the parent agent
+  identity ID and encode that ID into Playground destinations.
+- Link Playground profile rows to `/aions/playground/:agentIdentityId` while
+  retaining the existing application-root override and other channel routes.
+- Verify default and overridden roots, URL encoding, rendered profile links,
+  and the pinned frontend Catalog integration.
+
 ## 3) Package Hierarchy + Responsibilities
 
 The names below are provisional but establish dependency direction. Modules may
@@ -2327,3 +2336,10 @@ uses the semantic info token and Google Meet uses the semantic success token;
 the remaining established channel mappings stay unchanged. Every actionable
 channel uses the same open-channel glyph, while its leading icon continues to
 identify the channel itself.
+
+Q: Where should a Playground channel in an Aion profile navigate?
+
+A: It should open the existing identity-specific Playground route using the
+parent profile identity ID: `/aions/playground/:agentIdentityId`. The shared
+destination helper requires that identity rather than falling back to the
+generic Playground catalog, and URL-encodes it before constructing the link.

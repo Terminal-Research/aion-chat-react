@@ -110,7 +110,7 @@ describe("AionAgentProfile", () => {
     expect(playground)
       .toHaveProperty(
         "href",
-        "https://staging.app.aion.to/aions/playground",
+        "https://staging.app.aion.to/aions/playground/identity-1",
       );
     expect(playground).toHaveProperty(
       "title",

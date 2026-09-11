@@ -19,7 +19,10 @@ export type {
   AionAgentProfileSource,
 } from "../profile";
 export { AionAgentProfileError } from "../profile";
-export type { AionAgentProfileChannelDestination } from "./channel-destination";
+export type {
+  AionAgentProfileChannelDestination,
+  AionAgentProfileChannelDestinationOptions,
+} from "./channel-destination";
 export {
   DEFAULT_AION_APP_BASE_URL,
   getAionAgentProfileChannelDestination,
