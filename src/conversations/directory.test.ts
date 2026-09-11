@@ -4,7 +4,7 @@ import type { ChatAgent } from "../model";
 import {
   AionConversationDirectoryError,
   aionConversationDirectoryResult,
-  normalizeAionContextIds,
+  normalizeAionContextSummaries,
   normalizeAionConversationDirectoryPageRequest,
   normalizeAionRemoteConversation,
   toAionConversationDirectoryError,
@@ -23,13 +23,30 @@ describe("Aion conversation directory normalization", () => {
       limit: 2,
     });
 
-    expect(normalizeAionContextIds(["context-3", "context-2"], page))
-      .toEqual({
-        contextIds: ["context-3", "context-2"],
-        nextOffset: 22,
-      });
-    expect(() => normalizeAionContextIds(["context-3", "context-3"], page))
-      .toThrow(AionConversationDirectoryError);
+    const contexts = [
+      {
+        contextId: "context-3",
+        lastActivityAt: "2026-09-03T13:00:00.000Z",
+      },
+      {
+        contextId: "context-2",
+        lastActivityAt: "2026-09-03T12:00:00.000Z",
+      },
+    ];
+
+    expect(normalizeAionContextSummaries(contexts, page)).toEqual({
+      contexts,
+      nextOffset: 22,
+    });
+    expect(() =>
+      normalizeAionContextSummaries(
+        [contexts[0], contexts[0]],
+        page,
+      ),
+    ).toThrow(AionConversationDirectoryError);
+    expect(() =>
+      normalizeAionContextSummaries(["context-3"], page),
+    ).toThrow(AionConversationDirectoryError);
   });
 
   it("normalizes a remote conversation without duplicate messages", () => {
@@ -58,27 +75,29 @@ describe("Aion conversation directory normalization", () => {
             parts: [{ text: "Review this" }],
           },
         },
+        lastActivityAt: "2026-09-03T12:00:00.000Z",
       },
       AGENT,
       "context-1",
-      "2026-09-03T12:00:00.000Z",
       () => `generated-${++id}`,
     );
 
-    expect(conversation.messages).toHaveLength(1);
-    expect(conversation.tasks["aion-context:context-1"]).toMatchObject({
+    expect(conversation.lastActivityAt)
+      .toBe("2026-09-03T12:00:00.000Z");
+    expect(conversation.conversation.messages).toHaveLength(1);
+    expect(
+      conversation.conversation.tasks["aion-context:context-1"],
+    ).toMatchObject({
       contextId: "context-1",
       status: { state: "completed" },
       artifactIds: ["aion-context:context-1:artifact-1"],
     });
-    expect(conversation.artifacts).toHaveProperty(
+    expect(conversation.conversation.artifacts).toHaveProperty(
       "aion-context:context-1:artifact-1",
     );
-    expect(conversation.transcript.map((item) => item.type)).toEqual([
-      "message",
-      "artifact",
-      "task",
-    ]);
+    expect(
+      conversation.conversation.transcript.map((item) => item.type),
+    ).toEqual(["message", "artifact", "task"]);
   });
 
   it("uses a persisted message task ID for a resumable context", () => {
@@ -96,19 +115,21 @@ describe("Aion conversation directory normalization", () => {
             parts: [{ text: "Which project?" }],
           },
         },
+        lastActivityAt: "2026-09-03T12:00:00.000Z",
       },
       AGENT,
       "context-1",
-      "2026-09-03T12:00:00.000Z",
       () => "generated-1",
     );
 
-    expect(conversation.tasks["task-1"]).toMatchObject({
+    expect(conversation.conversation.tasks["task-1"]).toMatchObject({
       id: "task-1",
       contextId: "context-1",
       status: { state: "input-required" },
     });
-    expect(conversation.tasks["aion-context:context-1"]).toBeUndefined();
+    expect(
+      conversation.conversation.tasks["aion-context:context-1"],
+    ).toBeUndefined();
   });
 
   it("marks fallback task IDs as unsuitable for continuation", () => {
@@ -118,14 +139,16 @@ describe("Aion conversation directory normalization", () => {
         history: [],
         artifacts: [],
         status: { state: "TASK_STATE_INPUT_REQUIRED" },
+        lastActivityAt: "2026-09-03T12:00:00.000Z",
       },
       AGENT,
       "context-1",
-      "2026-09-03T12:00:00.000Z",
       () => "generated-1",
     );
 
-    expect(conversation.tasks["aion-context:context-1"]?.metadata)
+    expect(
+      conversation.conversation.tasks["aion-context:context-1"]?.metadata,
+    )
       .toEqual({ aionChatSyntheticTaskId: true });
   });
 

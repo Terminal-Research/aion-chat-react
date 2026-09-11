@@ -76,6 +76,8 @@ export type {
   AionConversationDirectoryListOptions,
   AionConversationDirectoryLoadOptions,
   AionConversationDirectoryPage,
+  AionRemoteContextSummary,
+  AionRemoteConversation,
 } from "./conversations/directory";
 export type {
   AionConversationDirectoryErrorCode,

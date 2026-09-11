@@ -133,9 +133,9 @@ import {
 ```
 
 The catalog lists caller-visible distributions for its configured chat
-network. The optional conversation directory remotely pages A2A context IDs
-with `GetContexts` and hydrates only a selected context with `GetContext`. The
-separate store is a safe local cache;
+network. The optional conversation directory remotely pages A2A context
+summaries and their latest activity with `GetContexts`, then hydrates only a
+selected context with `GetContext`. The separate store is a safe local cache;
 use the in-memory implementation by default or import the browser store from
 `@terminal-research/aion-chat-react/storage/browser` with an opaque,
 user-scoped key. Never use a bearer token as that key.

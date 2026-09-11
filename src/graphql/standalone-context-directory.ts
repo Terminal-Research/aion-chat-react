@@ -19,7 +19,6 @@ export interface StandaloneAionConversationDirectoryOptions {
   readonly operation?: string;
   readonly createRequestId?: () => string;
   readonly createModelId?: () => string;
-  readonly now?: () => string;
 }
 
 /** Creates a caller-scoped directory around one standalone client. */
@@ -41,6 +40,5 @@ export function createStandaloneAionConversationDirectory(
     serviceParameters: options.serviceParameters,
     createRequestId: options.createRequestId,
     createModelId: options.createModelId,
-    now: options.now,
   });
 }

@@ -2,7 +2,7 @@ import type { ChatAgent, ContextId } from "../model";
 import {
   type AionConversationDirectory,
   aionConversationDirectoryResult,
-  normalizeAionContextIds,
+  normalizeAionContextSummaries,
   normalizeAionConversationDirectoryPageRequest,
   normalizeAionRemoteConversation,
   toAionConversationDirectoryError,
@@ -26,17 +26,12 @@ export interface AionChatGraphQLConversationDirectoryOptions {
   readonly serviceParameters?: AionChatGraphQLServiceParameters;
   readonly createRequestId?: () => string;
   readonly createModelId?: () => string;
-  readonly now?: () => string;
 }
 
 type DirectoryMethod = "GetContext" | "GetContexts";
 
 function defaultId(): string {
   return globalThis.crypto.randomUUID();
-}
-
-function defaultNow(): string {
-  return new Date().toISOString();
 }
 
 function operationSignal(signal?: AbortSignal): AbortSignal {
@@ -91,7 +86,7 @@ async function executeDirectoryCall(
   return aionConversationDirectoryResult(undefined, variables.request.id);
 }
 
-async function contextIds(
+async function contextSummaries(
   options: AionChatGraphQLConversationDirectoryOptions,
   agent: ChatAgent,
   listOptions: Parameters<AionConversationDirectory["list"]>[1] = {},
@@ -107,7 +102,7 @@ async function contextIds(
     options,
   );
   const result = await executeDirectoryCall(options, variables, signal);
-  return normalizeAionContextIds(result, page);
+  return normalizeAionContextSummaries(result, page);
 }
 
 async function conversation(
@@ -130,7 +125,6 @@ async function conversation(
     result,
     agent,
     contextId,
-    (options.now ?? defaultNow)(),
     options.createModelId ?? defaultId,
   );
 }
@@ -142,7 +136,7 @@ export function createAionChatGraphQLConversationDirectory(
   return {
     async list(agent, listOptions) {
       try {
-        return await contextIds(options, agent, listOptions);
+        return await contextSummaries(options, agent, listOptions);
       } catch (error) {
         throw toAionConversationDirectoryError(error);
       }

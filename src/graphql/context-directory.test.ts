@@ -35,7 +35,16 @@ describe("createAionChatGraphQLConversationDirectory", () => {
             __typename: "A2AJsonRpcSuccessResponseGQL",
             jsonrpc: "2.0",
             id: "request-1",
-            result: ["context-3", "context-2"],
+            result: [
+              {
+                contextId: "context-3",
+                lastActivityAt: "2026-09-03T13:00:00.000Z",
+              },
+              {
+                contextId: "context-2",
+                lastActivityAt: "2026-09-03T12:00:00.000Z",
+              },
+            ],
           },
         },
       })();
@@ -47,7 +56,16 @@ describe("createAionChatGraphQLConversationDirectory", () => {
 
     await expect(directory.list(AGENT, { offset: 4, limit: 2 }))
       .resolves.toEqual({
-        contextIds: ["context-3", "context-2"],
+        contexts: [
+          {
+            contextId: "context-3",
+            lastActivityAt: "2026-09-03T13:00:00.000Z",
+          },
+          {
+            contextId: "context-2",
+            lastActivityAt: "2026-09-03T12:00:00.000Z",
+          },
+        ],
         nextOffset: 6,
       });
     expect(observe).toHaveBeenCalledTimes(1);
@@ -81,6 +99,7 @@ describe("createAionChatGraphQLConversationDirectory", () => {
               ],
               artifacts: [],
               status: { state: "TASK_STATE_COMPLETED" },
+              lastActivityAt: "2026-09-03T12:00:00.000Z",
             },
           },
         },
@@ -90,15 +109,15 @@ describe("createAionChatGraphQLConversationDirectory", () => {
       observe,
       createRequestId: () => "request-1",
       createModelId: () => "model-1",
-      now: () => "2026-09-03T12:00:00.000Z",
     });
 
-    const conversation = await directory.load(AGENT, "context-1");
+    const remote = await directory.load(AGENT, "context-1");
 
-    expect(conversation.messages[0]).toMatchObject({
+    expect(remote.conversation.messages[0]).toMatchObject({
       id: "message-1",
       role: "assistant",
     });
+    expect(remote.lastActivityAt).toBe("2026-09-03T12:00:00.000Z");
     expect(observed).toMatchObject({
       request: {
         method: "GetContext",

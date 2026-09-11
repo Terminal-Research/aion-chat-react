@@ -2,7 +2,7 @@ import type { ChatAgent } from "../model";
 import {
   type AionConversationDirectory,
   aionConversationDirectoryResult,
-  normalizeAionContextIds,
+  normalizeAionContextSummaries,
   normalizeAionConversationDirectoryPageRequest,
   normalizeAionRemoteConversation,
   toAionConversationDirectoryError,
@@ -19,15 +19,10 @@ export interface DirectAionConversationDirectoryOptions {
   ) => DirectAionA2AConnectionOptions;
   readonly createRequestId?: () => string;
   readonly createModelId?: () => string;
-  readonly now?: () => string;
 }
 
 function defaultId(): string {
   return globalThis.crypto.randomUUID();
-}
-
-function defaultNow(): string {
-  return new Date().toISOString();
 }
 
 function operationSignal(signal?: AbortSignal): AbortSignal {
@@ -40,8 +35,6 @@ export function createDirectAionConversationDirectory(
 ): AionConversationDirectory {
   const createRequestId = options.createRequestId ?? defaultId;
   const createModelId = options.createModelId ?? defaultId;
-  const now = options.now ?? defaultNow;
-
   return {
     async list(agent, listOptions = {}) {
       const page = normalizeAionConversationDirectoryPageRequest(
@@ -61,7 +54,7 @@ export function createDirectAionConversationDirectory(
           },
           operationSignal(listOptions.signal),
         );
-        return normalizeAionContextIds(
+        return normalizeAionContextSummaries(
           aionConversationDirectoryResult(response, requestId),
           page,
         );
@@ -86,7 +79,6 @@ export function createDirectAionConversationDirectory(
           aionConversationDirectoryResult(response, requestId),
           agent,
           contextId,
-          now(),
           createModelId,
         );
       } catch (error) {

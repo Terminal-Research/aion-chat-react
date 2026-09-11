@@ -24,12 +24,21 @@ const CARD: DirectAionAgentCard = {
 };
 
 describe("createDirectAionConversationDirectory", () => {
-  it("lists context IDs through one authenticated extension call", async () => {
+  it("lists context activity through one authenticated extension call", async () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
       Response.json({
         jsonrpc: "2.0",
         id: "request-1",
-        result: ["context-2", "context-1"],
+        result: [
+          {
+            contextId: "context-2",
+            lastActivityAt: "2026-09-03T13:00:00.000Z",
+          },
+          {
+            contextId: "context-1",
+            lastActivityAt: "2026-09-03T12:00:00.000Z",
+          },
+        ],
       }),
     );
     const directory = createDirectAionConversationDirectory({
@@ -40,7 +49,16 @@ describe("createDirectAionConversationDirectory", () => {
     const page = await directory.list(AGENT, { offset: 10, limit: 2 });
 
     expect(page).toEqual({
-      contextIds: ["context-2", "context-1"],
+      contexts: [
+        {
+          contextId: "context-2",
+          lastActivityAt: "2026-09-03T13:00:00.000Z",
+        },
+        {
+          contextId: "context-1",
+          lastActivityAt: "2026-09-03T12:00:00.000Z",
+        },
+      ],
       nextOffset: 12,
     });
     expect(fetcher).toHaveBeenCalledTimes(1);
@@ -69,6 +87,7 @@ describe("createDirectAionConversationDirectory", () => {
           history: [],
           artifacts: [],
           status: { state: "TASK_STATE_WORKING" },
+          lastActivityAt: "2026-09-03T12:00:00.000Z",
         },
       }),
     );
@@ -82,12 +101,12 @@ describe("createDirectAionConversationDirectory", () => {
       }),
       createRequestId: () => "request-1",
       createModelId: () => "model-1",
-      now: () => "2026-09-03T12:00:00.000Z",
     });
 
-    const conversation = await directory.load(AGENT, "context-1");
+    const remote = await directory.load(AGENT, "context-1");
 
-    expect(conversation.contextId).toBe("context-1");
+    expect(remote.conversation.contextId).toBe("context-1");
+    expect(remote.lastActivityAt).toBe("2026-09-03T12:00:00.000Z");
     expect(new Headers(fetcher.mock.calls[0]?.[1]?.headers).get(
       "Authorization",
     )).toBe("Bearer current-token");

@@ -7,9 +7,7 @@ import type {
   ChatTranscriptItem,
   ContextId,
 } from "../model";
-import {
-  AionConversationDirectoryError,
-} from "./directory-error";
+import { AionConversationDirectoryError } from "./directory-error";
 
 export {
   AionConversationDirectoryError,
@@ -30,8 +28,20 @@ export interface AionConversationDirectoryLoadOptions {
 
 /** One most-recent-first page returned by the remote directory. */
 export interface AionConversationDirectoryPage {
-  readonly contextIds: readonly ContextId[];
+  readonly contexts: readonly AionRemoteContextSummary[];
   readonly nextOffset?: number;
+}
+
+/** Lightweight remote context metadata used by conversation navigation. */
+export interface AionRemoteContextSummary {
+  readonly contextId: ContextId;
+  readonly lastActivityAt: string;
+}
+
+/** One hydrated remote conversation and its authoritative activity time. */
+export interface AionRemoteConversation {
+  readonly conversation: ChatConversationState;
+  readonly lastActivityAt: string;
 }
 
 /** Caller-scoped remote context listing and hydration boundary. */
@@ -47,7 +57,7 @@ export interface AionConversationDirectory {
     agent: ChatAgent,
     contextId: ContextId,
     options?: AionConversationDirectoryLoadOptions,
-  ): Promise<ChatConversationState>;
+  ): Promise<AionRemoteConversation>;
 }
 
 /** Validated paging values sent to Aion's GetContexts extension. */
@@ -191,23 +201,42 @@ export function normalizeAionConversationDirectoryPageRequest(
   return { offset, limit };
 }
 
+function validTimestamp(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.length > 0 &&
+    !Number.isNaN(Date.parse(value))
+  );
+}
+
 /** Normalizes the raw GetContexts result into one ordered page. */
-export function normalizeAionContextIds(
+export function normalizeAionContextSummaries(
   value: unknown,
   page: AionConversationDirectoryPageRequest,
 ): AionConversationDirectoryPage {
+  if (!Array.isArray(value)) {
+    throw invalidResponse();
+  }
+  const contexts = value.map((item) => {
+    const summary = record(item);
+    const contextId = nonEmptyString(summary?.contextId);
+    const lastActivityAt = summary?.lastActivityAt;
+    if (!contextId || !validTimestamp(lastActivityAt)) {
+      throw invalidResponse();
+    }
+    return { contextId, lastActivityAt };
+  });
   if (
-    !Array.isArray(value) ||
-    !value.every((item) => typeof item === "string" && item.length > 0) ||
-    new Set(value).size !== value.length
+    new Set(contexts.map(({ contextId }) => contextId)).size !==
+    contexts.length
   ) {
     throw invalidResponse();
   }
   return {
-    contextIds: value,
+    contexts,
     nextOffset:
-      value.length === page.limit
-        ? page.offset + value.length
+      contexts.length === page.limit
+        ? page.offset + contexts.length
         : undefined,
   };
 }
@@ -250,9 +279,8 @@ export function normalizeAionRemoteConversation(
   value: unknown,
   agent: ChatAgent,
   requestedContextId: ContextId,
-  occurredAt: string,
   createId: () => string,
-): ChatConversationState {
+): AionRemoteConversation {
   const conversation = record(value);
   const contextId = conversation
     ? field(conversation, "contextId", "context_id")
@@ -260,12 +288,14 @@ export function normalizeAionRemoteConversation(
   const history = conversation?.history;
   const artifacts = conversation?.artifacts;
   const status = record(conversation?.status);
+  const lastActivityAt = conversation?.lastActivityAt;
   if (
     !conversation ||
     contextId !== requestedContextId ||
     !Array.isArray(history) ||
     !Array.isArray(artifacts) ||
-    !status
+    !status ||
+    !validTimestamp(lastActivityAt)
   ) {
     throw invalidResponse();
   }
@@ -287,7 +317,7 @@ export function normalizeAionRemoteConversation(
     {
       requestId: taskId,
       turnId: taskId,
-      occurredAt,
+      occurredAt: lastActivityAt,
       createEventId: createId,
     },
   );
@@ -314,20 +344,23 @@ export function normalizeAionRemoteConversation(
   ];
 
   return {
-    id: contextId,
-    agent,
-    contextId,
-    turns: [],
-    messages,
-    transcript,
-    tasks: { [task.id]: task },
-    artifacts: Object.fromEntries(
-      normalizedArtifacts.map((artifact: ChatArtifact) => [
-        artifact.id,
-        artifact,
-      ]),
-    ),
-    seenEventIds: {},
+    lastActivityAt,
+    conversation: {
+      id: contextId,
+      agent,
+      contextId,
+      turns: [],
+      messages,
+      transcript,
+      tasks: { [task.id]: task },
+      artifacts: Object.fromEntries(
+        normalizedArtifacts.map((artifact: ChatArtifact) => [
+          artifact.id,
+          artifact,
+        ]),
+      ),
+      seenEventIds: {},
+    },
   };
 }
 

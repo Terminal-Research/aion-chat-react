@@ -1296,6 +1296,23 @@ the contained workspace from Subtask AA and without completing Subtasks Q or R.
 - Verify the breadcrumb hierarchy and Escape destination from an
   identity-specific Playground route.
 
+### Subtask AN — Render server-backed thread activity (status: done)
+
+- Evolve the remote directory contract so each `GetContexts` entry carries a
+  `contextId` and `lastActivityAt`, and each loaded `GetContext` returns the
+  same activity timestamp with its normalized conversation.
+- Merge remote activity into cached conversation summaries without fetching
+  every conversation and preserve the server's newest-first order.
+- Use the selected context's server activity when refreshing its cache. During
+  an active local stream, advance the summary from received conversation
+  changes without refetching the context.
+- Render only the generated conversation title and formatted activity time in
+  the thread list; remove the preview line from the default list presentation.
+- Update direct A2A, injected Apollo, standalone GraphQL, workspace, and
+  browser fixture tests for the new extension response shape.
+- Record the backend, library, and pinned `aion-agent-cloud` commits under this
+  subtask.
+
 ## 3) Package Hierarchy + Responsibilities
 
 The names below are provisional but establish dependency direction. Modules may
@@ -2364,3 +2381,13 @@ A: Treat it as a top-level destination. Its breadcrumb is Home then Playground
 even when an Aion is selected, and Escape returns to `/home`. Aion and thread
 selection remain internal to the shared workspace rather than extending the
 application breadcrumb hierarchy.
+
+Q: Which timestamp should the thread list display, and how should it stay
+current?
+
+A: Display the server-provided `lastActivityAt`, defined by the context-read
+extensions as the latest caller-owned task activity. `GetContexts` supplies it
+with each lightweight row, so the list remains one paged request. `GetContext`
+supplies it again when a thread is selected. Once a live stream is running, the
+library may advance the local summary from received changes and reconcile with
+the server on the next directory read.

@@ -23,7 +23,6 @@ export interface ApolloAionConversationDirectoryOptions {
   readonly operation?: DocumentNode;
   readonly createRequestId?: () => string;
   readonly createModelId?: () => string;
-  readonly now?: () => string;
 }
 
 /** Creates a caller-scoped directory around one Apollo client. */
@@ -41,6 +40,5 @@ export function createApolloAionConversationDirectory(
     serviceParameters: options.serviceParameters,
     createRequestId: options.createRequestId,
     createModelId: options.createModelId,
-    now: options.now,
   });
 }

@@ -51,9 +51,9 @@ test.describe("AionChatWorkspace browser behavior", () => {
       exact: true,
     }).click();
 
-    const firstConversation = page.getByRole("button", {
-      name: /Conversation available-context-01/i,
-    });
+    const firstConversation = page
+      .locator(".aion-chat__conversation-select")
+      .first();
     await expect(firstConversation).toBeVisible();
     await firstConversation.click();
 
@@ -217,9 +217,7 @@ test.describe("AionChatWorkspace browser behavior", () => {
       "This fixture agent is paused.",
     );
     await agent.click();
-    await page.getByRole("button", {
-      name: /Conversation unavailable-context/i,
-    }).click();
+    await page.locator(".aion-chat__conversation-select").click();
 
     const chat = page.getByRole("region", {
       name: "Chat with Unavailable agent",
@@ -254,9 +252,7 @@ test.describe("AionChatWorkspace browser behavior", () => {
       name: "Available agent Aion agent",
       exact: true,
     }).click();
-    await page.getByRole("button", {
-      name: /Conversation available-context-01/i,
-    }).click();
+    await page.locator(".aion-chat__conversation-select").first().click();
 
     const responseText =
       "Historical response 63 for available-context-01.";

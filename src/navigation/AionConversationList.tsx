@@ -94,11 +94,6 @@ export function AionConversationList({
                 <span className="aion-chat__navigation-title">
                   {summary.title}
                 </span>
-                {summary.preview ? (
-                  <span className="aion-chat__navigation-caption">
-                    {summary.preview}
-                  </span>
-                ) : null}
                 {summary.updatedAt ? (
                   <time
                     className="aion-chat__navigation-time"

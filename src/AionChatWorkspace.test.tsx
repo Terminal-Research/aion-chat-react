@@ -183,7 +183,7 @@ describe("AionChatWorkspace", () => {
       },
       distributionId: "distribution-available",
     };
-    const list = vi.fn(() => Promise.resolve({ contextIds: [] }));
+    const list = vi.fn(() => Promise.resolve({ contexts: [] }));
     const directory: AionConversationDirectory = {
       list,
       load: () => Promise.reject(new Error("Not listed")),
@@ -432,10 +432,24 @@ describe("AionChatWorkspace", () => {
     ]);
     const list = vi.fn(() =>
       Promise.resolve({
-        contextIds: ["context-cached", "context-remote"],
+        contexts: [
+          {
+            contextId: "context-cached",
+            lastActivityAt: "2026-09-03T13:00:00.000Z",
+          },
+          {
+            contextId: "context-remote",
+            lastActivityAt: "2026-09-03T12:00:00.000Z",
+          },
+        ],
       }),
     );
-    const load = vi.fn(() => Promise.resolve(remoteConversation));
+    const load = vi.fn(() =>
+      Promise.resolve({
+        conversation: remoteConversation,
+        lastActivityAt: "2026-09-03T12:00:00.000Z",
+      }),
+    );
     const directory: AionConversationDirectory = { list, load };
     const catalog: AionAgentCatalog = {
       list: () =>
@@ -472,14 +486,14 @@ describe("AionChatWorkspace", () => {
       await screen.findByRole("button", { name: /Status agent/u }),
     );
 
-    expect(await screen.findAllByText("Cached history")).toHaveLength(2);
-    expect(screen.getByText("context-remote")).toBeTruthy();
+    expect(await screen.findAllByText("Cached history")).toHaveLength(1);
+    expect(screen.getByText("Conversation")).toBeTruthy();
     expect(list).toHaveBeenCalledWith(agent, expect.any(Object));
     expect(load).not.toHaveBeenCalled();
 
     fireEvent.click(
       screen.getByRole("button", {
-        name: /Conversation.*context-remote/u,
+        name: /Conversation/u,
       }),
     );
 
@@ -555,7 +569,7 @@ describe("AionChatWorkspace", () => {
   it("allows local history removal when a remote directory is present", async () => {
     const confirmRemove = vi.fn().mockResolvedValue(true);
     const directory: AionConversationDirectory = {
-      list: () => Promise.resolve({ contextIds: [] }),
+      list: () => Promise.resolve({ contexts: [] }),
       load: () => Promise.reject(new Error("Not listed")),
     };
     render(

@@ -57,15 +57,34 @@ function remoteConversation(contextId: string): ChatConversationState {
   });
 }
 
+function remoteContext(contextId: string, lastActivityAt: string) {
+  return { contextId, lastActivityAt };
+}
+
+function remoteResult(
+  contextId: string,
+  lastActivityAt = "2026-09-03T14:00:00.000Z",
+) {
+  return {
+    conversation: remoteConversation(contextId),
+    lastActivityAt,
+  };
+}
+
 describe("useAionConversations", () => {
   it("creates a context before use and persists updates", async () => {
     const store = createInMemoryAionConversationStore();
+    const timestamps = [
+      "2026-09-03T12:00:00.000Z",
+      "2026-09-03T12:01:00.000Z",
+    ];
+    let timestampIndex = 0;
     const { result } = renderHook(() =>
       useAionConversations({
         store,
         agent: FIRST_AGENT,
         createId: () => "context-1",
-        now: () => "2026-09-03T12:00:00.000Z",
+        now: () => timestamps[timestampIndex++]!,
       }),
     );
     await waitFor(() => expect(result.current.status).toBe("ready"));
@@ -87,7 +106,10 @@ describe("useAionConversations", () => {
     await waitFor(async () => {
       const saved = await store.load("distribution-1", "context-1");
       expect(saved?.title).toBe("Daily status");
+      expect(saved?.updatedAt).toBe("2026-09-03T12:01:00.000Z");
     });
+    expect(result.current.summaries[0]?.updatedAt)
+      .toBe("2026-09-03T12:01:00.000Z");
   });
 
   it("does not create a context for an unavailable agent", async () => {
@@ -176,11 +198,22 @@ describe("useAionConversations", () => {
       }),
     ]);
     const load = vi.fn((_: ChatAgent, contextId: string) =>
-      Promise.resolve(remoteConversation(contextId)),
+      Promise.resolve(remoteResult(contextId)),
     );
     const directory: AionConversationDirectory = {
       list: () =>
-        Promise.resolve({ contextIds: ["context-1", "context-2"] }),
+        Promise.resolve({
+          contexts: [
+            remoteContext(
+              "context-1",
+              "2026-09-03T15:00:00.000Z",
+            ),
+            remoteContext(
+              "context-2",
+              "2026-09-03T14:00:00.000Z",
+            ),
+          ],
+        }),
       load,
     };
     const { result } = renderHook(() =>
@@ -192,9 +225,11 @@ describe("useAionConversations", () => {
     expect(result.current.summaries.map((summary) => summary.contextId))
       .toEqual(["context-1", "context-2"]);
     expect(result.current.summaries[0]?.title).toBe("Daily status");
+    expect(result.current.summaries[0]?.updatedAt)
+      .toBe("2026-09-03T15:00:00.000Z");
     expect(result.current.summaries[1]).toMatchObject({
       title: "Conversation",
-      preview: "context-2",
+      updatedAt: "2026-09-03T14:00:00.000Z",
     });
     expect(load).not.toHaveBeenCalled();
 
@@ -202,12 +237,13 @@ describe("useAionConversations", () => {
 
     expect(load).toHaveBeenCalledTimes(1);
     expect(result.current.conversation?.contextId).toBe("context-2");
-    expect(await store.load("distribution-1", "context-2")).not.toBeNull();
+    expect(await store.load("distribution-1", "context-2"))
+      .toMatchObject({ updatedAt: "2026-09-03T14:00:00.000Z" });
   });
 
   it("reopens a new context locally until the directory lists it", async () => {
     const store = createInMemoryAionConversationStore();
-    let remoteContextIds: readonly string[] = [];
+    let remoteContexts: readonly ReturnType<typeof remoteContext>[] = [];
     let observedLoadSignal: AbortSignal | undefined;
     const load = vi.fn(
       (
@@ -216,11 +252,11 @@ describe("useAionConversations", () => {
         options?: AionConversationDirectoryLoadOptions,
       ) => {
         observedLoadSignal = options?.signal;
-        return Promise.resolve(remoteConversation(contextId));
+        return Promise.resolve(remoteResult(contextId));
       },
     );
     const directory: AionConversationDirectory = {
-      list: () => Promise.resolve({ contextIds: remoteContextIds }),
+      list: () => Promise.resolve({ contexts: remoteContexts }),
       load,
     };
     const { result } = renderHook(() =>
@@ -242,7 +278,9 @@ describe("useAionConversations", () => {
     expect(load).not.toHaveBeenCalled();
     expect(result.current.conversation?.contextId).toBe("context-new");
 
-    remoteContextIds = ["context-new"];
+    remoteContexts = [
+      remoteContext("context-new", "2026-09-03T14:00:00.000Z"),
+    ];
     act(() => result.current.reload());
     await waitFor(() => expect(result.current.status).toBe("ready"));
     await act(async () => result.current.selectConversation("context-new"));
@@ -262,15 +300,30 @@ describe("useAionConversations", () => {
         const offset = options.offset ?? 0;
         return Promise.resolve(
           offset === 0
-            ? { contextIds: ["context-2"], nextOffset: 1 }
-            : { contextIds: ["context-1"] },
+            ? {
+                contexts: [
+                  remoteContext(
+                    "context-2",
+                    "2026-09-03T14:00:00.000Z",
+                  ),
+                ],
+                nextOffset: 1,
+              }
+            : {
+                contexts: [
+                  remoteContext(
+                    "context-1",
+                    "2026-09-03T13:00:00.000Z",
+                  ),
+                ],
+              },
         );
       },
     );
     const directory: AionConversationDirectory = {
       list,
       load: (_agent, contextId) =>
-        Promise.resolve(remoteConversation(contextId)),
+        Promise.resolve(remoteResult(contextId)),
     };
     const { result } = renderHook(() =>
       useAionConversations({
@@ -297,7 +350,7 @@ describe("useAionConversations", () => {
   it("keeps a fixed context usable when history is unavailable", async () => {
     const store = createInMemoryAionConversationStore();
     const directory: AionConversationDirectory = {
-      list: () => Promise.resolve({ contextIds: [] }),
+      list: () => Promise.resolve({ contexts: [] }),
       load: () => Promise.reject(new Error("Unavailable")),
     };
     const { result } = renderHook(() =>

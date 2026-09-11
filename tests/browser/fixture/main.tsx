@@ -52,6 +52,10 @@ function contextIdsFor(agent: ChatAgent): readonly string[] {
     : UNAVAILABLE_CONTEXT_IDS;
 }
 
+function activityAt(index: number): string {
+  return new Date(Date.UTC(2026, 8, 3, 12, 0, -index)).toISOString();
+}
+
 function conversation(
   agent: ChatAgent,
   contextId: string,
@@ -98,13 +102,22 @@ const directory: AionConversationDirectory = {
     const contextIds = contextIdsFor(agent);
     const page = contextIds.slice(offset, offset + limit);
     return Promise.resolve({
-      contextIds: page,
+      contexts: page.map((contextId, index) => ({
+        contextId,
+        lastActivityAt: activityAt(offset + index),
+      })),
       nextOffset: offset + page.length < contextIds.length
         ? offset + page.length
         : undefined,
     });
   },
-  load: (agent, contextId) => Promise.resolve(conversation(agent, contextId)),
+  load: (agent, contextId) => {
+    const index = contextIdsFor(agent).indexOf(contextId);
+    return Promise.resolve({
+      conversation: conversation(agent, contextId),
+      lastActivityAt: activityAt(Math.max(index, 0)),
+    });
+  },
 };
 
 const profileSource: AionAgentProfileSource = {

@@ -12,7 +12,10 @@ import {
   createChatConversationState,
 } from "../model";
 import type { AionNavigationLoadStatus } from "../useAionAgentCatalog";
-import type { AionConversationDirectory } from "./directory";
+import type {
+  AionConversationDirectory,
+  AionRemoteContextSummary,
+} from "./directory";
 import {
   createAionConversationSnapshot,
   summarizeAionConversation,
@@ -57,7 +60,7 @@ interface ConversationHookState {
   readonly conversation?: ChatConversationState;
   readonly status: AionNavigationLoadStatus;
   readonly error?: Error;
-  readonly remoteContextIds: readonly ContextId[];
+  readonly remoteContexts: readonly AionRemoteContextSummary[];
   readonly nextRemoteOffset?: number;
 }
 
@@ -106,26 +109,28 @@ function sortSummaries(
 
 function remoteSummary(
   agent: ChatAgent,
-  contextId: ContextId,
+  remote: AionRemoteContextSummary,
 ): AionConversationSummary {
   return {
     agentId: agent.id,
-    contextId,
+    contextId: remote.contextId,
     title: "Conversation",
-    preview: contextId,
+    updatedAt: remote.lastActivityAt,
   };
 }
 
 function mergeRemoteSummaries(
   agent: ChatAgent,
-  remoteContextIds: readonly ContextId[],
+  remoteContexts: readonly AionRemoteContextSummary[],
   cached: readonly AionConversationSummary[],
   optimisticContextIds: ReadonlySet<ContextId>,
 ): readonly AionConversationSummary[] {
   const cachedById = new Map(
     cached.map((summary) => [summary.contextId, summary]),
   );
-  const remoteIds = new Set(remoteContextIds);
+  const remoteIds = new Set(
+    remoteContexts.map(({ contextId }) => contextId),
+  );
   const optimistic = sortSummaries(
     cached.filter(
       (summary) =>
@@ -135,10 +140,10 @@ function mergeRemoteSummaries(
   );
   return [
     ...optimistic,
-    ...remoteContextIds.map(
-      (contextId) =>
-        cachedById.get(contextId) ?? remoteSummary(agent, contextId),
-    ),
+    ...remoteContexts.map((remote) => ({
+      ...(cachedById.get(remote.contextId) ?? remoteSummary(agent, remote)),
+      updatedAt: remote.lastActivityAt,
+    })),
   ];
 }
 
@@ -157,14 +162,14 @@ function replaceSummary(
 function acknowledgeRemoteContexts(
   optimisticByAgent: Map<string, Set<ContextId>>,
   agentId: string,
-  contextIds: readonly ContextId[],
+  contexts: readonly AionRemoteContextSummary[],
 ): void {
   const optimistic = optimisticByAgent.get(agentId);
   if (!optimistic) {
     return;
   }
-  for (const contextId of contextIds) {
-    optimistic.delete(contextId);
+  for (const context of contexts) {
+    optimistic.delete(context.contextId);
   }
   if (optimistic.size === 0) {
     optimisticByAgent.delete(agentId);
@@ -188,17 +193,14 @@ export function useAionConversations({
   const optimisticContextsRef = useRef(new Map<string, Set<ContextId>>());
   const selectionAbortRef = useRef<AbortController>(undefined);
   const pageAbortRef = useRef<AbortController>(undefined);
-  const nowRef = useRef(now);
   const mountedRef = useRef(true);
   const [state, setState] = useState<ConversationHookState>({
     agentId: agent?.id,
     summaries: [],
-    remoteContextIds: [],
+    remoteContexts: [],
     status: agent ? "loading" : "idle",
   });
   const stateRef = useRef(state);
-  nowRef.current = now;
-
   const updateState = useCallback(
     (
       update: (
@@ -240,7 +242,7 @@ export function useAionConversations({
       updateState(() => ({
         agentId: undefined,
         summaries: [],
-        remoteContextIds: [],
+        remoteContexts: [],
         status: "idle",
       }));
       return () => abortController.abort();
@@ -248,7 +250,7 @@ export function useAionConversations({
     updateState(() => ({
       agentId: agent.id,
       summaries: [],
-      remoteContextIds: [],
+      remoteContexts: [],
       status: "loading",
     }));
     void mutationQueueRef.current
@@ -257,23 +259,24 @@ export function useAionConversations({
         const cached = await store.list(agent.id);
         let summaries: readonly AionConversationSummary[];
         let conversation: ChatConversationState | undefined;
-        let remoteContextIds: readonly ContextId[] = [];
+        let remoteContexts: readonly AionRemoteContextSummary[] = [];
         let nextRemoteOffset: number | undefined;
         let directoryError: Error | undefined;
 
         if (directory) {
           try {
             if (fixedContextId) {
-              conversation = await directory.load(
+              const remote = await directory.load(
                 agent,
                 fixedContextId,
                 { signal: abortController.signal },
               );
+              conversation = remote.conversation;
               try {
                 await store.save(
                   agent.id,
                   createAionConversationSnapshot(conversation, {
-                    updatedAt: nowRef.current(),
+                    updatedAt: remote.lastActivityAt,
                   }),
                 );
               } catch {
@@ -286,11 +289,11 @@ export function useAionConversations({
                 limit: directoryPageSize,
                 signal: abortController.signal,
               });
-              remoteContextIds = page.contextIds;
+              remoteContexts = page.contexts;
               nextRemoteOffset = page.nextOffset;
               summaries = mergeRemoteSummaries(
                 agent,
-                remoteContextIds,
+                remoteContexts,
                 cached,
                 optimisticContextsRef.current.get(agent.id) ?? new Set(),
               );
@@ -330,12 +333,12 @@ export function useAionConversations({
         acknowledgeRemoteContexts(
           optimisticContextsRef.current,
           agent.id,
-          remoteContextIds,
+          remoteContexts,
         );
         updateState(() => ({
           agentId: agent.id,
           summaries,
-          remoteContextIds,
+          remoteContexts,
           nextRemoteOffset,
           selectedContextId: fixedContextId,
           conversation,
@@ -352,7 +355,7 @@ export function useAionConversations({
           updateState(() => ({
             agentId: agent.id,
             summaries: [],
-            remoteContextIds: [],
+            remoteContexts: [],
             status: "error",
             error: directory ? asError(error) : conversationError(),
           }));
@@ -389,7 +392,7 @@ export function useAionConversations({
     updateState((current) => ({
       agentId: agent.id,
       summaries: replaceSummary(current.summaries, summary),
-      remoteContextIds: current.remoteContextIds,
+      remoteContexts: current.remoteContexts,
       nextRemoteOffset: current.nextRemoteOffset,
       selectedContextId: contextId,
       conversation,
@@ -428,20 +431,21 @@ export function useAionConversations({
         const optimistic = optimisticContextsRef.current
           .get(agent.id)
           ?.has(contextId);
-        const listedRemotely = stateRef.current.remoteContextIds
-          .includes(contextId);
-        const remoteConversation = directory && (!optimistic || listedRemotely)
-          ? await directory.load(agent, contextId, {
-              signal: abortController.signal,
-            })
-          : undefined;
-        const snapshot = remoteConversation
-          ? createAionConversationSnapshot(remoteConversation, {
-              updatedAt: now(),
+        const listedRemotely = stateRef.current.remoteContexts
+          .some((context) => context.contextId === contextId);
+        const remote =
+          directory && (!optimistic || listedRemotely)
+            ? await directory.load(agent, contextId, {
+                signal: abortController.signal,
+              })
+            : undefined;
+        const snapshot = remote
+          ? createAionConversationSnapshot(remote.conversation, {
+              updatedAt: remote.lastActivityAt,
             })
           : await store.load(agent.id, contextId);
         let cacheError: Error | undefined;
-        if (remoteConversation && snapshot) {
+        if (remote && snapshot) {
           try {
             await enqueueMutation(() => store.save(agent.id, snapshot));
           } catch {
@@ -469,15 +473,15 @@ export function useAionConversations({
         }
         updateState((current) => ({
           ...current,
-          summaries: remoteConversation
+          summaries: remote
             ? replaceSummary(
                 current.summaries,
                 summarizeAionConversation(snapshot),
               )
             : current.summaries,
           selectedContextId: contextId,
-          conversation: remoteConversation
-            ? withAgent(remoteConversation, agent)
+          conversation: remote
+            ? withAgent(remote.conversation, agent)
             : withAgent(snapshot.conversation, agent),
           status: cacheError ? "error" : "ready",
           error: cacheError,
@@ -498,7 +502,7 @@ export function useAionConversations({
         }
       }
     },
-    [agent, directory, enqueueMutation, now, store, updateState],
+    [agent, directory, enqueueMutation, store, updateState],
   );
 
   const saveConversation = useCallback(
@@ -583,24 +587,26 @@ export function useAionConversations({
       acknowledgeRemoteContexts(
         optimisticContextsRef.current,
         agent.id,
-        page.contextIds,
+        page.contexts,
       );
       updateState((value) => {
-        const remoteContextIds = [
-          ...value.remoteContextIds,
-          ...page.contextIds.filter(
-            (contextId) => !value.remoteContextIds.includes(contextId),
+        const remoteContexts = [
+          ...value.remoteContexts,
+          ...page.contexts.filter(
+            (context) => !value.remoteContexts.some(
+              (existing) => existing.contextId === context.contextId,
+            ),
           ),
         ];
         return {
           ...value,
           summaries: mergeRemoteSummaries(
             agent,
-            remoteContextIds,
+            remoteContexts,
             cached,
             optimisticContextsRef.current.get(agent.id) ?? new Set(),
           ),
-          remoteContextIds,
+          remoteContexts,
           nextRemoteOffset: page.nextOffset,
           status: "ready",
           error: undefined,
@@ -636,30 +642,34 @@ export function useAionConversations({
         ) {
           return;
         }
-        updateState((current) => ({
-          ...current,
-          summaries:
-            directory && current.remoteContextIds.includes(contextId)
-              ? replaceSummary(
-                  current.summaries.filter(
-                    (summary) => summary.contextId !== contextId,
-                  ),
-                  remoteSummary(agent, contextId),
-                )
-              : current.summaries.filter(
-                  (summary) => summary.contextId !== contextId,
-                ),
-          selectedContextId:
-            current.selectedContextId === contextId
-              ? undefined
-              : current.selectedContextId,
-          conversation:
-            current.selectedContextId === contextId
-              ? undefined
-              : current.conversation,
-          status: "ready",
-          error: undefined,
-        }));
+        updateState((current) => {
+          const remote = current.remoteContexts.find(
+            (context) => context.contextId === contextId,
+          );
+          const remaining = current.summaries.filter(
+            (summary) => summary.contextId !== contextId,
+          );
+          return {
+            ...current,
+            summaries:
+              directory && remote
+                ? replaceSummary(
+                    remaining,
+                    remoteSummary(agent, remote),
+                  )
+                : remaining,
+            selectedContextId:
+              current.selectedContextId === contextId
+                ? undefined
+                : current.selectedContextId,
+            conversation:
+              current.selectedContextId === contextId
+                ? undefined
+                : current.conversation,
+            status: "ready",
+            error: undefined,
+          };
+        });
       } catch {
         if (mountedRef.current) {
           updateState((current) => ({
