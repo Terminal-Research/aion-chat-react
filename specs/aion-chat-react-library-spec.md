@@ -1273,7 +1273,10 @@ the contained workspace from Subtask AA and without completing Subtasks Q or R.
 - Verify the per-network semantic color mapping and consistent destination
   action glyph without changing channel navigation behavior.
 
-### Subtask AL — Deep-link profile Playground channels (status: in progress)
+### Subtask AL — Deep-link profile Playground channels (status: done)
+
+- Commit ID (aion-chat-react): `6147e0e`
+- Commit ID (aion-agent-cloud): `56e23203f`
 
 - Require profile channel destination resolution to receive the parent agent
   identity ID and encode that ID into Playground destinations.
