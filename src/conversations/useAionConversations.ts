@@ -51,6 +51,8 @@ export interface UseAionConversationsResult {
   readonly removeConversation: (contextId: ContextId) => Promise<void>;
   readonly clearSelection: () => void;
   readonly reload: () => void;
+  /** Refresh navigation metadata without replacing selection or active chat state. */
+  readonly refreshMetadata: () => Promise<void>;
 }
 
 interface ConversationHookState {
@@ -143,6 +145,8 @@ function mergeRemoteSummaries(
     ...remoteContexts.map((remote) => ({
       ...(cachedById.get(remote.contextId) ?? remoteSummary(agent, remote)),
       updatedAt: remote.lastActivityAt,
+      generatedTitle: remote.title ?? null,
+      generatedSummary: remote.summary ?? null,
     })),
   ];
 }
@@ -474,10 +478,11 @@ export function useAionConversations({
         updateState((current) => ({
           ...current,
           summaries: remote
-            ? replaceSummary(
-                current.summaries,
-                summarizeAionConversation(snapshot),
-              )
+            ? replaceSummary(current.summaries, {
+                ...summarizeAionConversation(snapshot),
+                generatedTitle: remote.title ?? null,
+                generatedSummary: remote.summary ?? null,
+              })
             : current.summaries,
           selectedContextId: contextId,
           conversation: remote
@@ -532,7 +537,11 @@ export function useAionConversations({
       }
       updateState((current) => ({
         ...current,
-        summaries: replaceSummary(current.summaries, summary),
+        summaries: replaceSummary(current.summaries, {
+          ...summary,
+          generatedTitle: existing?.generatedTitle,
+          generatedSummary: existing?.generatedSummary,
+        }),
         selectedContextId: snapshot.contextId,
         conversation,
         status: "ready",
@@ -697,6 +706,55 @@ export function useAionConversations({
     setReloadToken((value) => value + 1);
   }, []);
 
+  const refreshMetadata = useCallback(async () => {
+    if (!agent || !directory || fixedContextId) return;
+    const controller = new AbortController();
+    pageAbortRef.current?.abort();
+    pageAbortRef.current = controller;
+    try {
+      const required = Math.max(
+        directoryPageSize,
+        stateRef.current.remoteContexts.length,
+      );
+      const remoteContexts: AionRemoteContextSummary[] = [];
+      let nextOffset: number | undefined = 0;
+      do {
+        const page = await directory.list(agent, {
+          offset: nextOffset,
+          limit: directoryPageSize,
+          signal: controller.signal,
+        });
+        remoteContexts.push(...page.contexts);
+        nextOffset = page.nextOffset;
+      } while (
+        !controller.signal.aborted &&
+        nextOffset !== undefined &&
+        remoteContexts.length < required
+      );
+      if (
+        controller.signal.aborted ||
+        !mountedRef.current ||
+        stateRef.current.agentId !== agent.id
+      )
+        return;
+      updateState((current) => {
+        return {
+          ...current,
+          remoteContexts,
+          summaries: mergeRemoteSummaries(
+            agent,
+            remoteContexts,
+            current.summaries,
+            optimisticContextsRef.current.get(agent.id) ?? new Set(),
+          ),
+          nextRemoteOffset: nextOffset,
+        };
+      });
+    } catch {
+      // Metadata refresh failure must not interrupt a selected/running conversation.
+    }
+  }, [agent, directory, directoryPageSize, fixedContextId, updateState]);
+
   return {
     summaries: state.summaries,
     selectedContextId: state.selectedContextId,
@@ -711,5 +769,6 @@ export function useAionConversations({
     removeConversation,
     clearSelection,
     reload,
+    refreshMetadata,
   };
 }

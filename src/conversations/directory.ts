@@ -36,12 +36,17 @@ export interface AionConversationDirectoryPage {
 export interface AionRemoteContextSummary {
   readonly contextId: ContextId;
   readonly lastActivityAt: string;
+  /** Authorized generated metadata; null or omission means no override. */
+  readonly title?: string | null;
+  readonly summary?: string | null;
 }
 
 /** One hydrated remote conversation and its authoritative activity time. */
 export interface AionRemoteConversation {
   readonly conversation: ChatConversationState;
   readonly lastActivityAt: string;
+  readonly title?: string | null;
+  readonly summary?: string | null;
 }
 
 /** Caller-scoped remote context listing and hydration boundary. */
@@ -209,6 +214,17 @@ function validTimestamp(value: unknown): value is string {
   );
 }
 
+function generatedMetadata(value: UnknownRecord | undefined) {
+  return {
+    ...(value && "title" in value
+      ? { title: nonEmptyString(value.title) ?? null }
+      : {}),
+    ...(value && "summary" in value
+      ? { summary: nonEmptyString(value.summary) ?? null }
+      : {}),
+  };
+}
+
 /** Normalizes the raw GetContexts result into one ordered page. */
 export function normalizeAionContextSummaries(
   value: unknown,
@@ -224,7 +240,7 @@ export function normalizeAionContextSummaries(
     if (!contextId || !validTimestamp(lastActivityAt)) {
       throw invalidResponse();
     }
-    return { contextId, lastActivityAt };
+    return { contextId, lastActivityAt, ...generatedMetadata(summary) };
   });
   if (
     new Set(contexts.map(({ contextId }) => contextId)).size !==
@@ -345,6 +361,7 @@ export function normalizeAionRemoteConversation(
 
   return {
     lastActivityAt,
+    ...generatedMetadata(conversation),
     conversation: {
       id: contextId,
       agent,

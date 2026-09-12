@@ -72,6 +72,39 @@ function remoteResult(
 }
 
 describe("useAionConversations", () => {
+  it("refreshes generated metadata across loaded pages without changing chat or caching generated titles", async () => {
+    const store = createInMemoryAionConversationStore();
+    let enabled = true;
+    const directory: AionConversationDirectory = {
+      list: (_agent, options = {}) => {
+        const offset = options.offset ?? 0;
+        return Promise.resolve({ contexts: [{
+          ...remoteContext(`context-${offset + 1}`, "2026-09-03T14:00:00.000Z"),
+          title: enabled ? `Generated ${offset + 1}` : null,
+        }], nextOffset: offset === 0 ? 1 : undefined });
+      },
+      load: (_agent, contextId) => Promise.resolve({ ...remoteResult(contextId),
+        title: enabled ? "Generated 2" : null }),
+    };
+    const { result } = renderHook(() => useAionConversations({
+      store, directory, agent: FIRST_AGENT, directoryPageSize: 1,
+    }));
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    expect(result.current.summaries[0]?.generatedTitle).toBe("Generated 1");
+    await act(async () => result.current.loadMoreConversations());
+    await act(async () => result.current.selectConversation("context-2"));
+    const selected = result.current.conversation!;
+    act(() => result.current.saveConversation(selected));
+    expect(result.current.summaries.find((row) => row.contextId === "context-2")?.generatedTitle).toBe("Generated 2");
+    expect((await store.load(FIRST_AGENT.id, "context-2"))?.title).toBe("Daily status");
+    enabled = false;
+    await act(async () => result.current.refreshMetadata());
+    expect(result.current.summaries).toHaveLength(2);
+    expect(result.current.summaries.map((row) => row.generatedTitle)).toEqual([null, null]);
+    expect(result.current.selectedContextId).toBe("context-2");
+    expect(result.current.conversation).toBe(selected);
+  });
+
   it("creates a context before use and persists updates", async () => {
     const store = createInMemoryAionConversationStore();
     const timestamps = [

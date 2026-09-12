@@ -1549,3 +1549,54 @@
     animation-iteration-count: 1 !important;
   }
 }
+/* Thread metadata shares composer icons and motion, never read-receipt controls. */
+.aion-chat__thread-activity {
+  flex: 0 0 auto;
+  margin-inline-end: var(--aion-chat-space-2);
+}
+
+.aion-chat__thread-activity > span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.aion-chat__thread-activity[data-activity-phase="succeeded"] {
+  animation: aion-thread-completed 1.2s ease-out both;
+}
+
+.aion-chat__thread-title-reveal {
+  animation: aion-thread-reveal var(--aion-chat-motion-stream-duration)
+    ease-out both;
+}
+
+@keyframes aion-thread-reveal {
+  from {
+    clip-path: inset(0 100% 0 0);
+    opacity: 0.3;
+  }
+  to {
+    clip-path: inset(0);
+    opacity: 1;
+  }
+}
+
+@keyframes aion-thread-completed {
+  0%,
+  65% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce), (forced-colors: active) {
+  .aion-chat__thread-title-reveal,
+  .aion-chat__thread-activity[data-activity-phase="succeeded"] {
+    animation: none;
+  }
+}

@@ -20,6 +20,9 @@ export interface AionConversationSummary {
   readonly agentId: string;
   readonly contextId: ContextId;
   readonly title: string;
+  /** Authorized server metadata, kept outside persisted local snapshots. */
+  readonly generatedTitle?: string | null;
+  readonly generatedSummary?: string | null;
   readonly preview?: string;
   readonly createdAt?: string;
   readonly updatedAt?: string;

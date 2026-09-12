@@ -180,11 +180,13 @@ try {
         createApolloAionAgentProfileSource,
         createApolloAionChatTransport,
         createApolloAionConversationDirectory,
+        createApolloAionConversationUpdatesSource,
       } from "${packageName}/graphql";
       import {
         createStandaloneAionAgentCatalog,
         createStandaloneAionAgentProfileSource,
         createStandaloneAionConversationDirectory,
+        createStandaloneAionConversationUpdatesSource,
         createStandaloneAionGraphQLClient,
       } from "${packageName}/graphql/standalone";
       import {
@@ -232,6 +234,10 @@ try {
       }
       if (typeof createApolloAionConversationDirectory !== "function") {
         throw new Error("apollo directory export");
+      }
+      if (typeof createApolloAionConversationUpdatesSource !== "function" ||
+          typeof createStandaloneAionConversationUpdatesSource !== "function") {
+        throw new Error("conversation updates exports");
       }
       if (typeof createStandaloneAionGraphQLClient !== "function") {
         throw new Error("standalone graphql export");

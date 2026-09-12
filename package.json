@@ -123,6 +123,7 @@
     "@phosphor-icons/react": "^2.1.10",
     "graphql-ws": "^6.0.6",
     "react-markdown": "^10.1.0",
-    "remark-gfm": "^4.0.1"
+    "remark-gfm": "^4.0.1",
+    "zustand": "^5.0.8"
   }
 }

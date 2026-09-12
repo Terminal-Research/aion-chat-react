@@ -20,6 +20,12 @@ import {
   createInMemoryAionConversationStore,
 } from "./conversations/memory-store";
 import { useAionConversations } from "./conversations/useAionConversations";
+import type { AionConversationUpdatesSource } from "./conversations/updates/types";
+import {
+  ConversationUpdatesProvider,
+  ConversationMetadataRefresh,
+} from "./conversations/updates/ConversationUpdatesProvider";
+import { useConversationUpdatesContext } from "./conversations/updates/context";
 import type {
   AionConversationStore,
   AionConversationSummary,
@@ -66,6 +72,8 @@ export interface AionChatWorkspaceProps
   readonly catalog?: AionAgentCatalog;
   readonly conversationStore?: AionConversationStore;
   readonly conversationDirectory?: AionConversationDirectory;
+  /** Optional principal-wide metadata feed, independent of the selected thread. */
+  readonly conversationUpdatesSource?: AionConversationUpdatesSource;
   readonly fixedAgent?: ChatAgent;
   readonly fixedContextId?: ContextId;
   /** Controls catalog selection by identity; null selects the Aion list. */
@@ -177,10 +185,24 @@ function preferredIdentityEntry(
  * Composes the default one-panel navigator with the shared inline chat view.
  */
 export function AionChatWorkspace({
+  conversationUpdatesSource,
+  ...props
+}: AionChatWorkspaceProps) {
+  return (
+    <ConversationUpdatesProvider
+      source={conversationUpdatesSource}
+      directory={props.conversationDirectory}
+    >
+      <AionChatWorkspaceContent {...props} />
+    </ConversationUpdatesProvider>
+  );
+}
+
+function AionChatWorkspaceContent({
   transport,
   catalog,
   conversationStore,
-  conversationDirectory,
+  conversationDirectory: untrackedDirectory,
   fixedAgent,
   fixedContextId,
   selectedAgentIdentityId,
@@ -205,6 +227,8 @@ export function AionChatWorkspace({
   className,
   ...props
 }: AionChatWorkspaceProps) {
+  const conversationDirectory =
+    useConversationUpdatesContext()?.directory ?? untrackedDirectory;
   configurationError(
     fixedAgent,
     fixedContextId,
@@ -406,6 +430,10 @@ export function AionChatWorkspace({
       data-navigation={navigatorVisible || undefined}
       {...props}
     >
+      <ConversationMetadataRefresh
+        agentId={agent?.id}
+        refresh={conversations.refreshMetadata}
+      />
       {navigatorVisible ? (
         <AionChatNavigator
           view={fixedAgent ? "conversations" : navigatorView}

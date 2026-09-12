@@ -38,6 +38,8 @@ export default defineConfig({
         "@apollo/client/core",
         "graphql",
         "graphql-ws",
+        "zustand",
+        "zustand/vanilla",
       ],
     },
     sourcemap: true,

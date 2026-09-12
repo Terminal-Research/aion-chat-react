@@ -2,6 +2,10 @@ import { TrashIcon } from "@phosphor-icons/react/Trash";
 import { type HTMLAttributes, useMemo } from "react";
 
 import type { AionConversationSummary } from "../conversations/types";
+import {
+  ConversationThreadActivity,
+  ConversationThreadTitle,
+} from "../conversations/updates/ConversationThreadFeedback";
 
 /** Controlled conversation-list presentation. */
 export interface AionConversationListProps
@@ -108,9 +112,7 @@ export function AionConversationList({
                 aria-current={selected ? "true" : undefined}
                 onClick={() => onSelectConversation(summary.contextId)}
               >
-                <span className="aion-chat__navigation-title">
-                  {summary.title}
-                </span>
+                <ConversationThreadTitle summary={summary} />
                 {summary.updatedAt ? (
                   <time
                     className="aion-chat__navigation-time"
@@ -120,6 +122,7 @@ export function AionConversationList({
                   </time>
                 ) : null}
               </button>
+              <ConversationThreadActivity summary={summary} />
               {onRemoveConversation ? (
                 <button
                   className="aion-chat__conversation-remove"

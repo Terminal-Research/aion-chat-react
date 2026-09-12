@@ -167,6 +167,54 @@ transport-independent boundary, blocks submission while a draft is uploading
 or failed, and converts completed uploads into URL-backed message parts. The
 provider never creates a GraphQL or HTTP upload client itself.
 
+## Live conversation metadata
+
+Pass an optional principal-wide source to the workspace to update background
+thread activity and generated titles without changing the selected conversation:
+
+```tsx
+import { createApolloAionConversationUpdatesSource } from
+  "@terminal-research/aion-chat-react/graphql";
+
+const conversationUpdatesSource = createApolloAionConversationUpdatesSource({
+  client, // the application's existing authenticated Apollo client
+  organizationId,
+  scopeKey: `${userId}:${organizationId}`,
+});
+
+<AionChatWorkspace
+  transport={transport}
+  conversationDirectory={conversationDirectory}
+  conversationUpdatesSource={conversationUpdatesSource}
+/>
+```
+
+Memoize the source by client, principal, and organization, not by selected agent
+or thread. The standalone entry exports
+`createStandaloneAionConversationUpdatesSource` with the same scope options.
+Custom sources implement `AionConversationUpdatesSource`; custom catalogs can
+provide `agentIdForUpdate`. By default, events map by their distribution ID,
+falling back to the edge environment ID only when no distribution is provided.
+
+The optional `conversationUpdates` GraphQL subscription requires an authenticated
+principal and supports only `TaskStatusUpdated` and
+`ConversationSummaryUpdated`. An initial/reconnect `reset` replaces current task
+activity and refreshes loaded directory metadata. There is no replay, read
+receipt, or transcript stream. Focus and reconnect recover current state;
+individual updates can be missed. Snapshot loads cannot overwrite a newer live
+update observed while that load was pending, but timestamps/checkpoints are not
+a global transactional cursor.
+
+Each workspace owns a non-persisted Zustand 5 store, one subscription, and its
+transient animation timers. Change `scopeKey` when authentication or organization
+changes; old callbacks are ignored and prior reactive state is discarded.
+Local conversation snapshots retain their fallback title, not generated text.
+Authorized reads that omit/null generated fields clear overrides. Summarization
+policy does not disable task progress. Pending tasks are tracked individually;
+successful completion briefly shows the composer's check-circle styling.
+Replacement titles reveal left to right, with reduced-motion and forced-colors
+support. Existing direct-A2A and local-only usage needs no updates source.
+
 ## Direct A2A integration
 
 The optional direct adapter discovers an A2A 1.0 Agent Card, chooses the first

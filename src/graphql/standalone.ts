@@ -37,3 +37,7 @@ export type {
   AionGraphQLError,
   AionGraphQLResult,
 } from "./types";
+export {
+  createStandaloneAionConversationUpdatesSource,
+  type StandaloneConversationUpdatesSourceOptions,
+} from "./standalone-conversation-updates";

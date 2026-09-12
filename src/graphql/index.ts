@@ -42,3 +42,7 @@ export type {
   AionGraphQLError,
   AionGraphQLResult,
 } from "./types";
+export {
+  createApolloAionConversationUpdatesSource,
+  type ApolloConversationUpdatesSourceOptions,
+} from "./apollo-conversation-updates";

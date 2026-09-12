@@ -212,3 +212,9 @@ export type { AionShimmerTextProps } from "./motion/AionShimmerText";
 export { AionShimmerText } from "./motion/AionShimmerText";
 export type { AionStreamingTextProps } from "./motion/AionStreamingText";
 export { AionStreamingText } from "./motion/AionStreamingText";
+export type {
+  AionConversationUpdateScope,
+  AionConversationUpdate,
+  AionConversationUpdates,
+  AionConversationUpdatesSource,
+} from "./conversations/updates/types";

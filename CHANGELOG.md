@@ -5,6 +5,12 @@ All notable changes to this package are documented here. The project follows
 
 ## Unreleased
 
+- Add optional principal-wide conversation updates using existing Apollo or
+  standalone GraphQL clients, with a workspace-scoped Zustand store, background
+  task indicators, transient completion checks, and generated-title reveals.
+- Preserve authorized generated metadata in directory reads without saving it
+  into local conversation snapshots; reconcile current state after reconnect.
+
 - Allow authenticated agent catalogs to select A2A or Playground
   distributions explicitly.
 

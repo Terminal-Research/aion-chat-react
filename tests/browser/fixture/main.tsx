@@ -7,6 +7,9 @@ import {
   type AionAgentCatalog,
   type AionAgentProfileSource,
   type AionConversationDirectory,
+  type AionConversationUpdate,
+  type AionConversationUpdates,
+  type AionConversationUpdatesSource,
   type ChatAgent,
   type ChatConversationState,
   type ChatMessage,
@@ -32,6 +35,44 @@ const AVAILABLE_CONTEXT_IDS = Array.from(
   (_, index) => `available-context-${String(index + 1).padStart(2, "0")}`,
 );
 const UNAVAILABLE_CONTEXT_IDS = ["unavailable-context"];
+const generatedTitles = new Map<string, string | null>();
+const liveTasks = new Map<string, AionConversationUpdate>();
+
+// Test-only server state survives subscription reconnects, not page reloads.
+window.addEventListener("conversation-updates", (event) => {
+  const frame = (event as CustomEvent<AionConversationUpdates>).detail;
+  for (const update of frame.updates) {
+    if (update.kind === "ConversationSummaryUpdated") generatedTitles.set(update.contextId, update.title);
+    else liveTasks.set(update.taskId, update);
+  }
+});
+
+const updatesSource: AionConversationUpdatesSource = {
+  scopeKey: "browser-fixture",
+  async *subscribe({ signal }) {
+    const queue: AionConversationUpdates[] = [];
+    let wake = () => {};
+    const receive = (event: Event) => {
+      queue.push((event as CustomEvent<AionConversationUpdates>).detail);
+      wake();
+    };
+    const abort = () => wake();
+    window.addEventListener("conversation-updates", receive);
+    signal.addEventListener("abort", abort);
+    try {
+      yield { reset: true, updates: [...liveTasks.values()].filter((update) =>
+        update.kind === "TaskStatusUpdated" && !/COMPLETED|FAILED|REJECTED|CANCELLED/u.test(update.taskState)) };
+      while (!signal.aborted) {
+        const frame = queue.shift();
+        if (frame) yield frame;
+        else await new Promise<void>((resolve) => { wake = resolve; });
+      }
+    } finally {
+      window.removeEventListener("conversation-updates", receive);
+      signal.removeEventListener("abort", abort);
+    }
+  },
+};
 
 const catalog: AionAgentCatalog = {
   list: () =>
@@ -105,6 +146,7 @@ const directory: AionConversationDirectory = {
       contexts: page.map((contextId, index) => ({
         contextId,
         lastActivityAt: activityAt(offset + index),
+        title: generatedTitles.get(contextId) ?? null,
       })),
       nextOffset: offset + page.length < contextIds.length
         ? offset + page.length
@@ -116,6 +158,7 @@ const directory: AionConversationDirectory = {
     return Promise.resolve({
       conversation: conversation(agent, contextId),
       lastActivityAt: activityAt(Math.max(index, 0)),
+      title: generatedTitles.get(contextId) ?? null,
     });
   },
 };
@@ -158,6 +201,7 @@ createRoot(document.getElementById("root")!).render(
           catalog={catalog}
           agentProfileSource={profileSource}
           conversationDirectory={directory}
+          conversationUpdatesSource={new URLSearchParams(location.search).has("updates") ? updatesSource : undefined}
           conversationStore={store}
           transport={transport}
           attachmentUploader={{
