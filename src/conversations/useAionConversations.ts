@@ -51,7 +51,10 @@ export interface UseAionConversationsResult {
   readonly removeConversation: (contextId: ContextId) => Promise<void>;
   readonly clearSelection: () => void;
   readonly reload: () => void;
-  /** Refresh navigation metadata without replacing selection or active chat state. */
+  /**
+   * Refresh metadata after pending pagination, preserving selection and chat.
+   * A newer pagination request or scope change cancels an obsolete refresh.
+   */
   readonly refreshMetadata: () => Promise<void>;
 }
 
@@ -197,6 +200,8 @@ export function useAionConversations({
   const optimisticContextsRef = useRef(new Map<string, Set<ContextId>>());
   const selectionAbortRef = useRef<AbortController>(undefined);
   const pageAbortRef = useRef<AbortController>(undefined);
+  const pageRequestRef = useRef<Promise<number | undefined>>(undefined);
+  const metadataAbortRef = useRef<AbortController>(undefined);
   const mountedRef = useRef(true);
   const [state, setState] = useState<ConversationHookState>({
     agentId: agent?.id,
@@ -234,6 +239,7 @@ export function useAionConversations({
       mountedRef.current = false;
       selectionAbortRef.current?.abort();
       pageAbortRef.current?.abort();
+      metadataAbortRef.current?.abort();
     };
   }, []);
 
@@ -242,6 +248,8 @@ export function useAionConversations({
     const abortController = new AbortController();
     selectionAbortRef.current?.abort();
     pageAbortRef.current?.abort();
+    pageRequestRef.current = undefined;
+    metadataAbortRef.current?.abort();
     if (!agent) {
       updateState(() => ({
         agentId: undefined,
@@ -564,12 +572,13 @@ export function useAionConversations({
     [agent, enqueueMutation, now, store, updateState],
   );
 
-  const loadMoreConversations = useCallback(async () => {
+  const loadNextPage = useCallback(async () => {
     const current = stateRef.current;
     if (!agent || !directory || current.nextRemoteOffset === undefined) {
       return;
     }
     pageAbortRef.current?.abort();
+    metadataAbortRef.current?.abort();
     const abortController = new AbortController();
     pageAbortRef.current = abortController;
     const offset = current.nextRemoteOffset;
@@ -621,6 +630,8 @@ export function useAionConversations({
           error: undefined,
         };
       });
+      // React may not have rendered this range when a waiting refresh resumes.
+      return offset + page.contexts.length;
     } catch (error) {
       if (
         !abortController.signal.aborted &&
@@ -636,6 +647,13 @@ export function useAionConversations({
       }
     }
   }, [agent, directory, directoryPageSize, store, updateState]);
+
+  const loadMoreConversations = useCallback(async () => {
+    // Refresh waits for the whole operation, including the cache/state update.
+    const request = loadNextPage();
+    pageRequestRef.current = request;
+    await request;
+  }, [loadNextPage]);
 
   const removeConversation = useCallback(
     async (contextId: ContextId) => {
@@ -709,12 +727,16 @@ export function useAionConversations({
   const refreshMetadata = useCallback(async () => {
     if (!agent || !directory || fixedContextId) return;
     const controller = new AbortController();
-    pageAbortRef.current?.abort();
-    pageAbortRef.current = controller;
+    metadataAbortRef.current?.abort();
+    metadataAbortRef.current = controller;
     try {
+      // User pagination takes priority; refresh its expanded range afterward.
+      const loadedThrough = await pageRequestRef.current;
+      if (controller.signal.aborted) return;
       const required = Math.max(
         directoryPageSize,
         stateRef.current.remoteContexts.length,
+        loadedThrough ?? 0,
       );
       const remoteContexts: AionRemoteContextSummary[] = [];
       let nextOffset: number | undefined = 0;

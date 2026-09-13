@@ -10,6 +10,7 @@ import type {
   AionConversationDirectory,
   AionConversationDirectoryListOptions,
   AionConversationDirectoryLoadOptions,
+  AionConversationDirectoryPage,
 } from "./directory";
 import { createInMemoryAionConversationStore } from "./memory-store";
 import { createAionConversationSnapshot } from "./snapshot";
@@ -71,7 +72,173 @@ function remoteResult(
   };
 }
 
+function deferredPage() {
+  let resolve!: (page: AionConversationDirectoryPage) => void;
+  const promise = new Promise<AionConversationDirectoryPage>((complete) => {
+    resolve = complete;
+  });
+  return { promise, resolve };
+}
+
 describe("useAionConversations", () => {
+  it("waits for pagination before refreshing all loaded metadata", async () => {
+    const store = createInMemoryAionConversationStore();
+    const firstPage = {
+      contexts: [remoteContext("context-1", "2026-09-03T14:00:00Z")],
+      nextOffset: 1,
+    };
+    const secondPage = {
+      contexts: [remoteContext("context-2", "2026-09-03T13:00:00Z")],
+    };
+    const pending = deferredPage();
+    let pageSignal: AbortSignal | undefined;
+    const list = vi.fn<AionConversationDirectory["list"]>()
+      .mockResolvedValueOnce(firstPage)
+      .mockImplementationOnce((_agent, options) => {
+        pageSignal = options?.signal;
+        return pending.promise;
+      })
+      .mockResolvedValueOnce(firstPage)
+      .mockResolvedValueOnce(secondPage);
+    const directory: AionConversationDirectory = {
+      list,
+      load: (_agent, contextId) => Promise.resolve(remoteResult(contextId)),
+    };
+    const { result } = renderHook(() => useAionConversations({
+      store, directory, agent: FIRST_AGENT, directoryPageSize: 1,
+    }));
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    await act(async () => result.current.selectConversation("context-1"));
+    const selected = result.current.conversation;
+    let pagination: Promise<void>;
+    let refresh: Promise<void>;
+    act(() => { pagination = result.current.loadMoreConversations(); });
+    expect(result.current.status).toBe("loading");
+    act(() => { refresh = result.current.refreshMetadata(); });
+    expect(pageSignal?.aborted).toBe(false);
+    expect(list).toHaveBeenCalledTimes(2);
+    await act(async () => {
+      pending.resolve(secondPage);
+      await pagination;
+      await refresh;
+    });
+    expect(list).toHaveBeenCalledTimes(4);
+    expect(result.current.status).toBe("ready");
+    expect(result.current.summaries.map((row) => row.contextId))
+      .toEqual(["context-1", "context-2"]);
+    expect(result.current.hasMoreConversations).toBe(false);
+    expect(result.current.selectedContextId).toBe("context-1");
+    expect(result.current.conversation).toBe(selected);
+    list.mockRejectedValueOnce(new Error("Background refresh unavailable"));
+    await act(async () => result.current.refreshMetadata());
+    expect(result.current.status).toBe("ready");
+    expect(result.current.error).toBeUndefined();
+    expect(result.current.conversation).toBe(selected);
+  });
+
+  it.each([
+    { waiting: true, cleanup: "unmount" },
+    { waiting: false, cleanup: "unmount" },
+    { waiting: true, cleanup: "agent" },
+    { waiting: false, cleanup: "agent" },
+    { waiting: true, cleanup: "directory" },
+    { waiting: false, cleanup: "directory" },
+  ])("cancels obsolete refresh on $cleanup (waiting: $waiting)", async ({
+    waiting, cleanup,
+  }) => {
+    const store = createInMemoryAionConversationStore();
+    const firstPage = {
+      contexts: [remoteContext("context-1", "2026-09-03T14:00:00Z")],
+      nextOffset: 1,
+    };
+    const pending = deferredPage();
+    let pendingSignal: AbortSignal | undefined;
+    const list = vi.fn<AionConversationDirectory["list"]>()
+      .mockResolvedValue(firstPage)
+      .mockResolvedValueOnce(firstPage)
+      .mockImplementationOnce((_agent, options) => {
+        pendingSignal = options?.signal;
+        return pending.promise;
+      });
+    const directory: AionConversationDirectory = {
+      list,
+      load: (_agent, contextId) => Promise.resolve(remoteResult(contextId)),
+    };
+    const { result, rerender, unmount } = renderHook((props) =>
+      useAionConversations({ store, directoryPageSize: 1, ...props }),
+      { initialProps: { agent: FIRST_AGENT, directory } },
+    );
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    let pagination: Promise<void> | undefined;
+    if (waiting) {
+      act(() => { pagination = result.current.loadMoreConversations(); });
+    }
+    let refresh: Promise<void>;
+    act(() => { refresh = result.current.refreshMetadata(); });
+    await waitFor(() => expect(list).toHaveBeenCalledTimes(2));
+    if (cleanup === "unmount") unmount();
+    else {
+      rerender({
+        agent: cleanup === "agent" ? SECOND_AGENT : FIRST_AGENT,
+        directory: cleanup === "directory" ? { ...directory } : directory,
+      });
+      await waitFor(() => expect(result.current.status).toBe("ready"));
+    }
+    expect(pendingSignal?.aborted).toBe(true);
+    await act(async () => {
+      // Even a directory that ignores cancellation cannot publish stale data
+      // or start a queued refresh after the hook's scope has ended.
+      pending.resolve({ contexts: [{ ...firstPage.contexts[0]!, title: "Stale" }] });
+      await pagination;
+      await refresh;
+    });
+    expect(list).toHaveBeenCalledTimes(cleanup === "unmount" ? 2 : 3);
+    if (cleanup !== "unmount") {
+      expect(result.current.status).toBe("ready");
+      expect(result.current.summaries[0]?.generatedTitle).toBeNull();
+    }
+  });
+
+  it("lets pagination supersede a slow refresh without losing the new page", async () => {
+    const store = createInMemoryAionConversationStore();
+    const firstPage = {
+      contexts: [remoteContext("context-1", "2026-09-03T14:00:00Z")],
+      nextOffset: 1,
+    };
+    const pending = deferredPage();
+    let refreshSignal: AbortSignal | undefined;
+    const list = vi.fn<AionConversationDirectory["list"]>()
+      .mockResolvedValueOnce(firstPage)
+      .mockImplementationOnce((_agent, options) => {
+        refreshSignal = options?.signal;
+        return pending.promise;
+      })
+      .mockResolvedValueOnce({
+        contexts: [remoteContext("context-2", "2026-09-03T13:00:00Z")],
+      });
+    const directory: AionConversationDirectory = {
+      list,
+      load: (_agent, contextId) => Promise.resolve(remoteResult(contextId)),
+    };
+    const { result } = renderHook(() => useAionConversations({
+      store, directory, agent: FIRST_AGENT, directoryPageSize: 1,
+    }));
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    let refresh: Promise<void>;
+    act(() => { refresh = result.current.refreshMetadata(); });
+    await waitFor(() => expect(list).toHaveBeenCalledTimes(2));
+    await act(async () => result.current.loadMoreConversations());
+    expect(refreshSignal?.aborted).toBe(true);
+    await act(async () => {
+      pending.resolve(firstPage);
+      await refresh;
+    });
+    expect(result.current.status).toBe("ready");
+    expect(result.current.summaries.map((row) => row.contextId))
+      .toEqual(["context-1", "context-2"]);
+    expect(result.current.hasMoreConversations).toBe(false);
+  });
+
   it("refreshes generated metadata across loaded pages without changing chat or caching generated titles", async () => {
     const store = createInMemoryAionConversationStore();
     let enabled = true;
