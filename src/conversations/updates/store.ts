@@ -90,7 +90,17 @@ export function createConversationUpdatesStore() {
           ? Object.fromEntries(
               Object.entries(state.threads).map(([key, thread]) => [
                 key,
-                { ...thread, tasks: {}, completedUntil: 0 },
+                {
+                  ...thread,
+                  // Replace active state, but keep terminal guards against
+                  // delayed events and duplicate completion animations.
+                  tasks: Object.fromEntries(
+                    Object.entries(thread.tasks).filter(([, task]) =>
+                      isTerminalTask(task.state),
+                    ),
+                  ),
+                  completedUntil: 0,
+                },
               ]),
             )
           : { ...state.threads };

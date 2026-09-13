@@ -211,6 +211,26 @@ describe("workspace conversation updates", () => {
     ).toBeUndefined();
   });
 
+  it.each(["COMPLETED", "FAILED", "REJECTED", "CANCELLED", "CANCELED"])(
+    "retains %s guards across reconnect without replaying completion",
+    (state) => {
+      const store = createConversationUpdatesStore();
+      const terminal = task("one", `TASK_STATE_${state}`);
+      const activity = () => conversationActivity(selectConversationThread(
+        store.getState(), "catalog-agent", "context",
+      ));
+      store.getState().apply({ reset: false, updates: [terminal] }, agentId, 0);
+      store.getState().expire(1_201);
+      store.getState().apply({ reset: true, updates: [] }, agentId, 1_202);
+      store.getState().apply({ reset: false, updates: [
+        task("one", working, "2026-09-12T11:59:00Z"),
+      ] }, agentId, 1_203);
+      expect(activity()).toBeUndefined();
+      store.getState().apply({ reset: false, updates: [terminal] }, agentId, 1_204);
+      expect(activity()).toBeUndefined();
+    },
+  );
+
   it("ignores stale states and preserves requires-action as nonterminal", () => {
     const store = createConversationUpdatesStore();
     store
