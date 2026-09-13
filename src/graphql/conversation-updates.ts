@@ -61,12 +61,16 @@ export function normalizeConversationUpdates(
     throw invalid();
   const updates = frame.updates.map((value): AionConversationUpdate => {
     const row = record(value);
+    const createdAt = optionalText(row.createdAt);
+    if (createdAt !== null && !Number.isFinite(Date.parse(createdAt)))
+      throw invalid();
     const scope = {
       organizationId: text(row.organizationId),
       agentEnvironmentId: text(row.agentEnvironmentId),
       distributionId: optionalText(row.distributionId) ?? undefined,
       contextId: text(row.contextId),
       updatedAt: text(row.updatedAt),
+      ...(createdAt !== null ? { createdAt } : {}),
     };
     if (!Number.isFinite(Date.parse(scope.updatedAt))) throw invalid();
     if (row.kind === "ConversationSummaryUpdated") {

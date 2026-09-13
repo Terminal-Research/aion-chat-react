@@ -19,11 +19,11 @@ const AGENT: ChatAgent = {
 describe("Aion conversation directory normalization", () => {
   it("retains optional authorized titles and summaries, including explicit clearing", () => {
     const page = normalizeAionContextSummaries([
-      { contextId: "visible", lastActivityAt: "2026-09-12T12:00:00Z", title: "Title", summary: "Summary" },
-      { contextId: "hidden", lastActivityAt: "2026-09-12T12:00:00Z", title: null, summary: null },
+      { contextId: "visible", lastActivityAt: "2026-09-12T12:00:00Z", title: "Title", summary: "Summary", summaryUpdatedAt: "2026-09-12T12:01:00Z" },
+      { contextId: "hidden", lastActivityAt: "2026-09-12T12:00:00Z", title: null, summary: null, summaryUpdatedAt: null },
     ], { offset: 0, limit: 50 });
-    expect(page.contexts[0]).toMatchObject({ title: "Title", summary: "Summary" });
-    expect(page.contexts[1]).toMatchObject({ title: null, summary: null });
+    expect(page.contexts[0]).toMatchObject({ title: "Title", summary: "Summary", summaryUpdatedAt: "2026-09-12T12:01:00Z" });
+    expect(page.contexts[1]).toMatchObject({ title: null, summary: null, summaryUpdatedAt: null });
   });
   it("validates ordered pages and derives the next offset", () => {
     const page = normalizeAionConversationDirectoryPageRequest({

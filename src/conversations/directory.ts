@@ -39,6 +39,8 @@ export interface AionRemoteContextSummary {
   /** Authorized generated metadata; null or omission means no override. */
   readonly title?: string | null;
   readonly summary?: string | null;
+  /** Persisted generated-text version, independent of task activity. */
+  readonly summaryUpdatedAt?: string | null;
 }
 
 /** One hydrated remote conversation and its authoritative activity time. */
@@ -47,6 +49,8 @@ export interface AionRemoteConversation {
   readonly lastActivityAt: string;
   readonly title?: string | null;
   readonly summary?: string | null;
+  /** Persisted generated-text version, absent when policy suppresses it. */
+  readonly summaryUpdatedAt?: string | null;
 }
 
 /** Caller-scoped remote context listing and hydration boundary. */
@@ -215,12 +219,17 @@ function validTimestamp(value: unknown): value is string {
 }
 
 function generatedMetadata(value: UnknownRecord | undefined) {
+  const updatedAt = value?.summaryUpdatedAt;
+  if (updatedAt != null && !validTimestamp(updatedAt)) throw invalidResponse();
   return {
     ...(value && "title" in value
       ? { title: nonEmptyString(value.title) ?? null }
       : {}),
     ...(value && "summary" in value
       ? { summary: nonEmptyString(value.summary) ?? null }
+      : {}),
+    ...(value && "summaryUpdatedAt" in value
+      ? { summaryUpdatedAt: updatedAt }
       : {}),
   };
 }

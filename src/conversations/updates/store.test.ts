@@ -40,6 +40,72 @@ const working = "TASK_STATE_WORKING";
 const completed = "TASK_STATE_COMPLETED";
 
 describe("workspace conversation updates", () => {
+  it.each(["2026-09-12T11:59:00Z", "2026-09-12T12:00:00Z"])(
+    "does not replace a read with an older or equal summary event (%s)",
+    (updatedAt) => {
+      const store = createConversationUpdatesStore();
+      const read = store.getState().beginRead();
+      store.getState().hydrate("catalog-agent", [{ contextId: "context",
+        lastActivityAt: scope.updatedAt, title: "Current",
+        summaryUpdatedAt: scope.updatedAt }], read);
+      store.getState().apply({ reset: false, updates: [{
+        ...summary("Outdated", 20), updatedAt,
+        createdAt: "2026-09-12T13:00:00Z",
+      }] }, agentId);
+      expect(selectConversationMetadata(store.getState(), "catalog-agent", "context"))
+        .toMatchObject({ title: "Current", revealUntil: 0 });
+    },
+  );
+
+  it("orders summaries by their own version, not later task activity", () => {
+    const store = createConversationUpdatesStore();
+    const read = store.getState().beginRead();
+    store.getState().hydrate("catalog-agent", [{ contextId: "context",
+      lastActivityAt: "2026-09-12T15:00:00Z", title: "Old",
+      summaryUpdatedAt: "2026-09-12T11:00:00Z" }], read);
+    store.getState().apply({ reset: false, updates: [summary("Current")] }, agentId, 0);
+    expect(selectConversationMetadata(store.getState(), "catalog-agent", "context"))
+      .toMatchObject({ title: "Current", summaryUpdatedAt: scope.updatedAt,
+        revealUntil: 600 });
+  });
+
+  it("accepts a newer persisted read even when an older event arrived during it", () => {
+    const store = createConversationUpdatesStore();
+    const read = store.getState().beginRead();
+    store.getState().apply({ reset: false, updates: [summary("Old")] }, agentId);
+    store.getState().hydrate("catalog-agent", [{ contextId: "context",
+      lastActivityAt: scope.updatedAt, title: "Current",
+      summaryUpdatedAt: "2026-09-12T12:01:00Z" }], read);
+    expect(selectConversationMetadata(store.getState(), "catalog-agent", "context"))
+      .toMatchObject({ title: "Current", revealUntil: 0 });
+  });
+
+  it("rejects a stale read even when requested after a newer live event", () => {
+    const store = createConversationUpdatesStore();
+    store.getState().apply({ reset: false, updates: [summary("Current")] }, agentId);
+    const read = store.getState().beginRead();
+    store.getState().hydrate("catalog-agent", [{ contextId: "context",
+      lastActivityAt: scope.updatedAt, title: "Old",
+      summaryUpdatedAt: "2026-09-12T11:59:00Z" }], read);
+    expect(selectConversationMetadata(store.getState(), "catalog-agent", "context")?.title)
+      .toBe("Current");
+  });
+
+  it("retains the version while policy hides text and restores it on a later read", () => {
+    const store = createConversationUpdatesStore();
+    store.getState().apply({ reset: false, updates: [summary("Current")] }, agentId);
+    const row = { contextId: "context", lastActivityAt: scope.updatedAt };
+    store.getState().hydrate("catalog-agent", [{ ...row, title: null,
+      summary: null, summaryUpdatedAt: null }], store.getState().beginRead());
+    store.getState().apply({ reset: false, updates: [summary("Delayed", 20)] }, agentId);
+    expect(selectConversationMetadata(store.getState(), "catalog-agent", "context")?.title)
+      .toBeNull();
+    store.getState().hydrate("catalog-agent", [{ ...row, title: "Current",
+      summaryUpdatedAt: scope.updatedAt }], store.getState().beginRead());
+    expect(selectConversationMetadata(store.getState(), "catalog-agent", "context")?.title)
+      .toBe("Current");
+  });
+
   it("does not reveal an unchanged title at a newer summary checkpoint", () => {
     const store = createConversationUpdatesStore();
     const read = store.getState().beginRead();

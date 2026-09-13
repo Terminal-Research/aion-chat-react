@@ -26,6 +26,7 @@ export function trackConversationDirectory(
               lastActivityAt: remote.lastActivityAt,
               title: remote.title,
               summary: remote.summary,
+              summaryUpdatedAt: remote.summaryUpdatedAt,
             },
           ],
           revision,

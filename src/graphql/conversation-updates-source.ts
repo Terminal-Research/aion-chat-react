@@ -5,6 +5,7 @@ export const AION_CONVERSATION_UPDATES_SOURCE = `
       reset
       updates {
         kind organizationId agentEnvironmentId distributionId contextId updatedAt
+        createdAt
         taskId taskState title summary summarizedThroughTurn
       }
     }

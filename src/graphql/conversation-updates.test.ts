@@ -12,6 +12,17 @@ const frame = { reset: true, updates: [] };
 const result = { data: { conversationUpdates: frame } };
 
 describe("conversation update adapters", () => {
+  it("keeps notification creation time distinct from the persisted version", () => {
+    const update = { kind: "ConversationSummaryUpdated", organizationId: "org",
+      agentEnvironmentId: "env", contextId: "context",
+      updatedAt: "2026-09-12T12:00:00Z", createdAt: "2026-09-12T12:01:00Z",
+      title: "Title", summary: "Summary", summarizedThroughTurn: 10 };
+    const result = { data: { conversationUpdates: { reset: false, updates: [update] } } };
+    expect(normalizeConversationUpdates(result).updates[0]).toMatchObject(update);
+    expect(() => normalizeConversationUpdates({ data: { conversationUpdates: {
+      reset: false, updates: [{ ...update, createdAt: "not-a-date" }],
+    } } })).toThrow();
+  });
   it("uses the existing Apollo subscription and disposes it on abort", async () => {
     const dispose = vi.fn();
     const subscribe = vi.fn(

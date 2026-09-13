@@ -201,9 +201,17 @@ principal and supports only `TaskStatusUpdated` and
 `ConversationSummaryUpdated`. An initial/reconnect `reset` replaces current task
 activity and refreshes loaded directory metadata. There is no replay, read
 receipt, or transcript stream. Focus and reconnect recover current state;
-individual updates can be missed. Snapshot loads cannot overwrite a newer live
-update observed while that load was pending, but timestamps/checkpoints are not
-a global transactional cursor.
+individual updates can be missed. Summary reads expose `summaryUpdatedAt` and
+summary events expose that same persisted version as `updatedAt`. Older/equal
+events cannot overwrite a newer read or restart its title animation. A newer
+persisted read wins over an older event even if the event arrived during the
+read. Unversioned reads retain request-order guards. These versions/checkpoints
+are not a global transactional cursor.
+
+Events also expose `createdAt` for notification construction time. Neither that
+timestamp, local arrival time, nor task `lastActivityAt` determines summary
+freshness. Deploy the backend timestamp contract before adopting this adapter
+revision; custom sources may omit `createdAt`.
 
 Each workspace owns a non-persisted Zustand 5 store, one subscription, and its
 transient animation timers. Change `scopeKey` when authentication or organization

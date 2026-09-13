@@ -10,6 +10,8 @@ import type {
 export interface ConversationMetadata {
   readonly title: string | null;
   readonly summary: string | null;
+  /** Last known persisted summary version, retained when a read hides text. */
+  readonly summaryUpdatedAt?: string | null;
   readonly revision: number;
   readonly revealUntil: number;
 }
@@ -122,6 +124,13 @@ export function createConversationUpdatesStore() {
               (!thread.metadata || read.revision >= thread.metadata.revision)
                 ? read
                 : thread.metadata;
+            // A delayed bus event must not replace a newer directory snapshot.
+            // Event creation/arrival and task activity are not summary versions.
+            if (
+              prior?.summaryUpdatedAt &&
+              Date.parse(update.updatedAt) <= Date.parse(prior.summaryUpdatedAt)
+            )
+              continue;
             const changed = prior?.title !== update.title;
             threads[key] = {
               ...thread,
@@ -129,6 +138,7 @@ export function createConversationUpdatesStore() {
               metadata: {
                 title: update.title,
                 summary: update.summary,
+                summaryUpdatedAt: update.updatedAt,
                 revision,
                 revealUntil: !frame.reset && changed ? now + 600 : 0,
               },
@@ -176,20 +186,31 @@ export function createConversationUpdatesStore() {
         const metadata = { ...state.metadata };
         for (const row of rows) {
           const key = conversationKey(agentId, row.contextId);
-          // A read started before a live update must not erase that newer text.
           const route = state.routes[key];
           const thread = route ? state.threads[route] : undefined;
+          const read = metadata[key];
+          const live = thread?.metadata;
+          const prior =
+            read && (!live || read.revision >= live.revision) ? read : live;
+          const versionDifference =
+            row.summaryUpdatedAt && prior?.summaryUpdatedAt
+              ? Date.parse(row.summaryUpdatedAt) -
+                Date.parse(prior.summaryUpdatedAt)
+              : undefined;
+          if (versionDifference !== undefined && versionDifference < 0) continue;
+          // A provably newer persisted version wins even if its read began
+          // before an older live event arrived. Unversioned policy/legacy reads
+          // retain the existing logical ordering guard.
           if (
-            Math.max(
-              metadata[key]?.revision ?? 0,
-              thread?.metadata?.revision ?? 0,
-            ) > startedAtRevision
+            !(versionDifference !== undefined && versionDifference > 0) &&
+            (prior?.revision ?? 0) > startedAtRevision
           )
             continue;
           metadata[key] = {
             title: row.title ?? null,
             summary: row.summary ?? null,
-            revision: startedAtRevision,
+            summaryUpdatedAt: row.summaryUpdatedAt ?? prior?.summaryUpdatedAt,
+            revision: Math.max(startedAtRevision, prior?.revision ?? 0),
             revealUntil: 0,
           };
         }

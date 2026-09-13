@@ -5,6 +5,10 @@ All notable changes to this package are documented here. The project follows
 
 ## Unreleased
 
+- Reconcile summary events against persisted `summaryUpdatedAt` from directory
+  reads, preventing delayed events/reads from replacing newer generated text.
+  Keep event `createdAt` distinct from the payload's persisted `updatedAt`.
+
 - Add optional principal-wide conversation updates using existing Apollo or
   standalone GraphQL clients, with a workspace-scoped Zustand store, background
   task indicators, transient completion checks, and generated-title reveals.

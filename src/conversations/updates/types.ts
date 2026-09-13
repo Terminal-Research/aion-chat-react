@@ -4,7 +4,10 @@ export interface AionConversationUpdateScope {
   readonly agentEnvironmentId: string;
   readonly distributionId?: string;
   readonly contextId: string;
+  /** Persisted task/summary version; compare this rather than arrival time. */
   readonly updatedAt: string;
+  /** Notification construction time; optional for custom/older sources. */
+  readonly createdAt?: string;
 }
 
 /** Absolute metadata changes, separate from the active conversation transport. */
