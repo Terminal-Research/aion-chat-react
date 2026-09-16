@@ -7,6 +7,8 @@ export function trackConversationDirectory(
   store: ConversationUpdatesStore,
 ): AionConversationDirectory {
   return {
+    // Metadata tracking must preserve the underlying deletion capability.
+    delete: directory.delete?.bind(directory),
     async list(agent, options) {
       const revision = store.getState().beginRead();
       const page = await directory.list(agent, options);

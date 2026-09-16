@@ -71,7 +71,7 @@ function conversationWithMessage(
 afterEach(cleanup);
 
 describe("AionChatWorkspace", () => {
-  it("blocks chat during deletion and keeps an in-progress retry available without navigation", async () => {
+  it.each([false, true])("blocks chat during deletion and keeps an in-progress retry available with live updates=%s", async (withUpdates) => {
     const agent: ChatAgent = {
       id: "distribution-1", title: "Status agent", availability: "available",
     };
@@ -95,6 +95,12 @@ describe("AionChatWorkspace", () => {
       fixedAgent={agent}
       fixedContextId="context-1"
       conversationDirectory={directory}
+      conversationUpdatesSource={withUpdates ? {
+        scopeKey: "user:organization",
+        async *subscribe() {
+          yield await Promise.resolve({ reset: false, updates: [] });
+        },
+      } : undefined}
       transport={transport}
       confirmRemoveConversation={() => true}
     />);
