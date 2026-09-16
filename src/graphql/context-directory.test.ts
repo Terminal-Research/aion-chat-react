@@ -143,7 +143,7 @@ describe("createAionChatGraphQLConversationDirectory", () => {
 
     await expect(directory.list(AGENT)).rejects.toMatchObject({
       code: "authentication_required",
-      message: "Authentication is required to load remote conversations.",
+      message: "Authentication is required to access remote conversations.",
       retryable: false,
     });
   });

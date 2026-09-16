@@ -2,6 +2,7 @@ import type { ChatAgent, ContextId } from "../model";
 import {
   type AionConversationDirectory,
   aionConversationDirectoryResult,
+  assertAionContextDeleted,
   normalizeAionContextSummaries,
   normalizeAionConversationDirectoryPageRequest,
   normalizeAionRemoteConversation,
@@ -28,7 +29,7 @@ export interface AionChatGraphQLConversationDirectoryOptions {
   readonly createModelId?: () => string;
 }
 
-type DirectoryMethod = "GetContext" | "GetContexts";
+type DirectoryMethod = "GetContext" | "GetContexts" | "DeleteContext";
 
 function defaultId(): string {
   return globalThis.crypto.randomUUID();
@@ -134,6 +135,19 @@ export function createAionChatGraphQLConversationDirectory(
   options: AionChatGraphQLConversationDirectoryOptions,
 ): AionConversationDirectory {
   return {
+    async delete(agent, contextId, deleteOptions = {}) {
+      const requestId = (options.createRequestId ?? defaultId)();
+      try {
+        const result = await executeDirectoryCall(
+          options,
+          variablesFor(agent, "DeleteContext", { contextId }, requestId, options),
+          operationSignal(deleteOptions.signal),
+        );
+        assertAionContextDeleted(result, contextId);
+      } catch (error) {
+        throw toAionConversationDirectoryError(error);
+      }
+    },
     async list(agent, listOptions) {
       try {
         return await contextSummaries(options, agent, listOptions);

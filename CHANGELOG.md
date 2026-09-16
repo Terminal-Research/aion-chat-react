@@ -5,6 +5,10 @@ All notable changes to this package are documented here. The project follows
 
 ## Unreleased
 
+- Connect Delete chat to server-confirmed context deletion through direct A2A
+  and existing GraphQL clients, with pending/retry states, local cache cleanup,
+  and protection against stale history reads and writes restoring the thread.
+
 - Reconcile summary events against persisted `summaryUpdatedAt` from directory
   reads, preventing delayed events/reads from replacing newer generated text.
   Keep event `createdAt` distinct from the payload's persisted `updatedAt`.

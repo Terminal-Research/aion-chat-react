@@ -249,6 +249,29 @@ card. The transport validates the same current card shape before every call,
 sends `A2A-Version: 1.0`, maps responses into the shared chat event model, and
 closes the SSE reader on completion or browser cancellation.
 
+## Deleting conversations
+
+The workspace's **Delete chat** action calls `DeleteContext` through the
+configured conversation directory. Direct A2A, Apollo, and standalone GraphQL
+directories support deletion using the same credentials and target as history
+requests; no separate authentication or GraphQL endpoint is needed.
+
+The confirmation describes server deletion and cancellation of active tasks.
+While awaiting confirmation, the workspace stops its local chat stream and
+uploads and prevents new messages. History is retained on failure. An
+in-progress response keeps the conversation blocked with a **Retry deletion**
+action to check completion; there is no automatic retry loop. Successful
+deletion (or an already-absent context) clears local history and selection.
+Deletion is logical, not immediate physical erasure; backend retention controls
+physical cleanup and File deletion.
+
+Custom directories may implement `delete(agent, contextId, options)` returning
+`Promise<void>` after server confirmation. Omit it for read-only directories:
+the workspace disables deletion rather than silently deleting only its cache.
+Workspaces without a remote directory retain explicit local-history removal.
+The optional `confirmRemoveConversation` callback confirms the applicable
+operation; it does not replace the server deletion call.
+
 ## Host Apollo integration
 
 The optional Apollo adapter wraps a client that the host already configured

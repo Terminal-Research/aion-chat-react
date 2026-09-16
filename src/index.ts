@@ -73,6 +73,7 @@ export type {
 export { AION_CONVERSATION_SNAPSHOT_VERSION } from "./conversations/types";
 export type {
   AionConversationDirectory,
+  AionConversationDirectoryDeleteOptions,
   AionConversationDirectoryListOptions,
   AionConversationDirectoryLoadOptions,
   AionConversationDirectoryPage,

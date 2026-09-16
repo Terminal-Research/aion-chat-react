@@ -2,6 +2,9 @@
 export type AionConversationDirectoryErrorCode =
   | "access_denied"
   | "authentication_required"
+  | "context_not_found"
+  | "deletion_in_progress"
+  | "context_not_deletable"
   | "directory_failed"
   | "invalid_response"
   | "unsupported";

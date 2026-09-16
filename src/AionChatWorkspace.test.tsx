@@ -14,6 +14,7 @@ import {
   createInMemoryAionConversationStore,
 } from "./conversations/memory-store";
 import type { AionConversationDirectory } from "./conversations/directory";
+import { AionConversationDirectoryError } from "./conversations/directory";
 import { createAionConversationSnapshot } from "./conversations/snapshot";
 import {
   type ChatAgent,
@@ -70,6 +71,53 @@ function conversationWithMessage(
 afterEach(cleanup);
 
 describe("AionChatWorkspace", () => {
+  it("blocks chat during deletion and keeps an in-progress retry available without navigation", async () => {
+    const agent: ChatAgent = {
+      id: "distribution-1", title: "Status agent", availability: "available",
+    };
+    let finish!: () => void;
+    const pending = new Promise<void>((resolve) => { finish = resolve; });
+    const remove = vi.fn<NonNullable<AionConversationDirectory["delete"]>>()
+      .mockRejectedValueOnce(new AionConversationDirectoryError(
+        "deletion_in_progress", "Deletion is still in progress.", true,
+      ))
+      .mockReturnValueOnce(pending);
+    const directory: AionConversationDirectory = {
+      list: () => Promise.resolve({ contexts: [] }),
+      load: () => Promise.resolve({
+        conversation: conversationWithMessage("context-1", agent, "History"),
+        lastActivityAt: "2026-09-03T12:00:00Z",
+      }),
+      delete: remove,
+    };
+    const transport = new FakeAionChatTransport(() => []);
+    render(<AionChatWorkspace
+      fixedAgent={agent}
+      fixedContextId="context-1"
+      conversationDirectory={directory}
+      transport={transport}
+      confirmRemoveConversation={() => true}
+    />);
+    await screen.findByRole("textbox", { name: "Chat message" });
+    fireEvent.click(screen.getByLabelText("Conversation options"));
+    fireEvent.click(screen.getByRole("button", { name: "Delete chat" }));
+    expect(await screen.findByRole("alert")).toHaveProperty(
+      "textContent", expect.stringContaining("Deletion is still in progress"),
+    );
+    expect(screen.queryByRole("textbox", { name: "Chat message" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Retry deletion" }));
+    expect(await screen.findByRole("status")).toHaveProperty(
+      "textContent", "Deleting conversation…",
+    );
+    fireEvent.click(screen.getByLabelText("Conversation options"));
+    expect(screen.getByRole("button", { name: "Delete chat" }).hasAttribute("disabled")).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Delete chat" }));
+    expect(remove).toHaveBeenCalledTimes(2);
+    finish();
+    await screen.findByText("Select or start a conversation.");
+    expect(transport.requests).toEqual([]);
+  });
+
   it("exposes selected-Aion header actions to the host", async () => {
     const onViewAgentProfile = vi.fn();
     const view = render(
@@ -566,7 +614,7 @@ describe("AionChatWorkspace", () => {
     expect(await store.load("distribution-1", "context-1")).not.toBeNull();
   });
 
-  it("allows local history removal when a remote directory is present", async () => {
+  it("does not offer local-only deletion for a read-only remote directory", async () => {
     const confirmRemove = vi.fn().mockResolvedValue(true);
     const directory: AionConversationDirectory = {
       list: () => Promise.resolve({ contexts: [] }),
@@ -594,10 +642,9 @@ describe("AionChatWorkspace", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Delete chat" }));
 
-    await waitFor(() => expect(confirmRemove).toHaveBeenCalledTimes(1));
-    await waitFor(() => {
-      expect(screen.queryByText("New conversation")).toBeNull();
-    });
+    expect(screen.getByRole("button", { name: "Delete chat" }).hasAttribute("disabled")).toBe(true);
+    expect(confirmRemove).not.toHaveBeenCalled();
+    expect(screen.queryByText("New conversation")).not.toBeNull();
   });
 
   it("handles host commands without sending them to the agent", async () => {

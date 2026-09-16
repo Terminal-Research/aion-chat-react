@@ -26,6 +26,11 @@ export interface AionConversationDirectoryLoadOptions {
   readonly signal?: AbortSignal;
 }
 
+/** Options for deleting one caller-owned remote context. */
+export interface AionConversationDirectoryDeleteOptions {
+  readonly signal?: AbortSignal;
+}
+
 /** One most-recent-first page returned by the remote directory. */
 export interface AionConversationDirectoryPage {
   readonly contexts: readonly AionRemoteContextSummary[];
@@ -53,7 +58,7 @@ export interface AionRemoteConversation {
   readonly summaryUpdatedAt?: string | null;
 }
 
-/** Caller-scoped remote context listing and hydration boundary. */
+/** Caller-scoped remote context management boundary. */
 export interface AionConversationDirectory {
   /** Lists one ordered page of contexts visible for the selected agent. */
   list(
@@ -67,6 +72,16 @@ export interface AionConversationDirectory {
     contextId: ContextId,
     options?: AionConversationDirectoryLoadOptions,
   ): Promise<AionRemoteConversation>;
+
+  /**
+   * Deletes a remote context, resolving only after server confirmation.
+   * Omit for read-only directories; local removal is not a substitute.
+   */
+  delete?(
+    agent: ChatAgent,
+    contextId: ContextId,
+    options?: AionConversationDirectoryDeleteOptions,
+  ): Promise<void>;
 }
 
 /** Validated paging values sent to Aion's GetContexts extension. */
@@ -106,10 +121,29 @@ function errorForCode(
   code: string | number,
   retryable?: boolean,
 ): AionConversationDirectoryError {
+  if (code === 1000) {
+    return new AionConversationDirectoryError(
+      "context_not_found", "The conversation no longer exists.", false,
+    );
+  }
+  if (code === 1001) {
+    return new AionConversationDirectoryError(
+      "deletion_in_progress",
+      "Deletion is still in progress. Retry shortly to check completion.",
+      true,
+    );
+  }
+  if (code === 1002) {
+    return new AionConversationDirectoryError(
+      "context_not_deletable",
+      "The conversation could not be deleted because its tasks could not be canceled.",
+      false,
+    );
+  }
   if (code === -32010 || code === "authentication_required") {
     return new AionConversationDirectoryError(
       "authentication_required",
-      "Authentication is required to load remote conversations.",
+      "Authentication is required to access remote conversations.",
       false,
     );
   }
@@ -127,13 +161,13 @@ function errorForCode(
   ) {
     return new AionConversationDirectoryError(
       "unsupported",
-      "The selected agent does not support remote conversation history.",
+      "The selected agent does not support this conversation operation.",
       false,
     );
   }
   return new AionConversationDirectoryError(
     "directory_failed",
-    "The remote conversation could not be loaded.",
+    "The remote conversation request could not be completed.",
     retryable ??
       (code === "directory_failed" || code === -32603 || code === -32012),
   );
@@ -172,7 +206,11 @@ export function toAionConversationDirectoryError(
     typeof candidateCode === "string" ||
     typeof candidateCode === "number"
   ) {
-    return errorForCode(candidateCode);
+    const data = record(candidate?.data);
+    return errorForCode(
+      candidateCode,
+      typeof data?.retryable === "boolean" ? data.retryable : undefined,
+    );
   }
   const message =
     typeof candidate?.message === "string"
@@ -216,6 +254,16 @@ function validTimestamp(value: unknown): value is string {
     value.length > 0 &&
     !Number.isNaN(Date.parse(value))
   );
+}
+
+/** Rejects mismatched or incomplete deletion acknowledgements. */
+export function assertAionContextDeleted(
+  value: unknown,
+  contextId: ContextId,
+): void {
+  const confirmation = record(value);
+  if (!confirmation || confirmation.contextId !== contextId ||
+    Object.keys(confirmation).length !== 1) throw invalidResponse();
 }
 
 function generatedMetadata(value: UnknownRecord | undefined) {
@@ -405,7 +453,11 @@ export function aionConversationDirectoryResult(
     if (typeof code !== "number") {
       throw invalidResponse();
     }
-    throw errorForCode(code);
+    const data = record(error.data);
+    throw errorForCode(
+      code,
+      typeof data?.retryable === "boolean" ? data.retryable : undefined,
+    );
   }
   if (!("result" in response)) {
     throw invalidResponse();

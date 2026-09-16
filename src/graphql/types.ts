@@ -24,6 +24,7 @@ export interface AionChatGraphQLVariables {
     readonly id: string;
     readonly method:
       | "GetContext"
+      | "DeleteContext"
       | "GetContexts"
       | "SendMessage"
       | "SendStreamingMessage";

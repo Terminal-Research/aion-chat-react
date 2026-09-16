@@ -96,6 +96,7 @@ export interface AionChatWorkspaceProps
   readonly onViewAgentProfile?: (entry: AionAgentCatalogEntry) => void;
   readonly onContextChange?: (contextId: ContextId | undefined) => void;
   readonly onConversationChange?: (state: ChatConversationState) => void;
+  /** Confirms server deletion when a directory is present, else local removal. */
   readonly confirmRemoveConversation?: (
     summary: AionConversationSummary,
   ) => boolean | Promise<boolean>;
@@ -398,19 +399,28 @@ function AionChatWorkspaceContent({
     return true;
   };
 
+  const confirmationPendingRef = useRef(false);
   const removeConversation = async (contextId: string) => {
     const summary = conversations.summaries.find(
       (candidate) => candidate.contextId === contextId,
-    );
-    if (!summary) {
+    ) ?? (agent && contextId === conversations.selectedContextId ? {
+      agentId: agent.id, contextId, title: "Conversation",
+    } : undefined);
+    if (!summary || confirmationPendingRef.current) {
       return;
     }
-    const confirmed = confirmRemoveConversation
-      ? await confirmRemoveConversation(summary)
-      : typeof globalThis.confirm === "function" &&
-        globalThis.confirm(`Remove “${summary.title}” from local history?`);
-    if (confirmed) {
-      await conversations.removeConversation(contextId);
+    confirmationPendingRef.current = true;
+    try {
+      const prompt = conversationDirectory
+        ? `Delete “${summary.title}” and its conversation history? ` +
+          "Active tasks will be canceled."
+        : `Remove “${summary.title}” from local history?`;
+      const confirmed = confirmRemoveConversation
+        ? await confirmRemoveConversation(summary)
+        : typeof globalThis.confirm === "function" && globalThis.confirm(prompt);
+      if (confirmed) await conversations.removeConversation(contextId);
+    } finally {
+      confirmationPendingRef.current = false;
     }
   };
 
@@ -468,9 +478,7 @@ function AionChatWorkspaceContent({
           <AionChatWorkspaceHeader
             agent={agent}
             catalogEntry={selectedEntry}
-            canRemoveConversation={Boolean(
-              conversations.selectedContextId,
-            )}
+            canRemoveConversation={conversations.canRemoveConversation}
             onViewAgentProfile={viewAgentProfile}
             onRemoveConversation={() => {
               const contextId = conversations.selectedContextId;
@@ -480,8 +488,25 @@ function AionChatWorkspaceContent({
             }}
           />
         ) : null}
+        {conversations.removalError ? (
+          <div role="alert">
+            <p>{conversations.removalError.message}</p>
+            {conversations.canRemoveConversation ? (
+              <button type="button" onClick={() => {
+                const contextId = conversations.selectedContextId;
+                if (contextId) void conversations.removeConversation(contextId);
+              }}>
+                Retry deletion
+              </button>
+            ) : null}
+          </div>
+        ) : null}
         <div className="aion-chat__workspace-chat-content">
-          {agent && conversations.conversation ? (
+          {conversations.removalStatus ? (
+            <p role="status">{conversations.removalStatus === "pending"
+              ? "Deleting conversation…"
+              : "Waiting for conversation deletion to complete."}</p>
+          ) : agent && conversations.conversation ? (
             <AionChatProvider
               key={`${agent.id}:${conversations.conversation.contextId}`}
               transport={transport}

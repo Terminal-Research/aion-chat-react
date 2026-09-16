@@ -2,6 +2,7 @@ import type { ChatAgent } from "../model";
 import {
   type AionConversationDirectory,
   aionConversationDirectoryResult,
+  assertAionContextDeleted,
   normalizeAionContextSummaries,
   normalizeAionConversationDirectoryPageRequest,
   normalizeAionRemoteConversation,
@@ -36,6 +37,21 @@ export function createDirectAionConversationDirectory(
   const createRequestId = options.createRequestId ?? defaultId;
   const createModelId = options.createModelId ?? defaultId;
   return {
+    async delete(agent, contextId, optionsForDelete = {}) {
+      const requestId = createRequestId();
+      try {
+        const response = await callDirectAionJsonRpc(
+          options.connectionForAgent(agent),
+          { id: requestId, method: "DeleteContext", params: { contextId } },
+          operationSignal(optionsForDelete.signal),
+        );
+        assertAionContextDeleted(
+          aionConversationDirectoryResult(response, requestId), contextId,
+        );
+      } catch (error) {
+        throw toAionConversationDirectoryError(error);
+      }
+    },
     async list(agent, listOptions = {}) {
       const page = normalizeAionConversationDirectoryPageRequest(
         listOptions,
