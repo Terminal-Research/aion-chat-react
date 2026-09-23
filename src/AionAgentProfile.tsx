@@ -133,6 +133,7 @@ function channelIcon(networkType: AionAgentProfileNetworkType): ReactNode {
       return <BrowserIcon aria-hidden="true" />;
     case "A2A":
     case "Aion":
+    case "Sms":
       return <ChatCircleDotsIcon aria-hidden="true" />;
   }
 }
@@ -149,6 +150,8 @@ function channelTitle(networkType: AionAgentProfileNetworkType): string {
       return "X";
     case "Voice":
       return "Telephone";
+    case "Sms":
+      return "SMS";
     default:
       return networkType;
   }

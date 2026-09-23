@@ -35,6 +35,7 @@ const NETWORK_TYPES: ReadonlySet<string> = new Set([
   "Meet",
   "Playground",
   "Slack",
+  "Sms",
   "Telegram",
   "TelegramBot",
   "Twitter",

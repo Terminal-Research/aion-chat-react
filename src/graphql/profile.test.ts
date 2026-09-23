@@ -100,6 +100,23 @@ describe("Aion agent profile", () => {
     });
   });
 
+  it("accepts SMS channels without accepting unknown networks", () => {
+    const detail = VALID_RESULT.data.agentIdentityDetail;
+    const result = (networkType: string) => ({
+      data: {
+        agentIdentityDetail: {
+          ...detail,
+          distributionUsages: [{ ...detail.distributionUsages[0], networkType }],
+        },
+      },
+    });
+
+    expect(normalizeAionAgentProfile(result("Sms")).channels[0]?.networkType)
+      .toBe("Sms");
+    expect(() => normalizeAionAgentProfile(result("Unknown")))
+      .toThrowError(AionAgentProfileError);
+  });
+
   it("distinguishes missing and malformed profiles", () => {
     expect(() =>
       normalizeAionAgentProfile({ data: { agentIdentityDetail: null } }),

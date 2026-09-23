@@ -76,6 +76,12 @@ describe("AionAgentProfile", () => {
                 systemIdentity: true,
               },
             },
+            {
+              distributionId: "distribution-sms",
+              networkType: "Sms",
+              projectId: "project-1",
+              projectName: "Messages",
+            },
           ],
         }}
         additionalDetails={[
@@ -103,6 +109,7 @@ describe("AionAgentProfile", () => {
     });
     expect(writeText).toHaveBeenCalledWith("status@example.com");
     expect(screen.getByText("Playground")).toBeTruthy();
+    expect(screen.getByText("SMS")).toBeTruthy();
     expect(screen.getByText("Status")).toBeTruthy();
     const playground = screen.getByRole("link", {
       name: "Open Playground: Status",

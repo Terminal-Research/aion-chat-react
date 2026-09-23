@@ -5,7 +5,7 @@ export type AionAgentProfileIdentityType =
   | "Principal"
   | "System";
 
-/** Distribution networks represented in an Aion profile. */
+/** Distribution networks, including distinct Voice and SMS phone channels. */
 export type AionAgentProfileNetworkType =
   | "A2A"
   | "AgentMail"
@@ -14,6 +14,7 @@ export type AionAgentProfileNetworkType =
   | "Meet"
   | "Playground"
   | "Slack"
+  | "Sms"
   | "Telegram"
   | "TelegramBot"
   | "Twitter"
