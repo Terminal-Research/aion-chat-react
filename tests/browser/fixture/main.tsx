@@ -36,6 +36,7 @@ const AVAILABLE_CONTEXT_IDS = Array.from(
 );
 const UNAVAILABLE_CONTEXT_IDS = ["unavailable-context"];
 const generatedTitles = new Map<string, string | null>();
+const deletedContexts = new Set<string>();
 const liveTasks = new Map<string, AionConversationUpdate>();
 
 // Test-only server state survives subscription reconnects, not page reloads.
@@ -140,7 +141,9 @@ const directory: AionConversationDirectory = {
   list: (agent, options = {}) => {
     const offset = options.offset ?? 0;
     const limit = options.limit ?? 50;
-    const contextIds = contextIdsFor(agent);
+    const contextIds = contextIdsFor(agent).filter(
+      (contextId) => !deletedContexts.has(contextId),
+    );
     const page = contextIds.slice(offset, offset + limit);
     return Promise.resolve({
       contexts: page.map((contextId, index) => ({
@@ -161,6 +164,10 @@ const directory: AionConversationDirectory = {
       title: generatedTitles.get(contextId) ?? null,
     });
   },
+  delete: (_agent, contextId) => {
+    deletedContexts.add(contextId);
+    return Promise.resolve();
+  },
 };
 
 const profileSource: AionAgentProfileSource = {
@@ -179,7 +186,7 @@ const profileSource: AionAgentProfileSource = {
       channels: [
         {
           distributionId: "available-agent-distribution",
-          networkType: "Playground",
+          networkType: "AionChat",
           projectId: "browser-fixture-project",
           projectName: "Browser fixture",
           agentEnvironmentName: "Production",

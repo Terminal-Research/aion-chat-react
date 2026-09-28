@@ -68,6 +68,7 @@ test("background thread progress completes without replacing the open conversati
     title: "Another replacement",
     summary: "Changed summary",
     summarizedThroughTurn: 10,
+    updatedAt: "2026-09-12T12:00:01Z",
   });
   await expect(
     page.getByText("Another replacement", { exact: true }),

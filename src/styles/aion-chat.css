@@ -25,6 +25,7 @@
   --aion-chat-color-assistant-message: #f5f6f8;
   --aion-chat-color-user-message: #eef2ff;
   --aion-chat-color-danger: #b42318;
+  --aion-chat-color-danger-contrast: #ffffff;
   --aion-chat-color-code: #a12255;
   --aion-chat-radius: 0.75rem;
   --aion-chat-radius-small: 0.375rem;
@@ -732,6 +733,63 @@
   width: min(30rem, calc(100vw - 2rem));
 }
 
+.aion-chat__delete-dialog {
+  width: min(31.25rem, calc(100vw - 2rem));
+  overflow-y: auto;
+  font: inherit;
+}
+
+.aion-chat__delete-dialog .aion-chat__dialog-header h2 {
+  font-family: var(--aion-chat-font-heading);
+}
+
+.aion-chat__delete-dialog-body {
+  margin: 0;
+  padding: var(--aion-chat-space-4);
+  overflow-wrap: anywhere;
+  color: var(--aion-chat-color-muted);
+}
+
+.aion-chat__delete-dialog-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--aion-chat-space-2);
+  padding: var(--aion-chat-space-3) var(--aion-chat-space-4);
+  border-top: 1px solid var(--aion-chat-color-border);
+}
+
+.aion-chat__delete-dialog-cancel,
+.aion-chat__delete-dialog-confirm {
+  min-height: 2.5rem;
+  padding: var(--aion-chat-space-2) var(--aion-chat-space-4);
+  border: 1px solid transparent;
+  border-radius: var(--aion-chat-radius-small);
+  font: inherit;
+  cursor: pointer;
+}
+
+.aion-chat__delete-dialog-cancel {
+  color: var(--aion-chat-color-secondary-control-contrast);
+  background: var(--aion-chat-color-secondary-control);
+}
+
+.aion-chat__delete-dialog-confirm {
+  color: var(--aion-chat-color-danger-contrast);
+  background: var(--aion-chat-color-danger);
+}
+
+.aion-chat__delete-dialog-cancel:hover,
+.aion-chat__delete-dialog-confirm:hover {
+  filter: brightness(0.9);
+}
+
+.aion-chat__delete-dialog-cancel:focus-visible,
+.aion-chat__delete-dialog-confirm:focus-visible {
+  outline: none;
+  box-shadow: var(--aion-chat-focus-ring);
+}
+
 .aion-chat__response-details {
   display: grid;
   gap: var(--aion-chat-space-4);
@@ -973,7 +1031,7 @@
   --aion-chat-profile-channel-color: var(--aion-chat-color-success);
 }
 
-.aion-chat__profile-channel[data-network="Playground"],
+.aion-chat__profile-channel[data-network="AionChat"],
 .aion-chat__profile-channel[data-network="Voice"] {
   --aion-chat-profile-channel-color: var(--aion-chat-color-success);
 }

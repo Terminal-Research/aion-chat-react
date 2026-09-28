@@ -18,7 +18,7 @@ describe("createApolloAionAgentCatalog", () => {
             distributionUsages: [
               {
                 distributionId: "distribution-1",
-                networkType: "Playground",
+                networkType: "AionChat",
               },
             ],
           },
@@ -34,7 +34,7 @@ describe("createApolloAionAgentCatalog", () => {
     const catalog = createApolloAionAgentCatalog({
       client,
       organizationId: " organization-1 ",
-      networkType: "Playground",
+      networkType: "AionChat",
     });
 
     const entries = await catalog.list();
@@ -44,7 +44,7 @@ describe("createApolloAionAgentCatalog", () => {
       expect.objectContaining({
         variables: {
           organizationId: "organization-1",
-          networkType: "Playground",
+          networkType: "AionChat",
         },
         fetchPolicy: "network-only",
         errorPolicy: "all",

@@ -40,8 +40,10 @@ export function AionChatWorkspaceHeader({
   };
 
   const removeConversation = () => {
-    onRemoveConversation();
     closeMenu();
+    // The menu item becomes hidden; return dialog focus to its visible trigger.
+    menuRef.current?.querySelector("summary")?.focus();
+    onRemoveConversation();
   };
 
   return (

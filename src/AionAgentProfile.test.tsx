@@ -59,7 +59,7 @@ describe("AionAgentProfile", () => {
           channels: [
             {
               distributionId: "distribution-1",
-              networkType: "Playground",
+              networkType: "AionChat",
               projectId: "project-1",
               projectName: "Status",
               agentEnvironmentName: "Production",
@@ -108,11 +108,11 @@ describe("AionAgentProfile", () => {
         .toBeTruthy();
     });
     expect(writeText).toHaveBeenCalledWith("status@example.com");
-    expect(screen.getByText("Playground")).toBeTruthy();
+    expect(screen.getByText("Aion Chat")).toBeTruthy();
     expect(screen.getByText("SMS")).toBeTruthy();
     expect(screen.getByText("Status")).toBeTruthy();
     const playground = screen.getByRole("link", {
-      name: "Open Playground: Status",
+      name: "Open Aion Chat: Status",
     });
     expect(playground)
       .toHaveProperty(
@@ -121,7 +121,7 @@ describe("AionAgentProfile", () => {
       );
     expect(playground).toHaveProperty(
       "title",
-      "Open Playground · Status · Production",
+      "Open Aion Chat · Status · Production",
     );
     const voice = screen.getByRole("link", {
       name: "Call number: +14155550123",

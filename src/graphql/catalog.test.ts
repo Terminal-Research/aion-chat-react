@@ -168,7 +168,7 @@ describe("Aion agent catalog", () => {
     ).toThrowError(AionAgentCatalogError);
   });
 
-  it("normalizes only the requested Playground distributions", () => {
+  it("normalizes only the requested Aion Chat distributions", () => {
     const entries = normalizeAionAgentCatalog(
       {
         data: {
@@ -183,7 +183,7 @@ describe("Aion agent catalog", () => {
               distributionUsages: [
                 {
                   distributionId: "distribution-playground",
-                  networkType: "Playground",
+                  networkType: "AionChat",
                 },
                 {
                   distributionId: "distribution-a2a",
@@ -195,7 +195,7 @@ describe("Aion agent catalog", () => {
         },
       },
       "organization-1",
-      "Playground",
+      "AionChat",
     );
 
     expect(entries).toEqual([

@@ -73,7 +73,7 @@ describe("AionChatNavigator", () => {
 
   it("explains unavailable agents while allowing history selection", () => {
     const onSelectAgent = vi.fn();
-    const unavailableReason = "The Playground distribution is inactive.";
+    const unavailableReason = "The Aion Chat distribution is inactive.";
     render(
       <AionAgentList
         entries={[

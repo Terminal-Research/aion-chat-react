@@ -129,7 +129,7 @@ function channelIcon(networkType: AionAgentProfileNetworkType): ReactNode {
       return <EnvelopeSimpleIcon aria-hidden="true" />;
     case "Meet":
       return <VideoCameraIcon aria-hidden="true" />;
-    case "Playground":
+    case "AionChat":
       return <BrowserIcon aria-hidden="true" />;
     case "A2A":
     case "Aion":
@@ -140,6 +140,8 @@ function channelIcon(networkType: AionAgentProfileNetworkType): ReactNode {
 
 function channelTitle(networkType: AionAgentProfileNetworkType): string {
   switch (networkType) {
+    case "AionChat":
+      return "Aion Chat";
     case "AgentMail":
       return "Email";
     case "Meet":

@@ -12,7 +12,7 @@ export type AionAgentProfileNetworkType =
   | "Aion"
   | "GitHub"
   | "Meet"
-  | "Playground"
+  | "AionChat"
   | "Slack"
   | "Sms"
   | "Telegram"

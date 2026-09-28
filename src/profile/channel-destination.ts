@@ -90,13 +90,13 @@ export function getAionAgentProfileChannelDestination(
     appBaseUrl = DEFAULT_AION_APP_BASE_URL,
   }: AionAgentProfileChannelDestinationOptions,
 ): AionAgentProfileChannelDestination | undefined {
-  if (channel.networkType === "Playground") {
+  if (channel.networkType === "AionChat") {
     return {
       href: applicationUrl(
         `/aions/playground/${encodeURIComponent(agentIdentityId)}`,
         appBaseUrl,
       ),
-      label: "Open Playground",
+      label: "Open Aion Chat",
       target: "external",
     };
   }

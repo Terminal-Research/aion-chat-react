@@ -33,7 +33,7 @@ const NETWORK_TYPES: ReadonlySet<string> = new Set([
   "Aion",
   "GitHub",
   "Meet",
-  "Playground",
+  "AionChat",
   "Slack",
   "Sms",
   "Telegram",

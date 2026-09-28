@@ -2,6 +2,7 @@ import { XIcon } from "@phosphor-icons/react/X";
 import {
   type DialogHTMLAttributes,
   type ReactNode,
+  type RefObject,
   useEffect,
   useId,
   useRef,
@@ -19,6 +20,8 @@ interface AionChatDialogProps
   readonly closeLabel: string;
   readonly children: ReactNode;
   readonly onRequestClose: () => void;
+  /** Optional safe initial action, focused after the native modal opens. */
+  readonly initialFocusRef?: RefObject<HTMLElement | null>;
 }
 
 /** Shared modal shell for content rendered within the active chat theme. */
@@ -27,6 +30,7 @@ export function AionChatDialog({
   closeLabel,
   children,
   onRequestClose,
+  initialFocusRef,
   className,
   ...props
 }: AionChatDialogProps) {
@@ -39,12 +43,25 @@ export function AionChatDialog({
     if (!dialog || dialog.open) {
       return;
     }
+    const previouslyFocused = document.activeElement;
     if (typeof dialog.showModal === "function") {
       dialog.showModal();
     } else {
       dialog.setAttribute("open", "");
     }
-  }, []);
+    initialFocusRef?.current?.focus();
+    return () => {
+      if (typeof dialog.close === "function") {
+        if (dialog.open) dialog.close();
+      } else {
+        dialog.removeAttribute("open");
+      }
+      if (previouslyFocused instanceof HTMLElement &&
+        previouslyFocused.isConnected) {
+        previouslyFocused.focus();
+      }
+    };
+  }, [initialFocusRef, portalContainer]);
 
   if (!portalContainer && typeof document === "undefined") {
     return null;
@@ -69,7 +86,10 @@ export function AionChatDialog({
         event.preventDefault();
         closeDialog();
       }}
-      onClose={onRequestClose}
+      onClose={(event) => {
+        // StrictMode can reopen before the cleanup's queued close event arrives.
+        if (!event.currentTarget.open) onRequestClose();
+      }}
       onClick={(event) => {
         if (event.target === event.currentTarget) {
           closeDialog();

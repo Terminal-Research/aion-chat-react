@@ -15,7 +15,7 @@ describe("createStandaloneAionAgentCatalog", () => {
     const controller = new AbortController();
     const catalog = createStandaloneAionAgentCatalog({
       client,
-      networkType: "Playground",
+      networkType: "AionChat",
     });
 
     await expect(
@@ -25,7 +25,7 @@ describe("createStandaloneAionAgentCatalog", () => {
       expect.objectContaining({
         variables: {
           organizationId: "organization-1",
-          networkType: "Playground",
+          networkType: "AionChat",
         },
         operationName: "AionChatAgentCatalog",
       }),

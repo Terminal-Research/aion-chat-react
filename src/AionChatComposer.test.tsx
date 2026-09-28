@@ -82,7 +82,7 @@ describe("AionChatComposer", () => {
     const onChange = vi.fn();
     const onSelectAttachments = vi.fn();
     const onHostAction = vi.fn();
-    const reason = "This Playground distribution is not active.";
+    const reason = "This Aion Chat distribution is not active.";
     const view = render(
       <AionChatComposer
         {...DEFAULT_PROPS}

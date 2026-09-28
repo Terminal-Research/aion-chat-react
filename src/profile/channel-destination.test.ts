@@ -8,7 +8,7 @@ import {
 
 const CHANNEL: AionAgentProfileChannel = {
   distributionId: "distribution/one",
-  networkType: "Playground",
+  networkType: "AionChat",
   projectId: "project-1",
   projectName: "Support",
 };
@@ -20,7 +20,7 @@ describe("getAionAgentProfileChannelDestination", () => {
       href:
         `${DEFAULT_AION_APP_BASE_URL}/aions/playground/` +
         "identity%2Fone",
-      label: "Open Playground",
+      label: "Open Aion Chat",
       target: "external",
     });
   });

@@ -58,21 +58,9 @@ import "@terminal-research/aion-chat-react/styles.css";
 </AionChatTheme>;
 ```
 
-Customize the view through semantic CSS properties on `AionChatTheme`, a host
-class, or a stylesheet. The main groups are `--aion-chat-color-*`,
-`--aion-chat-font-*`, `--aion-chat-space-*`, `--aion-chat-radius*`,
-`--aion-chat-shadow`, and `--aion-chat-focus-ring`. The example workspace maps
-these properties to both standard Bootstrap 5.3 variables and Aion Cloud's
-`--ins-*` equivalents. Library defaults use a zero-specificity theme selector,
-so one host class can override the variables without depending on stylesheet
-load order or styling component internals.
-
-Interaction motion uses the same CSS-variable boundary. Hosts can tune
-`--aion-chat-motion-shimmer-duration`,
-`--aion-chat-motion-stream-duration`,
-`--aion-chat-motion-stream-blur`, and
-`--aion-chat-motion-spinner-duration`. The defaults stop automatically for
-`prefers-reduced-motion: reduce`.
+Use `AionChatTheme` to customize the shared semantic CSS variables. See the
+[styling guide](#styling-guide) for theme, layout, profile, and Bootstrap
+integration examples.
 
 Assistant text and streamed text artifacts use the safe default Markdown
 renderer. Raw HTML and remote Markdown images are not rendered, unsafe URL
@@ -106,6 +94,221 @@ owned by the chat view.
   }}
 />;
 ```
+
+## Styling guide
+
+The library owns component structure and default styles; the host owns page
+layout and theme values. Bootstrap, Tailwind, and CopilotKit styles are not
+required. Import `@terminal-research/aion-chat-react/styles.css` once in your
+application entry, then keep host customizations in one small stylesheet.
+
+### Theme boundary and overrides
+
+Put your theme class on `AionChatTheme`, not only on the workspace or a parent
+page. Defaults are declared directly on `:where(.aion-chat-theme)`, so a class
+on that same element overrides them without `!important`. Variables set only
+on an ancestor (including `:root`) are superseded by those local defaults.
+Independent theme boundaries can coexist on one page.
+
+```tsx
+import {
+  AionChatTheme,
+  AionChatWorkspace,
+} from "@terminal-research/aion-chat-react";
+import "@terminal-research/aion-chat-react/styles.css";
+import "./chat-theme.css";
+
+<AionChatTheme className="product-chat">
+  <AionChatWorkspace catalog={catalog} transport={transport} />
+</AionChatTheme>;
+```
+
+```css
+/* chat-theme.css */
+.product-chat {
+  --aion-chat-font-family: system-ui, sans-serif;
+  --aion-chat-font-size: 1rem;
+  --aion-chat-content-font-size: 16px;
+  --aion-chat-color-accent: #315efb;
+  --aion-chat-color-accent-contrast: #ffffff;
+  --aion-chat-radius: 0.5rem;
+  --aion-chat-radius-small: 0.25rem;
+  --aion-chat-navigation-width: 19rem;
+  --aion-chat-shadow: none;
+
+  width: 100%;
+  min-width: 0;
+  height: 40rem;
+}
+```
+
+For runtime values, the `style` prop also accepts `--aion-chat-*` properties.
+Extracted style objects can use the exported `AionChatThemeStyle` type:
+
+```tsx
+import type { AionChatThemeStyle } from "@terminal-research/aion-chat-react";
+
+const theme = {
+  "--aion-chat-color-accent": "#315efb",
+  "--aion-chat-radius-small": "0.25rem",
+} satisfies AionChatThemeStyle;
+
+<AionChatTheme style={theme}>{children}</AionChatTheme>;
+```
+
+Inline values take precedence over stylesheet declarations. Theme variables
+follow normal CSS inheritance inside the boundary, including the built-in
+profile and response-detail dialogs: their portal target is inside the theme
+element. Place standalone `AionAgentProfile` components inside a theme too.
+Custom portaled components can use `useAionChatPortalContainer()` to retain
+that scope instead of rendering into `document.body`.
+
+### Common tokens
+
+These are the main customization points; the complete defaults and selectors
+live in [aion-chat.css](./src/styles/aion-chat.css).
+
+| Purpose | CSS properties |
+| --- | --- |
+| Typography | `--aion-chat-font-family`, `--aion-chat-font-heading`, `--aion-chat-font-mono`, `--aion-chat-font-size`, `--aion-chat-line-height` |
+| Transcript, composer, and thread titles | `--aion-chat-content-font-size` (default `16px`) |
+| Surfaces | `--aion-chat-color-background`, `--aion-chat-color-surface`, `--aion-chat-color-surface-emphasis` |
+| Text, subtle actions, and borders | `--aion-chat-color-text`, `--aion-chat-color-muted`, `--aion-chat-color-action-muted`, `--aion-chat-color-border` |
+| Primary and status colors | `--aion-chat-color-accent`, `--aion-chat-color-accent-contrast`, `--aion-chat-color-danger`, `--aion-chat-color-success`, `--aion-chat-color-info` |
+| Message backgrounds and code | `--aion-chat-color-user-message`, `--aion-chat-color-assistant-message`, `--aion-chat-color-code` |
+| Shape and focus | `--aion-chat-radius`, `--aion-chat-radius-small`, `--aion-chat-shadow`, `--aion-chat-focus-ring` |
+| Spacing | `--aion-chat-space-1` through `--aion-chat-space-5` (defaults: `0.25rem`, `0.5rem`, `0.75rem`, `1rem`, `1.5rem`) |
+| Widths | `--aion-chat-navigation-width` (default `18rem`), `--aion-chat-max-message-width` (default `80%`) |
+| Avatars | `--aion-chat-avatar-background`, `--aion-chat-avatar-color`, `--aion-chat-avatar-border-color`, `--aion-chat-avatar-border-width` |
+
+`--aion-chat-font-size` is the base size, not a universal font-size override.
+Content uses its separate token; thread dates remain smaller and some headings
+use explicit `rem` sizes. The composer starts at one line and grows to five
+before scrolling, using its computed line height, padding, and borders. Avoid
+forcing a fixed textarea height that conflicts with that behavior.
+
+### Host layout and targeted overrides
+
+Give the theme a definite height (as above), or put it in a constrained
+flex/grid layout. The workspace and chat view fill their containing height;
+the workspace has a default minimum height of `28rem`. Use `min-height: 0`
+and `min-width: 0` on shrinking host flex/grid children as needed so the
+transcript scrolls inside the panel rather than expanding the page.
+
+The default workspace stacks navigation above chat at viewport widths of
+`40rem` or less. This is a viewport media query, not a container query; a
+narrow panel on a wide page may need a host-specific layout override.
+
+Prefer tokens for colors, typography, spacing, and radii. For a structural
+adjustment without a token, scope the library's named classes to your theme:
+
+```css
+/* Remove the shared frame when the host already supplies a card. */
+.product-chat .aion-chat__workspace {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+```
+
+Keep selector overrides after the library stylesheet when specificity is
+equal. Avoid broad rules such as `button`, `textarea`, or `svg` that affect
+unrelated controls. For markup or behavior changes, use typed component slots
+instead of CSS tied to child positions. Workspace view slots are passed through
+`chatViewProps.slots`; inline views accept `slots` directly.
+
+### Bootstrap and dark mode
+
+There is no built-in dark-mode prop or automatic palette switch. Map the
+tokens to the host's theme variables, or override them on a theme class/data
+attribute. Include message backgrounds, muted text, borders, code, and focus
+colors when defining a dark palette—not just the panel background.
+
+For Bootstrap 5.3, load Bootstrap in the host and use a mapping such as:
+
+```css
+.product-chat {
+  --aion-chat-font-family: var(--bs-body-font-family);
+  --aion-chat-font-size: var(--bs-body-font-size);
+  --aion-chat-line-height: var(--bs-body-line-height);
+  --aion-chat-color-background: var(--bs-body-bg);
+  --aion-chat-color-surface: var(--bs-tertiary-bg);
+  --aion-chat-color-surface-emphasis: var(--bs-secondary-bg);
+  --aion-chat-color-text: var(--bs-body-color);
+  --aion-chat-color-muted: var(--bs-secondary-color);
+  --aion-chat-color-action-muted: var(--bs-secondary-color);
+  --aion-chat-color-border: var(--bs-border-color);
+  --aion-chat-color-accent: var(--bs-primary);
+  --aion-chat-color-accent-contrast: var(--bs-white);
+  --aion-chat-color-danger: var(--bs-danger-text-emphasis);
+  --aion-chat-color-info: var(--bs-info-text-emphasis);
+  --aion-chat-color-success: var(--bs-success-text-emphasis);
+  --aion-chat-color-user-message: var(--bs-primary-bg-subtle);
+  --aion-chat-color-assistant-message: var(--bs-tertiary-bg);
+  --aion-chat-color-code: var(--bs-code-color);
+  --aion-chat-radius: var(--bs-border-radius-lg);
+  --aion-chat-radius-small: var(--bs-border-radius);
+  --aion-chat-shadow: var(--bs-box-shadow);
+  --aion-chat-focus-ring:
+    0 0 0 var(--bs-focus-ring-width) var(--bs-focus-ring-color);
+}
+```
+
+With Bootstrap loaded, `data-bs-theme="dark"` on the theme element or an
+ancestor changes the mapped mode-aware values. See Bootstrap's
+[color-mode documentation](https://getbootstrap.com/docs/5.3/customize/color-modes/).
+Check contrast for your actual brand palette, especially accent text, buttons,
+subtle actions, and focus rings in both modes. The library does not load fonts
+or infer your application's palette.
+
+The checked-in [Bootstrap adapter](./examples/inline-bootstrap/src/bootstrap-aion-chat.css)
+also demonstrates `--ins-*` mappings with `--bs-*` fallbacks for Aion Cloud.
+It is an example stylesheet, not a package export; copy or adapt the mappings
+you need into the host. The [plain CSS example](./examples/inline-css/src/fixture.css)
+demonstrates a framework-independent theme.
+
+### Profiles and channel colors
+
+Profiles share the same font, surface, border, spacing, avatar, and radius
+tokens as chat. Response and profile copy buttons share the subtle action
+color and small-radius styling. Channel icon backgrounds and hover states
+derive from these semantic colors:
+
+| Channel (`data-network`) | Theme color |
+| --- | --- |
+| `A2A`, `Aion` | `--aion-chat-color-accent` |
+| `AgentMail`, `Telegram`, `TelegramBot` | `--aion-chat-color-info` |
+| `Meet`, `AionChat`, `Voice` | `--aion-chat-color-success` |
+| `Slack` | `--aion-chat-color-danger` |
+| `Twitter`, `GitHub` | `--aion-chat-color-text` |
+
+To customize one channel without changing other uses of its semantic color,
+override its local token on the channel element, not on the theme root:
+
+```css
+.product-chat .aion-chat__profile-channel[data-network="AgentMail"] {
+  --aion-chat-profile-channel-color: #7c3aed;
+}
+```
+
+Icons use Phosphor and inherit their component colors. Avatar shape is
+class-based: navigation/header avatars are circular; the profile avatar is a
+larger rounded square. Use a scoped `.aion-chat__profile-avatar` override if
+your host needs a different shape.
+
+### Motion and accessibility
+
+Tune `--aion-chat-motion-shimmer-duration`,
+`--aion-chat-motion-stream-duration`, `--aion-chat-motion-stream-blur`,
+`--aion-chat-motion-spinner-duration`, and
+`--aion-chat-navigation-duration` on the same theme boundary. Shimmer colors
+use `--aion-chat-motion-shimmer-color` and
+`--aion-chat-motion-shimmer-highlight`.
+
+The default animations respect `prefers-reduced-motion: reduce`. Preserve
+those rules and visible keyboard focus when adding overrides. Validate the
+theme with long messages, narrow layouts, read-only/disabled controls,
+profile and response-detail dialogs, and both light and dark palettes.
 
 ## Workspace, catalog, and conversations
 
@@ -159,7 +362,7 @@ with `detail` instead of an identity ID and source; `additionalDetails` appends
 host-specific rows without changing the shared profile model. Aion-owned
 channel links default to `https://app.aion.to`; set `appBaseUrl` on the profile
 or `agentProfileAppBaseUrl` on the workspace so local and staging hosts link to
-their own Playground and rendered Agent Card pages.
+their own Aion Chat and rendered Agent Card pages.
 
 To enable the default attachment picker, inject an `AionAttachmentUploader`
 into `AionChatProvider`. The controller uploads selected files through that
@@ -256,10 +459,21 @@ configured conversation directory. Direct A2A, Apollo, and standalone GraphQL
 directories support deletion using the same credentials and target as history
 requests; no separate authentication or GraphQL endpoint is needed.
 
-The confirmation describes server deletion and cancellation of active tasks.
-While awaiting confirmation, the workspace stops its local chat stream and
-uploads and prevents new messages. History is retained on failure. An
-in-progress response keeps the conversation blocked with a **Retry deletion**
+The built-in confirmation is a centered, themeable modal, not a browser
+prompt. It uses a title and close button, a warning naming the thread, and
+Cancel/Delete footer actions. Cancel receives initial keyboard focus; Escape
+and backdrop clicks also dismiss without deleting. The dialog inherits the
+active `AionChatTheme`, including typography, spacing, borders, and the
+`--aion-chat-color-danger` / `--aion-chat-color-danger-contrast` colors for
+Delete and `--aion-chat-color-secondary-control` /
+`--aion-chat-color-secondary-control-contrast` for Cancel. It does not require
+Bootstrap or a host-owned modal component.
+
+The warning describes server deletion and cancellation of active tasks.
+After the user confirms, while awaiting the server, the workspace stops its
+local chat stream and uploads and prevents new messages. History is retained
+on failure. An in-progress response keeps the conversation blocked with a
+**Retry deletion**
 action to check completion; there is no automatic retry loop. Successful
 deletion (or an already-absent context) clears local history and selection.
 Deletion is logical, not immediate physical erasure; backend retention controls
@@ -269,8 +483,8 @@ Custom directories may implement `delete(agent, contextId, options)` returning
 `Promise<void>` after server confirmation. Omit it for read-only directories:
 the workspace disables deletion rather than silently deleting only its cache.
 Workspaces without a remote directory retain explicit local-history removal.
-The optional `confirmRemoveConversation` callback confirms the applicable
-operation; it does not replace the server deletion call.
+The optional `confirmRemoveConversation` callback replaces the built-in
+confirmation modal; it does not replace the server deletion call.
 
 ## Host Apollo integration
 

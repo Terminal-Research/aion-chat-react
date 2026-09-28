@@ -4,7 +4,7 @@ import type { ChatAgent } from "./model";
 export type AionAgentCatalogIdentityType = "Personal" | "Principal";
 
 /** Distribution networks supported by the authenticated chat catalog. */
-export type AionAgentCatalogNetworkType = "A2A" | "Playground";
+export type AionAgentCatalogNetworkType = "A2A" | "AionChat";
 
 /** One selectable chat distribution and its parent identity presentation. */
 export interface AionAgentCatalogEntry {

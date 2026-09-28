@@ -462,7 +462,7 @@ describe("AionChatWorkspace", () => {
 
   it("loads unavailable-agent history without invoking transport", async () => {
     const unavailableReason =
-      "This Playground distribution is not active.";
+      "This Aion Chat distribution is not active.";
     const agent: ChatAgent = {
       id: "distribution-1",
       title: "Status agent",

@@ -365,15 +365,15 @@ test.describe("AionChatWorkspace browser behavior", () => {
       .toBeVisible();
 
     const channel = profile.getByRole("link", {
-      name: "Open Playground: Browser fixture",
+      name: "Open Aion Chat: Browser fixture",
     });
-    await expect(channel.getByText("Playground", { exact: true }))
+    await expect(channel.getByText("Aion Chat", { exact: true }))
       .toBeVisible();
     await expect(channel.getByText("Browser fixture", { exact: true }))
       .toBeVisible();
     await expect(channel).toHaveAttribute(
       "title",
-      "Open Playground · Browser fixture · Production",
+      "Open Aion Chat · Browser fixture · Production",
     );
     await expect(channel).toHaveAttribute(
       "href",
