@@ -5,6 +5,7 @@ import {
   type FormattedExecutionResult,
 } from "graphql-ws";
 
+import { observeGraphQLWebSocket } from "./websocket-observe";
 import { collectGraphQLErrorMessages } from "./error-messages";
 import type { AionGraphQLError, AionGraphQLResult } from "./types";
 
@@ -18,6 +19,8 @@ export interface AionGraphQLOperation<TVariables extends object = object> {
 /** Cancellation for one standalone GraphQL operation. */
 export interface AionGraphQLOperationOptions {
   readonly signal?: AbortSignal;
+  /** False ends the subscription on its first socket close, without replay. */
+  readonly retry?: boolean;
 }
 
 /** Browser WebSocket lifecycle controls forwarded to `graphql-ws`. */
@@ -240,49 +243,17 @@ function authenticatedWebSocketUrl(value: string, token: string): string {
   return url.toString();
 }
 
-async function closeIterator(
-  iterator: AsyncIterableIterator<unknown>,
-): Promise<void> {
-  await iterator.return?.();
-}
-
 async function* observeWebSocket<TData>(
   iterator: AsyncIterableIterator<FormattedExecutionResult<TData, unknown>>,
   signal?: AbortSignal,
+  stopOnClose?: Client,
 ): AsyncIterable<AionGraphQLResult<TData>> {
-  if (signal?.aborted) {
-    await closeIterator(iterator);
-    return;
-  }
-  let complete = false;
-  let closePromise: Promise<void> | undefined;
-  const close = () => {
-    closePromise ??= closeIterator(iterator);
-    return closePromise;
-  };
-  const onAbort = () => {
-    void close().catch(() => undefined);
-  };
-  signal?.addEventListener("abort", onAbort, { once: true });
-
   try {
-    while (!signal?.aborted) {
-      const result = await iterator.next();
-      if (result.done) {
-        complete = true;
-        return;
-      }
-      yield parseResult<TData>(result.value);
+    for await (const result of observeGraphQLWebSocket(iterator, signal, stopOnClose)) {
+      yield parseResult<TData>(result);
     }
   } catch (error) {
-    if (!signal?.aborted) {
-      throw webSocketError(error);
-    }
-  } finally {
-    signal?.removeEventListener("abort", onAbort);
-    if (!complete) {
-      await close();
-    }
+    throw webSocketError(error);
   }
 }
 
@@ -417,14 +388,18 @@ export function createStandaloneAionGraphQLClient(
         return observeWebSocket(emptyIterator(), operationOptions.signal);
       }
       try {
-        const iterator = currentWebSocketClient().iterate<TData>({
+        const client = currentWebSocketClient();
+        const iterator = client.iterate<TData>({
           query: operation.query,
           variables: operation.variables as
             | Record<string, unknown>
             | undefined,
           operationName: operation.operationName,
         });
-        return observeWebSocket(iterator, operationOptions?.signal);
+        return observeWebSocket(
+          iterator, operationOptions?.signal,
+          operationOptions?.retry === false ? client : undefined,
+        );
       } catch (error) {
         throw webSocketError(error);
       }

@@ -32,7 +32,8 @@ function deferred() {
 afterEach(cleanup);
 
 describe("new-thread welcome lifecycle", () => {
-  it("sends once from creation, preserves concurrent user work, and never resends on restore", async () => {
+  it.each(["welcome-first", "user-first"])(
+    "persists both concurrent replies without resending on restore (%s)", async (order) => {
     const pending = deferred();
     const sent: AionChatRequest[] = [];
     const transport: AionChatTransport = {
@@ -62,18 +63,34 @@ describe("new-thread welcome lifecycle", () => {
     expect(sent[0]).toMatchObject({ operation: "SendMessage", contextId, extensions: [uri] });
     expect(sent[0]!.message.parts).toEqual(message.parts);
     expect(result.current.conversation!.activeRun).toBeUndefined();
-    const foreground = reduceChatConversation(result.current.conversation!, {
+    let foreground = reduceChatConversation(result.current.conversation!, {
       type: "run.started", eventId: "user-start", requestId: "user-rpc", turnId: "user-turn",
       attempt: 1, occurredAt: now(), userMessage: { id: "user", role: "user", parts: [{ type: "text", text: "Question" }], createdAt: now() },
     });
     act(() => result.current.saveConversation(foreground));
+    const finishForeground = () => {
+      foreground = reduceChatConversation(foreground, {
+        type: "message.received", eventId: "answer-received", requestId: "user-rpc",
+        turnId: "user-turn", occurredAt: now(),
+        message: { id: "answer", role: "assistant", createdAt: now(),
+          parts: [{ type: "text", text: "Your answer" }] },
+      });
+      foreground = reduceChatConversation(foreground, {
+        type: "run.completed", eventId: "user-done", requestId: "user-rpc", occurredAt: now(),
+      });
+      act(() => result.current.saveConversation(foreground));
+    };
+    if (order === "user-first") finishForeground();
     await act(async () => { pending.resolve(); await pending.promise; });
     await waitFor(() => expect(result.current.conversation!.messages.some((m) => m.id === "greeting")).toBe(true));
     expect(result.current.conversation!.activeRun?.requestId).toBe("user-rpc");
-    expect(result.current.conversation!.activeRun?.status).toBe("running");
+    expect(result.current.conversation!.activeRun?.status)
+      .toBe(order === "user-first" ? "completed" : "running");
+    if (order === "welcome-first") finishForeground();
     // A stale foreground callback still cannot erase the independent welcome.
     act(() => result.current.saveConversation(foreground));
     expect(result.current.conversation!.messages.some((m) => m.id === "greeting")).toBe(true);
+    expect(result.current.conversation!.messages.some((m) => m.id === "answer")).toBe(true);
     rerender();
     expect(sent).toHaveLength(1);
     await waitFor(async () => expect((await store.load(agent.id, contextId))?.conversation.messages.some((m) => m.id === "greeting")).toBe(true));
@@ -82,6 +99,7 @@ describe("new-thread welcome lifecycle", () => {
     await waitFor(() => expect(restored.result.current.conversation).toBeDefined());
     expect(sent).toHaveLength(1);
     expect(restored.result.current.conversation!.messages.find((m) => m.id === "greeting")?.extensions).toEqual([uri]);
+    expect(restored.result.current.conversation!.messages.some((m) => m.id === "answer")).toBe(true);
   });
 
   it("keeps a late welcome on its original thread after navigation", async () => {
@@ -134,6 +152,78 @@ describe("new-thread welcome lifecycle", () => {
     act(() => { result.current.createConversation(); });
     await waitFor(() => expect(getAgentCapabilities).toHaveBeenCalledTimes(2));
     expect(sends).toBe(1);
+  });
+
+  it("skips a pending welcome when user text arrives during discovery", async () => {
+    const pending = deferred();
+    const stream = vi.fn<AionChatTransport["stream"]>();
+    const transport: AionChatTransport = {
+      getAgentCapabilities: vi.fn(async () => {
+        await pending.promise;
+        return { extensions: [{ uri }] };
+      }),
+      stream,
+    };
+    const store = createInMemoryAionConversationStore();
+    const createId = ids();
+    const { result } = renderHook(() => useAionConversations({
+      store, transport, agent, createId, now,
+    }));
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    act(() => { result.current.createConversation(); });
+    const contextId = result.current.selectedContextId!;
+    act(() => result.current.saveConversation(reduceChatConversation(
+      result.current.conversation!, {
+        type: "run.started", eventId: "user-start", requestId: "user-rpc",
+        turnId: "user-turn", attempt: 1, occurredAt: now(),
+        userMessage: { id: "user", role: "user", createdAt: now(),
+          parts: [{ type: "text", text: "Actual question" }] },
+      },
+    )));
+    await act(async () => { pending.resolve(); await pending.promise; });
+    expect(stream).not.toHaveBeenCalled();
+    expect(result.current.conversation!.activeRun?.requestId).toBe("user-rpc");
+    expect(result.current.conversation!.messages.map((item) => item.id)).toEqual(["user"]);
+    act(() => result.current.saveConversation(reduceChatConversation(
+      reduceChatConversation(result.current.conversation!, {
+        type: "message.received", eventId: "answer-event", requestId: "user-rpc",
+        turnId: "user-turn", occurredAt: now(), message: {
+          id: "answer", role: "assistant", createdAt: now(),
+          parts: [{ type: "text", text: "Your answer" }],
+        },
+      }), {
+        type: "run.completed", eventId: "user-done", requestId: "user-rpc", occurredAt: now(),
+      },
+    )));
+    await waitFor(async () => expect(
+      (await store.load(agent.id, contextId))?.conversation.messages.map((item) => item.id),
+    ).toEqual(["user", "answer"]));
+  });
+
+  it("ignores capability discovery for a thread that is no longer selected", async () => {
+    const pending = deferred();
+    const stream = vi.fn<AionChatTransport["stream"]>();
+    const transport: AionChatTransport = {
+      getAgentCapabilities: vi.fn()
+        .mockImplementationOnce(async () => {
+          await pending.promise;
+          return { extensions: [{ uri }] };
+        }).mockResolvedValue({}),
+      stream,
+    };
+    const store = createInMemoryAionConversationStore();
+    const createId = ids();
+    const { result } = renderHook(() => useAionConversations({
+      store, transport, agent, createId, now,
+    }));
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    act(() => { result.current.createConversation(); });
+    act(() => { result.current.createConversation(); });
+    const selected = result.current.selectedContextId;
+    await act(async () => { pending.resolve(); await pending.promise; });
+    expect(stream).not.toHaveBeenCalled();
+    expect(result.current.selectedContextId).toBe(selected);
+    expect(result.current.conversation!.messages).toEqual([]);
   });
 
   it("hides persisted triggers while retaining real text and welcome response markers", () => {

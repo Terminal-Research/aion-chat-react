@@ -27,11 +27,15 @@ export async function* welcomeEvents(
   signal: AbortSignal,
   createId: () => string,
   now: () => string,
+  canDispatch: () => boolean,
 ): AsyncIterable<ChatTransportEvent> {
   const agent = conversation.agent;
   if (!agent || !conversation.contextId || !transport.getAgentCapabilities) return;
   const capabilities = await transport.getAgentCapabilities(agent, { signal });
   signal.throwIfAborted();
+  // Discovery can outlive first input or navigation. Check live state only
+  // before dispatch; an in-flight welcome remains independent of user work.
+  if (!canDispatch()) return;
   if (!capabilities.extensions?.some(({ uri }) => uri === WELCOME_MESSAGE_EXTENSION_URI)) return;
   const message: ChatMessage = {
     id: createId(), role: "user", createdAt: now(),

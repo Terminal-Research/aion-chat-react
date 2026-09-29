@@ -30,9 +30,11 @@ export interface AionChatGraphQLTransportOptions {
     target: AionChatGraphQLTarget,
     signal: AbortSignal,
   ) => Promise<AionAgentCapabilities>;
+  /** Observes a request; `retry: false` must prohibit transport resubmission. */
   readonly observe: (
     variables: AionChatGraphQLVariables,
     signal: AbortSignal,
+    options: { readonly retry: boolean },
   ) => AsyncIterable<AionGraphQLResult<AionChatGraphQLSubscriptionData>>;
   readonly targetForAgent?: (agent: ChatAgent) => AionChatGraphQLTarget;
   readonly serviceParameters?: AionChatGraphQLServiceParameters;
@@ -199,7 +201,9 @@ async function* streamAionChatGraphQL(
         target,
         options.serviceParameters,
       );
-      for await (const payload of options.observe(variables, signal)) {
+      for await (const payload of options.observe(variables, signal, {
+        retry: request.operation !== "SendMessage",
+      })) {
         if (signal.aborted) {
           return;
         }

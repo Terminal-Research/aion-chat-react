@@ -1,4 +1,6 @@
-import { parse } from "graphql";
+import { parse, print } from "graphql";
+import type { Client } from "graphql-ws";
+import { observeGraphQLWebSocket } from "./websocket-observe";
 import { asApolloQueryClient, type ApolloAionQueryClient } from "./apollo-client";
 import {
   AION_AGENT_CARD_QUERY_SOURCE, loadAgentCardCapabilities,
@@ -23,6 +25,14 @@ import type {
 /** Options for the caller-owned Apollo Aion chat transport. */
 export interface ApolloAionChatTransportOptions {
   readonly client: ApolloAionSubscriptionClient & Partial<ApolloAionQueryClient>;
+  /**
+   * Returns the host's authenticated graphql-ws client for one-attempt unary
+   * sends. The adapter disposes these operations on socket closure, while the
+   * host retains its reconnect policy for ordinary subscriptions. Required for
+   * welcomes; absent support fails before dispatch. The client remains owned
+   * by the host and is never closed by this transport.
+   */
+  readonly getWebSocketClient?: () => Client;
   readonly targetForAgent?: (agent: ChatAgent) => AionChatGraphQLTarget;
   readonly serviceParameters?: AionChatGraphQLServiceParameters;
   readonly operation?: DocumentNode;
@@ -52,11 +62,29 @@ export function createApolloAionChatTransport(
         errors: result.errors?.map((error) => ({ ...error, message: error.message })),
       }, signal, options.fetch);
     },
-    observe: (variables, signal) =>
-      observeApolloAionGraphQL<
+    async *observe(variables, signal, { retry }) {
+      if (!retry) {
+        const client = options.getWebSocketClient?.();
+        if (!client) {
+          throw new Error("Unary chat requires the host graphql-ws client.");
+        }
+        for await (const result of observeGraphQLWebSocket(
+          client.iterate<AionChatGraphQLSubscriptionData>({
+            query: print(operation), variables: { ...variables },
+          }), signal, client,
+        )) {
+          yield {
+            data: result.data,
+            errors: result.errors?.map((error) => ({ ...error })),
+          };
+        }
+        return;
+      }
+      yield* observeApolloAionGraphQL<
         AionChatGraphQLSubscriptionData,
         AionChatGraphQLVariables
-      >(options.client, operation, variables, signal),
+      >(options.client, operation, variables, signal);
+    },
     targetForAgent: options.targetForAgent,
     serviceParameters: options.serviceParameters,
     createEventId: options.createEventId,

@@ -473,7 +473,17 @@ export function useAionConversations({
     let welcome = initial;
     try {
       for await (const event of welcomeEvents(
-        transport, initial, controller.signal, createId, now,
+        transport, initial, controller.signal, createId, now, () => {
+          const current = stateRef.current;
+          return mountedRef.current
+            && current.agentId === selectedAgent.id
+            && current.selectedContextId === contextId
+            && current.conversation?.contextId === contextId
+            && !isContextBlocked(selectedAgent.id, contextId)
+            && !current.conversation?.messages.some((message) =>
+              message.role === "user" && message.parts.some((part) =>
+                part.type === "text" && part.text.trim()));
+        },
       )) {
         if (controller.signal.aborted || !mountedRef.current
           || isContextBlocked(selectedAgent.id, contextId)) break;

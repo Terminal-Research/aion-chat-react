@@ -501,7 +501,11 @@ import {
 } from "@terminal-research/aion-chat-react/graphql";
 
 const client = useApolloClient();
-const transport = createApolloAionChatTransport({ client });
+const transport = createApolloAionChatTransport({
+  client,
+  // Return the same authenticated graphql-ws client used by the host's link.
+  getWebSocketClient: () => wsClient,
+});
 ```
 
 The same host client can create an authenticated agent catalog and remote
@@ -653,11 +657,19 @@ message target with `a2aAgentCardUrl`, then fetch that route's card, so an
 identity's preferred distribution does not override the selected chat route.
 Apollo hosts must provide a client with both `query` and `subscribe` for
 capability discovery. Subscription-only clients remain usable for ordinary chat.
+For welcomes, also provide `getWebSocketClient`, returning the host's existing
+authenticated `graphql-ws` client. The adapter cancels only that operation on
+socket closure, preventing reconnect from replaying a welcome while leaving
+ordinary subscriptions and connection ownership with the host. If the getter
+is absent, a welcome fails before dispatch instead of using a retrying Apollo
+link. Direct A2A and standalone GraphQL need no additional configuration.
 
 Creating a thread in `AionChatWorkspace` sends one unary welcome request when
 the selected route advertises the Welcome Message Extension. Headless
 `useAionConversations` callers pass their `transport` to enable the same
 creation action. Restoration and reconnection do not send welcomes, and failed
 welcomes are not retried. Ordinary chat stays available while a welcome is
-pending. The extension-owned trigger remains in protocol history but is hidden
+pending. If user text arrives before capability discovery finishes, the
+unsent welcome is skipped; already-dispatched welcomes may finish later.
+The extension-owned trigger remains in protocol history but is hidden
 in the transcript; actual user text is always shown.

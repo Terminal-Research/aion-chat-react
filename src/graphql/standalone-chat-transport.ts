@@ -43,14 +43,14 @@ export function createStandaloneAionChatTransport(
       }, { signal });
       return loadAgentCardCapabilities(result, signal, options.fetch);
     },
-    observe: (variables, signal) =>
+    observe: (variables, signal, { retry }) =>
       options.client.subscribe<AionChatGraphQLSubscriptionData>(
         {
           query,
           variables,
           operationName: "AionChatA2ARpc",
         },
-        { signal },
+        { signal, retry },
       ),
     targetForAgent: options.targetForAgent,
     serviceParameters: options.serviceParameters,
