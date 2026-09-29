@@ -27,7 +27,13 @@ import {
   type AionChatTaskActivityProps,
 } from "./AionChatActivity";
 import type { AionChatMarkdownComponent } from "./AionChatMarkdown";
-import type { ChatArtifact, ChatMessage, ChatTask } from "./model";
+import {
+  getChatText,
+  type ChatArtifact,
+  type ChatMessage,
+  type ChatPart,
+  type ChatTask,
+} from "./model";
 import type { AionSlotValue } from "./slots";
 import type { AionChatResponseMetadata } from "./AionChatResponseActions";
 
@@ -96,9 +102,64 @@ export function AionChatEmptyState({
   );
 }
 
+/** Matches only complete text with the same task and context identity. */
+function textResponseKey(
+  taskId: string | undefined,
+  contextId: string | undefined,
+  parts: readonly ChatPart[],
+): string | undefined {
+  if (!taskId || !contextId || parts.some((part) => part.type !== "text")) {
+    return undefined;
+  }
+  const text = getChatText(parts);
+  return text ? JSON.stringify([contextId, taskId, text]) : undefined;
+}
+
 /**
- * Renders normalized messages and follows new output only while the reader is
- * already pinned near the bottom.
+ * Shows one copy of an assistant reply represented by both a message and its
+ * completed stream artifact. Use the first transcript position, so restored
+ * history stays chronological even when artifacts arrive newest first.
+ * Structured output and unrelated messages remain separate entries.
+ */
+function visibleTranscriptEntries(
+  entries: readonly AionChatTranscriptEntry[],
+): readonly AionChatTranscriptEntry[] {
+  const responses = new Map<
+    string,
+    Extract<AionChatTranscriptEntry, { type: "artifact" }>
+  >();
+  for (const entry of entries) {
+    if (entry.type !== "artifact" || !entry.artifact.lastChunk) continue;
+    const { artifact } = entry;
+    if (artifact.artifactId !== "aion:stream-delta" &&
+        artifact.artifactId !== "stream_delta") continue;
+    const key = textResponseKey(
+      artifact.taskId, artifact.contextId, artifact.parts,
+    );
+    if (key) responses.set(key, entry);
+  }
+  const renderedArtifacts = new Set<string>();
+  return entries.flatMap((entry) => {
+    if (entry.type === "message" && isWelcomeRequest(entry.message)) return [];
+    const key = entry.type === "message" && entry.message.role === "assistant"
+      ? textResponseKey(
+          entry.message.taskId ?? entry.responseMetadata?.taskId,
+          entry.message.contextId ?? entry.responseMetadata?.contextId,
+          entry.message.parts,
+        )
+      : undefined;
+    const artifact = entry.type === "artifact"
+      ? entry : key ? responses.get(key) : undefined;
+    if (!artifact) return [entry];
+    if (renderedArtifacts.has(artifact.artifact.id)) return [];
+    renderedArtifacts.add(artifact.artifact.id);
+    return [artifact];
+  });
+}
+
+/**
+ * Renders each logical response once and follows new output only while the
+ * reader is already pinned near the bottom.
  */
 export function AionChatTranscript({
   entries: allEntries,
@@ -108,7 +169,7 @@ export function AionChatTranscript({
   ...props
 }: AionChatTranscriptProps) {
   const entries = useMemo(
-    () => allEntries.filter((entry) => entry.type !== "message" || !isWelcomeRequest(entry.message)),
+    () => visibleTranscriptEntries(allEntries),
     [allEntries],
   );
   const MessageComponent = slots.message?.component ?? AionChatMessage;

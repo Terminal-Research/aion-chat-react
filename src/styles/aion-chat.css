@@ -624,6 +624,12 @@
   background: var(--aion-chat-color-assistant-message);
 }
 
+/* Restored welcomes retain the plain presentation of their live artifact. */
+.aion-chat__message--welcome .aion-chat__message-content {
+  padding: 0;
+  background: none;
+}
+
 .aion-chat__message--user .aion-chat__message-content {
   color: var(--aion-chat-color-text);
   background: var(--aion-chat-color-user-message);

@@ -12,7 +12,7 @@ import { AionChatProvider } from "./AionChatProvider";
 import { AionChatTranscript } from "./AionChatTranscript";
 import { AionChatView } from "./AionChatView";
 import type { AionChatMessageProps } from "./AionChatMessage";
-import type { ChatConversationState, ChatMessage } from "./model";
+import type { ChatArtifact, ChatConversationState, ChatMessage } from "./model";
 import { FakeAionChatTransport } from "./testing/fake-transport";
 
 const AGENT = {
@@ -94,6 +94,30 @@ describe("AionChatView", () => {
     );
     expect(screen.getByRole("dialog").textContent).toContain("task-1");
     expect(screen.getByRole("dialog").textContent).toContain("context-1");
+  });
+
+  it.each([
+    "user-message", "different-task", "different-text", "structured-message",
+    "regular-artifact", "unfinished-stream",
+  ])("retains distinct content alongside a stream artifact (%s)", (variant) => {
+    const message: ChatMessage = {
+      id: "message", role: variant === "user-message" ? "user" : "assistant",
+      taskId: variant === "different-task" ? "other-task" : "task",
+      contextId: "context", createdAt: "2026-09-29T13:00:00Z",
+      parts: [{ type: "text", text: variant === "different-text" ? "More detail" : "Hello" },
+        ...(variant === "structured-message" ? [{ type: "data" as const, data: { result: 42 } }] : [])],
+    };
+    const artifact: ChatArtifact = {
+      id: "task:artifact", taskId: "task", contextId: "context",
+      artifactId: variant === "regular-artifact" ? "report" : "aion:stream-delta",
+      parts: [{ type: "text", text: "Hello" }],
+      lastChunk: variant !== "unfinished-stream",
+    };
+    const view = render(<AionChatTranscript entries={[
+      { type: "message", message }, { type: "artifact", artifact },
+    ]} />);
+
+    expect(view.container.querySelectorAll("[data-entry-type]")).toHaveLength(2);
   });
 
   it("sends from the composer and renders a streamed response", async () => {

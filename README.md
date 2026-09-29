@@ -671,5 +671,8 @@ creation action. Restoration and reconnection do not send welcomes, and failed
 welcomes are not retried. Ordinary chat stays available while a welcome is
 pending. If user text arrives before capability discovery finishes, the
 unsent welcome is skipped; already-dispatched welcomes may finish later.
+Completed stream artifacts and matching assistant messages are displayed once,
+in conversation order. Welcome responses retain their plain assistant layout
+when restored from history, even when the server omits transient artifacts.
 The extension-owned trigger remains in protocol history but is hidden
 in the transcript; actual user text is always shown.

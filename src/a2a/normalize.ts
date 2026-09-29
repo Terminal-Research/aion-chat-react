@@ -255,10 +255,13 @@ function normalizeArtifact(
   const artifactId =
     stringField(artifact, "artifactId", "artifact_id") ||
     context.createEventId();
+  // GetContext flattens artifacts from several tasks. Their local artifact
+  // IDs can repeat, so retain each Context artifact's explicit owning task.
+  const artifactTaskId = stringField(artifact, "taskId", "task_id") || taskId;
   return {
-    id: `${taskId}:${artifactId}`,
+    id: `${artifactTaskId}:${artifactId}`,
     artifactId,
-    taskId,
+    taskId: artifactTaskId,
     contextId,
     name: typeof artifact.name === "string" ? artifact.name : undefined,
     description:

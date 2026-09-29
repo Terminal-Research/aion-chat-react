@@ -25,6 +25,7 @@ import {
   type AionChatResponseMetadata,
 } from "./AionChatResponseActions";
 import { AionStreamingText } from "./motion/AionStreamingText";
+import { WELCOME_MESSAGE_EXTENSION_URI } from "./welcome";
 
 /** Props supplied to a structured-data part renderer. */
 export interface AionChatDataPartProps {
@@ -193,7 +194,7 @@ export const AionChatParts = memo(function AionChatParts({
   );
 });
 
-/** Default safe, non-Markdown presentation for one normalized message. */
+/** Renders one message, keeping welcome presentation consistent with live output. */
 export const AionChatMessage = memo(function AionChatMessage({
   message,
   streaming = false,
@@ -204,6 +205,10 @@ export const AionChatMessage = memo(function AionChatMessage({
   ...props
 }: AionChatMessageProps) {
   const classes = ["aion-chat__message", `aion-chat__message--${message.role}`];
+  if (message.role === "assistant" &&
+      message.extensions?.includes(WELCOME_MESSAGE_EXTENSION_URI)) {
+    classes.push("aion-chat__message--welcome");
+  }
   if (className) {
     classes.push(className);
   }

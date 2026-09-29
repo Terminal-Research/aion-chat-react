@@ -108,6 +108,35 @@ describe("Aion conversation directory normalization", () => {
     ).toEqual(["message", "artifact", "task"]);
   });
 
+  it("keeps artifacts with the same local ID on their owning context tasks", () => {
+    const contextId = "context-1";
+    const response = (taskId: string, text: string) => ({
+      messageId: `${taskId}-message`, taskId, contextId, role: "agent",
+      parts: [{ kind: "text", text }],
+    });
+    const welcome = response("welcome-task", "Hello!");
+    const reply = response("reply-task", "Your answer");
+    const { conversation } = normalizeAionRemoteConversation({
+      contextId,
+      history: [welcome, reply],
+      // The server lists artifacts newest first, with task-local identities.
+      artifacts: [reply, welcome].map(({ taskId, parts }) => ({
+        taskId, artifactId: "aion:stream-delta", parts,
+      })),
+      status: { state: "completed", message: reply },
+      lastActivityAt: "2026-09-29T13:00:00Z",
+    }, AGENT, contextId, () => "unused");
+
+    expect(Object.values(conversation.artifacts).map((artifact) => ({
+      id: artifact.id, taskId: artifact.taskId, parts: artifact.parts,
+    }))).toEqual([
+      { id: "reply-task:aion:stream-delta", taskId: "reply-task",
+        parts: [{ type: "text", text: "Your answer", metadata: undefined }] },
+      { id: "welcome-task:aion:stream-delta", taskId: "welcome-task",
+        parts: [{ type: "text", text: "Hello!", metadata: undefined }] },
+    ]);
+  });
+
   it("uses a persisted message task ID for a resumable context", () => {
     const conversation = normalizeAionRemoteConversation(
       {
