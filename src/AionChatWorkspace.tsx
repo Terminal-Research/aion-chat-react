@@ -258,6 +258,8 @@ function AionChatWorkspaceContent({
   const agent = fixedAgent ?? selectedEntry?.agent;
   const conversations = useAionConversations({
     store,
+    transport,
+    onError,
     directory: conversationDirectory,
     agent,
     fixedContextId,

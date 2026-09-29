@@ -1,3 +1,4 @@
+export { WELCOME_MESSAGE_EXTENSION_URI, WELCOME_REQUEST_SCHEMA, isWelcomeRequest } from "./welcome";
 export type { AionAgentCapabilities, AionAgentExtension } from "./agent-capabilities";
 export type {
   ChatArtifactUpdatedEvent,

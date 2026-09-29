@@ -1,3 +1,4 @@
+import { isWelcomeRequest, WELCOME_MESSAGE_EXTENSION_URI } from "../welcome";
 import type {
   ChatAgent,
   ChatArtifact,
@@ -144,7 +145,12 @@ function safePart(part: ChatPart): ChatPart {
       },
     };
   }
-  return { type: "data", data: toJsonValue(part.data) };
+  return {
+    type: "data", data: toJsonValue(part.data),
+    ...(part.metadata?.[WELCOME_MESSAGE_EXTENSION_URI] ? { metadata: {
+      [WELCOME_MESSAGE_EXTENSION_URI]: toJsonValue(part.metadata[WELCOME_MESSAGE_EXTENSION_URI]),
+    } } : {}),
+  };
 }
 
 function safeMessage(message: ChatMessage): ChatMessage {
@@ -152,6 +158,7 @@ function safeMessage(message: ChatMessage): ChatMessage {
     id: message.id,
     role: message.role,
     parts: message.parts.map(safePart),
+    extensions: message.extensions ? [...message.extensions] : undefined,
     contextId: message.contextId,
     taskId: message.taskId,
     createdAt: message.createdAt,
@@ -252,7 +259,7 @@ function summarize(value: string, fallback: string): string {
 
 function snapshotTitle(conversation: ChatConversationState): string {
   const text = conversation.messages
-    .find((message) => message.role === "user")
+    .find((message) => message.role === "user" && !isWelcomeRequest(message))
     ?.parts.map(partText)
     .filter((value): value is string => Boolean(value))
     .join(" ");
@@ -371,6 +378,7 @@ function validMessage(value: unknown): value is ChatMessage {
       ["user", "assistant", "system"].includes(candidate.role as string) &&
       Array.isArray(candidate.parts) &&
       candidate.parts.every(validPart) &&
+      (candidate.extensions === undefined || stringArray(candidate.extensions)) &&
       optionalString(candidate.contextId) &&
       optionalString(candidate.taskId) &&
       validTimestamp(candidate.createdAt),

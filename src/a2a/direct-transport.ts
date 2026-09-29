@@ -237,8 +237,9 @@ function parseAgentCard(value: unknown): DirectAionAgentCard {
 
 function selectInterface(
   card: DirectAionAgentCard,
+  operation: "SendMessage" | "SendStreamingMessage",
 ): DirectAionAgentInterface {
-  if (card.capabilities.streaming !== true) {
+  if (operation === "SendStreamingMessage" && card.capabilities.streaming !== true) {
     throw transportError(
       "streaming_not_supported",
       "The selected agent does not advertise streaming support.",
@@ -396,6 +397,7 @@ function sendMessageRequest(
       role: "ROLE_USER",
       parts: request.message.parts.map(outboundPart),
       metadata: request.message.metadata,
+      extensions: request.message.extensions,
     },
     metadata: request.metadata,
   };
@@ -403,11 +405,12 @@ function sendMessageRequest(
 
 function endpointFor(
   agentInterface: DirectAionAgentInterface,
+  operation: "SendMessage" | "SendStreamingMessage",
 ): string {
   if (agentInterface.protocolBinding === "JSONRPC") {
     return agentInterface.url;
   }
-  return `${agentInterface.url.replace(/\/$/u, "")}/message:stream`;
+  return `${agentInterface.url.replace(/\/$/u, "")}/message:${operation === "SendMessage" ? "send" : "stream"}`;
 }
 
 function requestBody(
@@ -419,7 +422,7 @@ function requestBody(
     ? {
         jsonrpc: "2.0",
         id: request.requestId,
-        method: "SendStreamingMessage",
+        method: request.operation ?? "SendStreamingMessage",
         params: message,
       }
     : message;
@@ -628,7 +631,8 @@ async function* directStream(
   const now = options.now ?? (() => new Date().toISOString());
   try {
     const card = await resolveAgentCard(options, fetcher, signal);
-    const agentInterface = selectInterface(card);
+    const operation = request.operation ?? "SendStreamingMessage";
+    const agentInterface = selectInterface(card, operation);
     const authorization = await authorizationHeader(
       card,
       agentInterface,
@@ -636,14 +640,17 @@ async function* directStream(
       signal,
     );
     const headers: Record<string, string> = {
-      Accept: "text/event-stream, application/json",
+      Accept: operation === "SendMessage" ? "application/json" : "text/event-stream, application/json",
       "A2A-Version": agentInterface.protocolVersion,
       "Content-Type": "application/json",
     };
     if (authorization) {
       headers.Authorization = authorization;
     }
-    const response = await fetcher(endpointFor(agentInterface), {
+    if (request.extensions?.length) {
+      headers["A2A-Extensions"] = [...new Set(request.extensions)].join(",");
+    }
+    const response = await fetcher(endpointFor(agentInterface, operation), {
       method: "POST",
       headers,
       body: JSON.stringify(requestBody(request, agentInterface)),

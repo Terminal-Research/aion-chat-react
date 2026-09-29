@@ -1,3 +1,4 @@
+import { isWelcomeRequest } from "./welcome";
 /*
  * Scroll composition adapted from CopilotKit's controlled chat view:
  * packages/react-core/src/v2/components/chat/CopilotChatView.tsx
@@ -7,6 +8,7 @@ import {
   type HTMLAttributes,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -99,12 +101,16 @@ export function AionChatEmptyState({
  * already pinned near the bottom.
  */
 export function AionChatTranscript({
-  entries,
+  entries: allEntries,
   agentTitle,
   slots = {},
   className,
   ...props
 }: AionChatTranscriptProps) {
+  const entries = useMemo(
+    () => allEntries.filter((entry) => entry.type !== "message" || !isWelcomeRequest(entry.message)),
+    [allEntries],
+  );
   const MessageComponent = slots.message?.component ?? AionChatMessage;
   const ArtifactComponent = slots.artifact?.component ?? AionChatArtifact;
   const TaskActivityComponent =

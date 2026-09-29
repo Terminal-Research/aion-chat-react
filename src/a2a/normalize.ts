@@ -235,6 +235,9 @@ function normalizeMessage(
     taskId: stringField(message, "taskId", "task_id") || undefined,
     createdAt: context.occurredAt,
     metadata: metadata(message.metadata),
+    extensions: Array.isArray(message.extensions)
+      ? message.extensions.filter((value): value is string => typeof value === "string")
+      : undefined,
   };
 }
 

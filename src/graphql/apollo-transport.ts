@@ -1,4 +1,4 @@
-import { gql } from "@apollo/client/core";
+import { parse } from "graphql";
 import { asApolloQueryClient, type ApolloAionQueryClient } from "./apollo-client";
 import {
   AION_AGENT_CARD_QUERY_SOURCE, loadAgentCardCapabilities,
@@ -43,7 +43,7 @@ export function createApolloAionChatTransport(
     async getAgentCapabilities(target, signal) {
       const client = asApolloQueryClient({ query: options.client.query });
       const result = await client.query<AionAgentCardData, AionAgentCardVariables>({
-        query: gql(AION_AGENT_CARD_QUERY_SOURCE), variables: { target },
+        query: parse(AION_AGENT_CARD_QUERY_SOURCE), variables: { target },
         fetchPolicy: "no-cache", errorPolicy: "all",
         context: { fetchOptions: { signal } },
       });

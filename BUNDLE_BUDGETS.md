@@ -14,11 +14,11 @@ byte-level noise while material growth requires an explicit review.
 
 | Entry | Baseline raw | Baseline gzip | Raw budget | Gzip budget |
 | --- | ---: | ---: | ---: | ---: |
-| Core `dist/index.js` | 91.0 kB | 24.4 kB | 96 KiB | 26 KiB |
+| Core `dist/index.js` | 103.1 kB | 27.9 kB | 104 KiB | 28 KiB |
 | Profile `dist/profile.js` | 15.1 kB | 5.2 kB | 18 KiB | 6 KiB |
 | Direct A2A `dist/a2a/direct.js` | 23.8 kB | 7.6 kB | 28 KiB | 9 KiB |
-| Apollo `dist/graphql/apollo.js` | 34.1 kB | 10.8 kB | 36 KiB | 12 KiB |
-| Standalone GraphQL | 37.4 kB | 11.9 kB | 40 KiB | 13 KiB |
+| Apollo `dist/graphql/apollo.js` | 38.1 kB | 12.0 kB | 40 KiB | 13 KiB |
+| Standalone GraphQL | 41.2 kB | 13.0 kB | 42 KiB | 14 KiB |
 | Testing `dist/testing.js` | 1.3 kB | 0.7 kB | 2 KiB | 1 KiB |
 | Uploads `dist/uploads.js` | 5.2 kB | 2.0 kB | 8 KiB | 3 KiB |
 | Browser storage `dist/storage/browser.js` | 9.8 kB | 3.2 kB | 16 KiB | 5 KiB |
@@ -34,3 +34,10 @@ Run
 `npm run package:check` after `npm run build` to enforce these limits, inspect
 root import boundaries, pack the npm artifact, install it into a temporary
 React 19.2 consumer, and verify exports, notices, and React deduplication.
+
+The 2026-09-29 welcome feature remeasurement includes selected-route Agent Card
+discovery, the explicit new-thread unary lifecycle, independent welcome/user
+response merging, and persisted trigger visibility. Core measured 103,132 raw /
+27,873 gzip bytes; Apollo 38,091 / 11,966; standalone 41,183 / 13,033. Only these
+three allowances increased. Transport dependencies remain outside core and no
+new runtime dependency was added.

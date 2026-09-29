@@ -1,3 +1,6 @@
+import { welcomeEvents, mergeWelcomeConversation } from "../welcome";
+import type { AionChatTransport } from "../transport";
+import type { ChatError } from "../model";
 import {
   useCallback,
   useEffect,
@@ -31,6 +34,8 @@ import type {
 /** Configuration for local conversation navigation and persistence. */
 export interface UseAionConversationsOptions {
   readonly store: AionConversationStore;
+  readonly transport?: AionChatTransport;
+  readonly onError?: (error: ChatError) => void;
   readonly directory?: AionConversationDirectory;
   readonly agent?: ChatAgent;
   readonly fixedContextId?: ContextId;
@@ -205,6 +210,8 @@ function acknowledgeRemoteContexts(
 /** Coordinates local summaries, selection, and safe snapshot persistence. */
 export function useAionConversations({
   store,
+  transport,
+  onError,
   directory,
   agent,
   fixedContextId,
@@ -212,6 +219,8 @@ export function useAionConversations({
   createId = defaultCreateId,
   now = defaultNow,
 }: UseAionConversationsOptions): UseAionConversationsResult {
+  const welcomeResultsRef = useRef(new Map<string, ChatConversationState>());
+  const welcomeAbortsRef = useRef(new Set<AbortController>());
   const [reloadToken, setReloadToken] = useState(0);
   const loadGenerationRef = useRef(0);
   const mutationQueueRef = useRef(Promise.resolve());
@@ -253,11 +262,9 @@ export function useAionConversations({
         current: ConversationHookState,
       ) => ConversationHookState,
     ) => {
-      setState((current) => {
-        const next = update(current);
-        stateRef.current = next;
-        return next;
-      });
+      const next = update(stateRef.current);
+      stateRef.current = next;
+      setState(next);
     },
     [],
   );
@@ -446,6 +453,71 @@ export function useAionConversations({
     enqueueMutation,
   ]);
 
+  useEffect(() => {
+    const aborts = welcomeAbortsRef.current;
+    const results = welcomeResultsRef.current;
+    return () => {
+      for (const controller of aborts) controller.abort();
+      aborts.clear();
+      results.clear();
+    };
+  }, [store, directory, transport, agent?.id]);
+
+  const startWelcome = useCallback(async (initial: ChatConversationState) => {
+    if (!transport || !initial.agent || !initial.contextId) return;
+    const selectedAgent = initial.agent;
+    const contextId = initial.contextId;
+    const key = conversationKey(selectedAgent.id, contextId);
+    const controller = new AbortController();
+    welcomeAbortsRef.current.add(controller);
+    let welcome = initial;
+    try {
+      for await (const event of welcomeEvents(
+        transport, initial, controller.signal, createId, now,
+      )) {
+        if (controller.signal.aborted || !mountedRef.current
+          || isContextBlocked(selectedAgent.id, contextId)) break;
+        welcome = reduceChatConversation(welcome, event);
+        welcomeResultsRef.current.set(key, welcome);
+        const current = stateRef.current;
+        const selected = current.agentId === selectedAgent.id
+          && current.selectedContextId === contextId;
+        const merged = mergeWelcomeConversation(
+          selected && current.conversation ? current.conversation : initial,
+          welcome,
+        );
+        const snapshot = createAionConversationSnapshot(merged, {
+          updatedAt: now(),
+        });
+        updateState((state) => ({
+          ...state,
+          ...(state.agentId === selectedAgent.id ? {
+            summaries: replaceSummary(state.summaries, summarizeAionConversation(snapshot)),
+          } : {}),
+          ...(selected ? { conversation: merged } : {}),
+        }));
+        const received = welcome;
+        void enqueueMutation(async () => {
+          if (controller.signal.aborted || isContextBlocked(selectedAgent.id, contextId)) return;
+          const cached = await store.load(selectedAgent.id, contextId);
+          await store.save(selectedAgent.id, createAionConversationSnapshot(
+            mergeWelcomeConversation(cached?.conversation ?? initial, received),
+            { createdAt: cached?.createdAt, updatedAt: now() },
+          ));
+        }).catch(() => onError?.({
+          code: "conversation_save_failed", message: "The welcome could not be saved.", retryable: false,
+        }));
+        if (event.type === "run.failed") onError?.(event.error);
+      }
+    } catch {
+      if (!controller.signal.aborted) onError?.({
+        code: "welcome_failed", message: "The welcome could not be loaded.", retryable: false,
+      });
+    } finally {
+      welcomeAbortsRef.current.delete(controller);
+    }
+  }, [transport, createId, now, isContextBlocked, updateState, enqueueMutation, store, onError]);
+
   const createConversation = useCallback(() => {
     if (!agent || agent.availability !== "available") {
       return undefined;
@@ -481,8 +553,9 @@ export function useAionConversations({
         }));
       }
     });
+    void startWelcome(conversation);
     return contextId;
-  }, [agent, createId, enqueueMutation, now, store, updateState]);
+  }, [agent, createId, enqueueMutation, now, store, updateState, startWelcome]);
 
   const selectConversation = useCallback(
     async (contextId: ContextId) => {
@@ -603,7 +676,11 @@ export function useAionConversations({
   );
 
   const saveConversation = useCallback(
-    (conversation: ChatConversationState) => {
+    (incoming: ChatConversationState) => {
+      const welcome = incoming.contextId && incoming.agent
+        ? welcomeResultsRef.current.get(conversationKey(incoming.agent.id, incoming.contextId))
+        : undefined;
+      const conversation = welcome ? mergeWelcomeConversation(incoming, welcome) : incoming;
       if (
         !agent ||
         conversation.agent?.id !== agent.id ||

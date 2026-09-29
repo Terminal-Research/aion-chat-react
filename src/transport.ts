@@ -4,6 +4,9 @@ import type { ChatAgent, ChatMessage } from "./model";
 
 /** One outbound request passed to an Aion chat transport. */
 export interface AionChatRequest {
+  /** Defaults to streaming for ordinary chat; welcomes select SendMessage. */
+  readonly operation?: "SendMessage" | "SendStreamingMessage";
+  readonly extensions?: readonly string[];
   readonly requestId: string;
   readonly turnId: string;
   readonly attempt: number;

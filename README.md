@@ -653,3 +653,11 @@ message target with `a2aAgentCardUrl`, then fetch that route's card, so an
 identity's preferred distribution does not override the selected chat route.
 Apollo hosts must provide a client with both `query` and `subscribe` for
 capability discovery. Subscription-only clients remain usable for ordinary chat.
+
+Creating a thread in `AionChatWorkspace` sends one unary welcome request when
+the selected route advertises the Welcome Message Extension. Headless
+`useAionConversations` callers pass their `transport` to enable the same
+creation action. Restoration and reconnection do not send welcomes, and failed
+welcomes are not retried. Ordinary chat stays available while a welcome is
+pending. The extension-owned trigger remains in protocol history but is hidden
+in the transcript; actual user text is always shown.

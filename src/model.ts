@@ -61,6 +61,7 @@ export type ChatPart = ChatTextPart | ChatFilePart | ChatDataPart;
 
 /** One normalized message in a conversation transcript. */
 export interface ChatMessage {
+  readonly extensions?: readonly string[];
   readonly id: MessageId;
   readonly role: ChatMessageRole;
   readonly parts: readonly ChatPart[];

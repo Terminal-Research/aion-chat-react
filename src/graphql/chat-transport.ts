@@ -100,12 +100,20 @@ export function buildAionChatGraphQLVariables(
           contextId: request.contextId,
           taskId: request.taskId,
           metadata: request.message.metadata,
+          extensions: request.message.extensions,
         },
         metadata: request.metadata,
       },
     },
     target,
-    serviceParameters,
+    serviceParameters: request.extensions?.length
+      ? {
+          ...serviceParameters,
+          extensions: [...new Set([
+            ...(serviceParameters.extensions ?? []), ...request.extensions,
+          ])],
+        }
+      : serviceParameters,
   };
 }
 
@@ -177,7 +185,7 @@ async function* streamAionChatGraphQL(
   };
   const allowUnaryFallback = options.unaryFallback !== false;
   const methods: readonly ("SendStreamingMessage" | "SendMessage")[] =
-    allowUnaryFallback
+    request.operation === "SendMessage" ? ["SendMessage"] : allowUnaryFallback
       ? ["SendStreamingMessage", "SendMessage"]
       : ["SendStreamingMessage"];
 
