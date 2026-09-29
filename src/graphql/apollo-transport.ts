@@ -1,3 +1,9 @@
+import { gql } from "@apollo/client/core";
+import { asApolloQueryClient, type ApolloAionQueryClient } from "./apollo-client";
+import {
+  AION_AGENT_CARD_QUERY_SOURCE, loadAgentCardCapabilities,
+  type AionAgentCardData, type AionAgentCardVariables,
+} from "./agent-card";
 import type { DocumentNode } from "graphql";
 
 import type { ChatAgent } from "../model";
@@ -16,10 +22,11 @@ import type {
 
 /** Options for the caller-owned Apollo Aion chat transport. */
 export interface ApolloAionChatTransportOptions {
-  readonly client: ApolloAionSubscriptionClient;
+  readonly client: ApolloAionSubscriptionClient & Partial<ApolloAionQueryClient>;
   readonly targetForAgent?: (agent: ChatAgent) => AionChatGraphQLTarget;
   readonly serviceParameters?: AionChatGraphQLServiceParameters;
   readonly operation?: DocumentNode;
+  readonly fetch?: typeof globalThis.fetch;
   readonly createEventId?: () => string;
   readonly now?: () => string;
   readonly unaryFallback?: boolean;
@@ -33,6 +40,18 @@ export function createApolloAionChatTransport(
 ): AionChatTransport {
   const operation = options.operation ?? AION_CHAT_A2A_RPC_SUBSCRIPTION;
   return createAionChatGraphQLTransport({
+    async getAgentCapabilities(target, signal) {
+      const client = asApolloQueryClient({ query: options.client.query });
+      const result = await client.query<AionAgentCardData, AionAgentCardVariables>({
+        query: gql(AION_AGENT_CARD_QUERY_SOURCE), variables: { target },
+        fetchPolicy: "no-cache", errorPolicy: "all",
+        context: { fetchOptions: { signal } },
+      });
+      return loadAgentCardCapabilities({
+        data: result.data,
+        errors: result.errors?.map((error) => ({ ...error, message: error.message })),
+      }, signal, options.fetch);
+    },
     observe: (variables, signal) =>
       observeApolloAionGraphQL<
         AionChatGraphQLSubscriptionData,

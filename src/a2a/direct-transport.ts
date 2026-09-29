@@ -1,3 +1,4 @@
+import { parseAgentCapabilities } from "../agent-capabilities";
 import {
   type ChatTransportEvent,
   isTerminalChatTransportEvent,
@@ -226,12 +227,7 @@ function parseAgentCard(value: unknown): DirectAionAgentCard {
   return {
     name: candidate.name,
     supportedInterfaces: candidate.supportedInterfaces.map(parseInterface),
-    capabilities: {
-      streaming:
-        typeof capabilities.streaming === "boolean"
-          ? capabilities.streaming
-          : undefined,
-    },
+    capabilities: parseAgentCapabilities(capabilities),
     securitySchemes: parseSecuritySchemes(candidate.securitySchemes),
     securityRequirements: parseSecurityRequirements(
       candidate.securityRequirements,
@@ -706,6 +702,12 @@ export function createDirectAionA2ATransport(
 ): AionChatTransport {
   validateConnectionOptions(options);
   return {
+    async getAgentCapabilities(_agent, { signal }) {
+      const card = await resolveAgentCard(
+        options, options.fetch ?? globalThis.fetch, signal,
+      );
+      return card.capabilities;
+    },
     stream: (request, { signal }) => directStream(options, request, signal),
   };
 }

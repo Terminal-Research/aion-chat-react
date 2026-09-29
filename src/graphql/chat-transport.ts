@@ -1,3 +1,4 @@
+import type { AionAgentCapabilities } from "../agent-capabilities";
 import {
   type ChatTransportEvent,
   isTerminalChatTransportEvent,
@@ -25,6 +26,10 @@ const UNSUPPORTED_STREAM_PATTERN =
 
 /** Shared configuration for GraphQL-backed Aion chat transports. */
 export interface AionChatGraphQLTransportOptions {
+  readonly getAgentCapabilities?: (
+    target: AionChatGraphQLTarget,
+    signal: AbortSignal,
+  ) => Promise<AionAgentCapabilities>;
   readonly observe: (
     variables: AionChatGraphQLVariables,
     signal: AbortSignal,
@@ -270,6 +275,14 @@ export function createAionChatGraphQLTransport(
   options: AionChatGraphQLTransportOptions,
 ): AionChatTransport {
   return {
+    getAgentCapabilities: options.getAgentCapabilities
+      ? (agent, { signal }) => {
+          const target = options.targetForAgent?.(agent)
+            ?? { distributionId: agent.id };
+          assertAionChatGraphQLTarget(target);
+          return options.getAgentCapabilities!(target, signal);
+        }
+      : undefined,
     stream(request: AionChatRequest, streamOptions: AionChatStreamOptions) {
       return streamAionChatGraphQL(options, request, streamOptions.signal);
     },

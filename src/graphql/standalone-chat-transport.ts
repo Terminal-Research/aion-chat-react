@@ -1,3 +1,7 @@
+import {
+  AION_AGENT_CARD_QUERY_SOURCE, loadAgentCardCapabilities,
+  type AionAgentCardData, type AionAgentCardVariables,
+} from "./agent-card";
 import type { ChatAgent } from "../model";
 import type { AionChatTransport } from "../transport";
 import { createAionChatGraphQLTransport } from "./chat-transport";
@@ -16,6 +20,7 @@ export interface StandaloneAionChatTransportOptions {
   readonly targetForAgent?: (agent: ChatAgent) => AionChatGraphQLTarget;
   readonly serviceParameters?: AionChatGraphQLServiceParameters;
   readonly operation?: string;
+  readonly fetch?: typeof globalThis.fetch;
   readonly createEventId?: () => string;
   readonly now?: () => string;
   readonly unaryFallback?: boolean;
@@ -29,6 +34,15 @@ export function createStandaloneAionChatTransport(
 ): AionChatTransport {
   const query = options.operation ?? AION_CHAT_A2A_RPC_SUBSCRIPTION_SOURCE;
   return createAionChatGraphQLTransport({
+    async getAgentCapabilities(target, signal) {
+      const result = await options.client.execute<
+        AionAgentCardData, AionAgentCardVariables
+      >({
+        query: AION_AGENT_CARD_QUERY_SOURCE,
+        variables: { target }, operationName: "AionChatAgentCard",
+      }, { signal });
+      return loadAgentCardCapabilities(result, signal, options.fetch);
+    },
     observe: (variables, signal) =>
       options.client.subscribe<AionChatGraphQLSubscriptionData>(
         {

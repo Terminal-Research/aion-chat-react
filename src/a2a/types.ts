@@ -1,3 +1,5 @@
+import type { AionAgentExtension } from "../agent-capabilities";
+
 /** Browser-supported protocol bindings declared by an A2A Agent Card. */
 export type DirectAionProtocolBinding = "HTTP+JSON" | "JSONRPC";
 
@@ -11,6 +13,7 @@ export interface DirectAionAgentInterface {
 
 /** Capabilities used by the direct chat transport. */
 export interface DirectAionAgentCapabilities {
+  readonly extensions?: readonly AionAgentExtension[];
   readonly streaming?: boolean;
 }
 

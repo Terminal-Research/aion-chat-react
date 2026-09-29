@@ -1,3 +1,4 @@
+import type { AionAgentCapabilities } from "./agent-capabilities";
 import type { ChatTransportEvent } from "./events";
 import type { ChatAgent, ChatMessage } from "./model";
 
@@ -23,6 +24,12 @@ export interface AionChatStreamOptions {
  * backend.
  */
 export interface AionChatTransport {
+  /** Reads current capabilities for the same agent and route as dispatch. */
+  getAgentCapabilities?(
+    agent: ChatAgent,
+    options: AionChatStreamOptions,
+  ): Promise<AionAgentCapabilities>;
+
   /**
    * Opens one response stream.
    *

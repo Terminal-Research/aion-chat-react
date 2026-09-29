@@ -646,3 +646,10 @@ The Bootstrap fixture switches between fake and injected Apollo transports and
 can constrain itself to a narrow layout. The framework-neutral fixture proves
 that the default theme does not require host CSS. Bundle baselines and enforced
 limits are documented in [BUNDLE_BUDGETS.md](./BUNDLE_BUDGETS.md).
+
+Transports expose optional `getAgentCapabilities(agent, { signal })` discovery.
+Direct A2A reads its configured card. GraphQL adapters resolve the selected
+message target with `a2aAgentCardUrl`, then fetch that route's card, so an
+identity's preferred distribution does not override the selected chat route.
+Apollo hosts must provide a client with both `query` and `subscribe` for
+capability discovery. Subscription-only clients remain usable for ordinary chat.

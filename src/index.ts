@@ -1,3 +1,4 @@
+export type { AionAgentCapabilities, AionAgentExtension } from "./agent-capabilities";
 export type {
   ChatArtifactUpdatedEvent,
   ChatMessageDeltaEvent,
