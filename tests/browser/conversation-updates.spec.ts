@@ -101,34 +101,62 @@ test("replacement titles respect reduced motion and remain keyboard accessible",
   await expect(button).toHaveAttribute("aria-current", "true");
 });
 
-test("local waiting uses the completion icon position before task updates arrive", async ({
-  page,
-}) => {
-  await page.goto("/tests/browser/fixture/index.html?updates");
-  await page.getByRole("button", {
-    name: "Available agent Aion agent", exact: true,
-  }).click();
-  await page.locator(".aion-chat__conversation-select").first().click();
-  const row = page.getByRole("listitem").filter({
-    has: page.locator(".aion-chat__conversation-select[aria-current=true]"),
+for (const viewport of [
+  { width: 1280, height: 800 },
+  { width: 390, height: 844 },
+]) {
+  test(`thread indicators stay visible beside long titles at ${viewport.width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(viewport);
+    await page.goto("/tests/browser/fixture/index.html?updates");
+    await page.getByRole("button", {
+      name: "Available agent Aion agent", exact: true,
+    }).click();
+    await page.locator(".aion-chat__conversation-select").first().click();
+    await emit(page, {
+      kind: "ConversationSummaryUpdated",
+      title: "A long thread title that must truncate before the waiting or completion indicator",
+      summary: null,
+      summarizedThroughTurn: 1,
+    });
+    const row = page.getByRole("listitem").filter({
+      has: page.locator(".aion-chat__conversation-select[aria-current=true]"),
+    });
+    const indicator = row.getByRole("status");
+    const icon = indicator.locator("svg");
+    await page.getByRole("textbox", { name: "Chat message" }).fill("Waiting test");
+    await page.getByRole("button", { name: "Send", exact: true }).click();
+    await expect(page.getByText("Waiting for the agent", { exact: true }))
+      .toBeVisible();
+    await expect(indicator).toHaveAttribute("data-activity-phase", "pending");
+    await expect(icon).toBeInViewport({ ratio: 1 });
+    const navigation = page.getByRole("navigation", { name: "Chat navigation" });
+    const navigationBounds = (await navigation.boundingBox())!;
+    const rowBounds = (await row.boundingBox())!;
+    const pendingBounds = (await indicator.boundingBox())!;
+    expect(pendingBounds.x + pendingBounds.width)
+      .toBeLessThanOrEqual(navigationBounds.x + navigationBounds.width);
+    expect(Math.abs(
+      pendingBounds.y + pendingBounds.height / 2 -
+      (rowBounds.y + rowBounds.height / 2),
+    )).toBeLessThan(1);
+    expect(await row.evaluate((element) => {
+      const list = element.closest(".aion-chat__conversation-list")!;
+      return list.scrollWidth <= list.clientWidth;
+    })).toBe(true);
+    await emit(page, {
+      kind: "TaskStatusUpdated",
+      taskId: "local-request",
+      taskState: "TASK_STATE_COMPLETED",
+    });
+    await expect(indicator).toHaveAttribute("data-activity-phase", "pending");
+    await page.evaluate(() => window.dispatchEvent(new Event("complete-chat-request")));
+    await expect(indicator).toHaveAttribute("data-activity-phase", "succeeded");
+    await expect(icon).toBeInViewport({ ratio: 1 });
+    const completedBounds = (await indicator.boundingBox())!;
+    expect(completedBounds.x).toBeCloseTo(pendingBounds.x, 1);
+    expect(completedBounds.y).toBeCloseTo(pendingBounds.y, 1);
+    await expect(indicator).toHaveCount(0);
   });
-  const indicator = row.getByRole("status");
-  await page.getByRole("textbox", { name: "Chat message" }).fill("Waiting test");
-  await page.getByRole("button", { name: "Send", exact: true }).click();
-  await expect(page.getByText("Waiting for the agent", { exact: true }))
-    .toBeVisible();
-  await expect(indicator).toHaveAttribute("data-activity-phase", "pending");
-  const pendingBounds = await indicator.boundingBox();
-  await emit(page, {
-    kind: "TaskStatusUpdated",
-    taskId: "local-request",
-    taskState: "TASK_STATE_COMPLETED",
-  });
-  await expect(indicator).toHaveAttribute("data-activity-phase", "pending");
-  await page.evaluate(() => window.dispatchEvent(new Event("complete-chat-request")));
-  await expect(indicator).toHaveAttribute("data-activity-phase", "succeeded");
-  const completedBounds = await indicator.boundingBox();
-  expect(completedBounds?.x).toBeCloseTo(pendingBounds!.x, 1);
-  expect(completedBounds?.y).toBeCloseTo(pendingBounds!.y, 1);
-  await expect(indicator).toHaveCount(0);
-});
+}

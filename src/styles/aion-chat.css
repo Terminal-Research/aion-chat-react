@@ -332,6 +332,8 @@
 
 .aion-chat__navigation-list {
   display: grid;
+  /* Truncate long labels without pushing row activity outside the sidebar. */
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .aion-chat__navigation-item,
@@ -1616,7 +1618,8 @@
 /* Thread metadata shares composer icons and motion, never read-receipt controls. */
 .aion-chat__thread-activity {
   flex: 0 0 auto;
-  margin-inline-end: var(--aion-chat-space-2);
+  margin-inline-end: var(--aion-chat-space-3);
+  padding: 0;
 }
 
 .aion-chat__thread-activity > span {
