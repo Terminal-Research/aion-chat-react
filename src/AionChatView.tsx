@@ -75,6 +75,9 @@ export function AionChatView({
   const ErrorComponent = slots.error?.component ?? AionChatError;
   const ResponseActivityComponent =
     slots.responseActivity?.component ?? AionResponseActivity;
+  const activeTurn = state.conversation.turns.find(
+    (turn) => turn.id === state.conversation.activeRun?.turnId,
+  );
   const error = state.conversation.activeRun?.error;
   const composerStatus = meta.isRunning
     ? "running"
@@ -88,9 +91,6 @@ export function AionChatView({
       : undefined;
   const transcriptEntries = useMemo(() => {
     const activeRun = state.conversation.activeRun;
-    const activeTurn = state.conversation.turns.find(
-      (turn) => turn.id === activeRun?.turnId,
-    );
     const streamingMessageIds = new Set(
       activeRun?.status === "running"
         ? activeTurn?.assistantMessageIds
@@ -143,6 +143,7 @@ export function AionChatView({
       },
     );
   }, [
+    activeTurn,
     state.conversation.artifacts,
     state.conversation.activeRun,
     state.conversation.messages,
@@ -159,6 +160,8 @@ export function AionChatView({
       {...props}
     >
       <AionChatTranscript
+        key={state.conversation.id}
+        activeTurn={activeTurn}
         linkPreviewSource={linkPreviewSource}
         entries={transcriptEntries}
         agentTitle={state.agent?.title}

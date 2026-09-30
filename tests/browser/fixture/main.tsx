@@ -19,6 +19,7 @@ import { createBrowserAionConversationStore } from "../../../src/storage/browser
 import { FakeAionChatTransport } from "../../../src/testing";
 import "../../../src/styles/aion-chat.css";
 import "./fixture.css";
+import { replyTransport } from "./reply-transport";
 
 const fixtureOptions = new URLSearchParams(location.search);
 
@@ -262,7 +263,7 @@ createRoot(document.getElementById("root")!).render(
           conversationDirectory={directory}
           conversationUpdatesSource={new URLSearchParams(location.search).has("updates") ? updatesSource : undefined}
           conversationStore={store}
-          transport={transport}
+          transport={fixtureOptions.has("reply-space") ? replyTransport : transport}
           attachmentUploader={{
             upload: (file) =>
               Promise.resolve({

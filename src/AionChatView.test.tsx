@@ -21,7 +21,10 @@ const AGENT = {
   availability: "available" as const,
 };
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 function createIds(): () => string {
   let value = 0;
@@ -284,16 +287,17 @@ describe("AionChatView", () => {
       id: "message-2",
       parts: [{ type: "text", text: "Second" }],
     };
+    // Supply layout before mount, as a browser does. Changing clientHeight in
+    // the scroll event would represent a viewport resize rather than user input.
+    const height = vi.spyOn(HTMLElement.prototype, "clientHeight", "get")
+      .mockReturnValue(200);
+    const extent = vi.spyOn(HTMLElement.prototype, "scrollHeight", "get")
+      .mockReturnValue(1_000);
     const { rerender } = render(
       <AionChatTranscript entries={[{ type: "message", message: first }]} />,
     );
     const transcript = screen.getByRole("log");
-    Object.defineProperties(transcript, {
-      clientHeight: { configurable: true, value: 200 },
-      scrollHeight: { configurable: true, value: 1_000 },
-      scrollTop: { configurable: true, value: 100, writable: true },
-    });
-
+    transcript.scrollTop = 100;
     fireEvent.scroll(transcript);
     rerender(
       <AionChatTranscript
@@ -311,6 +315,8 @@ describe("AionChatView", () => {
       );
     });
     expect(transcript.scrollTop).toBe(1_000);
+    height.mockRestore();
+    extent.mockRestore();
   });
 
   it("does not create executable links for unsafe file-part URLs", () => {
@@ -444,6 +450,8 @@ describe("AionChatView", () => {
       "scrollTop",
     );
     let scrollWrites = 0;
+    const extent = vi.spyOn(HTMLElement.prototype, "scrollHeight", "get")
+      .mockReturnValue(1_000);
     Object.defineProperty(HTMLDivElement.prototype, "scrollTop", {
       configurable: true,
       get: () => 0,
@@ -469,6 +477,7 @@ describe("AionChatView", () => {
       expect(scrollWrites).toBe(initialScrollWrites);
     } finally {
       view.unmount();
+      extent.mockRestore();
       if (descriptor) {
         Object.defineProperty(HTMLDivElement.prototype, "scrollTop", descriptor);
       } else {

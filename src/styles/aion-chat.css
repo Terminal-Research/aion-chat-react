@@ -602,6 +602,18 @@
   contain-intrinsic-size: auto 6rem;
 }
 
+/* Measure the latest prompt immediately, even if it starts off screen. */
+.aion-chat__transcript-entry[data-scroll-anchor="true"] {
+  content-visibility: visible;
+}
+
+/* Changed only on content/layout updates or a single safe cleanup. */
+.aion-chat__reply-space {
+  height: 0;
+  overflow-anchor: none;
+  pointer-events: none;
+}
+
 .aion-chat__empty {
   display: grid;
   flex: 1 0 auto;

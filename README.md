@@ -239,6 +239,15 @@ the workspace has a default minimum height of `28rem`. Use `min-height: 0`
 and `min-width: 0` on shrinking host flex/grid children as needed so the
 transcript scrolls inside the panel rather than expanding the page.
 
+Sending a message positions its lower edge around the middle of the transcript
+when there is enough history to scroll. Temporary space below it is consumed by
+the streamed response. A short response keeps the remaining space after completion
+so the reading position stays stable. Scrolling upward far enough to remove that
+space without moving visible content clears it in one step; scrolling to latest
+clears it immediately. Selecting a thread opens its actual bottom without this
+temporary space. Custom `AionChatTranscript` compositions can pass `activeTurn`
+to enable this behavior and should remount the transcript for each conversation.
+
 Selecting a thread opens it at the latest message and keeps the bottom in view
 as restored content finishes laying out. Scrolling up pauses this following
 until the reader returns to the bottom. The composer receives focus on devices

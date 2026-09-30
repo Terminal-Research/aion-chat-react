@@ -5,6 +5,10 @@ All notable changes to this package are documented here. The project follows
 
 ## Unreleased
 
+- Reserve response space below newly sent messages, consume it during streaming,
+  and remove leftover space after safe upward scrolling without moving the
+  reading position. Restored conversations still open at their actual bottom.
+
 - Add optional link-preview sources, completed-response cards in Markdown order,
   Open Graph/oEmbed metadata adapters, and unlimited batches through GraphQL.
   All preview cards open the original link in a new browser tab or window.

@@ -1,17 +1,5 @@
 import { isWelcomeRequest } from "./welcome";
-/*
- * Scroll composition adapted from CopilotKit's controlled chat view:
- * packages/react-core/src/v2/components/chat/CopilotChatView.tsx
- * pinned at 65bd05e3682ced8f424023f75627f8f833e52745 (MIT).
- */
-import {
-  type HTMLAttributes,
-  useCallback,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { type HTMLAttributes, useMemo } from "react";
 
 import type { AionLinkPreviewSource } from "./link-preview";
 
@@ -35,9 +23,11 @@ import {
   type ChatMessage,
   type ChatPart,
   type ChatTask,
+  type ChatTurn,
 } from "./model";
 import type { AionSlotValue } from "./slots";
 import type { AionChatResponseMetadata } from "./AionChatResponseActions";
+import { useTranscriptScroll } from "./useTranscriptScroll";
 
 /** One fully resolved item rendered by the transcript. */
 export type AionChatTranscriptEntry =
@@ -81,6 +71,8 @@ export interface AionChatTranscriptSlots {
 export interface AionChatTranscriptProps
   extends Omit<HTMLAttributes<HTMLDivElement>, "children"> {
   readonly entries: readonly AionChatTranscriptEntry[];
+  /** New turns reserve response space; remount when changing conversations. */
+  readonly activeTurn?: ChatTurn;
   readonly linkPreviewSource?: AionLinkPreviewSource;
   readonly agentTitle?: string;
   readonly slots?: AionChatTranscriptSlots;
@@ -168,6 +160,7 @@ function visibleTranscriptEntries(
  */
 export function AionChatTranscript({
   entries: allEntries,
+  activeTurn,
   linkPreviewSource,
   agentTitle,
   slots = {},
@@ -184,58 +177,8 @@ export function AionChatTranscript({
     slots.taskActivity?.component ?? AionChatTaskActivity;
   const EmptyStateComponent =
     slots.emptyState?.component ?? AionChatEmptyState;
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
-  const autoScrollTopRef = useRef(0);
-  const pinnedRef = useRef(true);
-  const [isPinned, setIsPinned] = useState(true);
-
-  const scrollToBottom = useCallback(() => {
-    const element = scrollRef.current;
-    if (!element) {
-      return;
-    }
-    element.scrollTop = element.scrollHeight;
-    autoScrollTopRef.current = element.scrollTop;
-    pinnedRef.current = true;
-    setIsPinned(true);
-  }, []);
-
-  useLayoutEffect(() => {
-    if (pinnedRef.current) {
-      scrollToBottom();
-    }
-  }, [entries, scrollToBottom]);
-
-  useLayoutEffect(() => {
-    const viewport = scrollRef.current;
-    const content = contentRef.current;
-    if (!viewport || !content || typeof ResizeObserver === "undefined") return;
-    // Restored entries, images, fonts, and composer resizing can change the
-    // bottom position after React has committed the message list.
-    const observer = new ResizeObserver(() => {
-      if (pinnedRef.current) scrollToBottom();
-    });
-    observer.observe(viewport);
-    observer.observe(content);
-    return () => observer.disconnect();
-  }, [scrollToBottom]);
-
-  const onScroll = useCallback(() => {
-    const element = scrollRef.current;
-    if (!element) {
-      return;
-    }
-    // A delayed event from our own scroll must not unpin a changing layout.
-    if (pinnedRef.current && element.scrollTop === autoScrollTopRef.current) {
-      return;
-    }
-    const distance =
-      element.scrollHeight - element.scrollTop - element.clientHeight;
-    const nextPinned = distance <= 24;
-    pinnedRef.current = nextPinned;
-    setIsPinned(nextPinned);
-  }, []);
+  const { scrollRef, contentRef, spacerRef, isPinned, onScroll, scrollToBottom } =
+    useTranscriptScroll(activeTurn);
 
   return (
     <div className="aion-chat__transcript-frame">
@@ -266,6 +209,7 @@ export function AionChatTranscript({
                     className="aion-chat__transcript-entry"
                     data-entry-type="message"
                     data-entry-id={entry.message.id}
+                    data-scroll-anchor={entry.message.id === activeTurn?.userMessageId || undefined}
                   >
                     <MessageComponent
                       {...slots.message?.props}
@@ -313,6 +257,7 @@ export function AionChatTranscript({
             })
           )}
         </div>
+        <div ref={spacerRef} className="aion-chat__reply-space" aria-hidden="true" />
       </div>
       {!isPinned && (
         <button

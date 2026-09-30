@@ -14,7 +14,7 @@ byte-level noise while material growth requires an explicit review.
 
 | Entry | Baseline raw | Baseline gzip | Raw budget | Gzip budget |
 | --- | ---: | ---: | ---: | ---: |
-| Core `dist/index.js` | 111.2 kB | 30.1 kB | 112 KiB | 31 KiB |
+| Core `dist/index.js` | 113.7 kB | 30.8 kB | 112 KiB | 31 KiB |
 | Profile `dist/profile.js` | 15.1 kB | 5.2 kB | 18 KiB | 6 KiB |
 | Direct A2A `dist/a2a/direct.js` | 23.8 kB | 7.6 kB | 28 KiB | 9 KiB |
 | Apollo `dist/graphql/apollo.js` | 42.0 kB | 13.3 kB | 42 KiB | 13.25 KiB |
@@ -63,3 +63,8 @@ Apollo measured 42,017 raw / 13,329 gzip bytes, 226 gzip bytes above the previou
 preview baseline. Its gzip allowance increases by 256 bytes to retain headroom;
 all other budgets remain unchanged. Removing provider-frame dialogs reduced core
 to 111,155 raw / 30,085 gzip bytes. No runtime dependency was added.
+
+The 2026-09-30 reply-space remeasurement includes transient response spacing,
+layout observation, and safe removal after upward scrolling. Core measured
+113,730 raw / 30,819 gzip bytes, a 2,575 / 734 byte increase. Existing budgets
+cover the change, and no runtime dependency was added.
