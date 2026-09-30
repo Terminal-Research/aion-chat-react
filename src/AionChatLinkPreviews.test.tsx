@@ -4,8 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { AionChatArtifact } from "./AionChatArtifact";
 import { AionChatMessage } from "./AionChatMessage";
 import { AionChatLinkPreviews } from "./AionChatLinkPreviews";
-import { AionChatTheme } from "./AionChatTheme";
-import { type AionLinkPreview, normalizeLinkPreview } from "./link-preview";
+import { type AionLinkPreview, type AionLinkPreviewSource, normalizeLinkPreview } from "./link-preview";
 import type { ChatMessage, ChatPart } from "./model";
 
 afterEach(cleanup);
@@ -71,24 +70,60 @@ describe("completed response previews", () => {
     expect(screen.queryByRole("region")).toBeNull();
   });
 
-  it("isolates X in a provider frame and keeps an original link and close action", async () => {
-    render(<AionChatTheme><AionChatLinkPreviews parts={parts}
-      source={{ load: () => Promise.resolve({ ...preview, embed: { kind: "X", value: "12345" } }) }} /></AionChatTheme>);
-    fireEvent.click(await screen.findByRole("button", { name: "Expand Example page" }));
-    const dialog = screen.getByRole("dialog");
-    const frame = dialog.querySelector("iframe")!;
-    expect(frame.getAttribute("sandbox")).not.toContain("allow-top-navigation");
-    expect(frame.getAttribute("srcdoc")).toBeNull();
-    const src = new URL(frame.getAttribute("src")!);
-    expect(src.origin).toBe("https://platform.twitter.com");
-    expect(src.searchParams.get("id")).toBe("12345");
-    expect(src.searchParams.get("dnt")).toBe("true");
-    expect(atob(src.searchParams.get("features")!)).toContain("tfw_refsrc_session");
-    expect(document.querySelector("script[src*='twitter']")).toBeNull();
-    expect(within(dialog).getByRole("link", { name: "Open original" }).getAttribute("href"))
-      .toBe(preview.url);
-    fireEvent.click(within(dialog).getByRole("button", { name: "Close preview" }));
+  it("loads every discovered URL in one batch without a card-count limit", async () => {
+    const urls = Array.from({ length: 25 }, (_, index) => `https://example.com/${index}`);
+    const source = {
+      load: vi.fn(),
+      loadMany: vi.fn().mockResolvedValue(urls.map((url) => ({ ...preview, url }))),
+    };
+    render(<AionChatLinkPreviews parts={[{ type: "text", text: [...urls, urls[0]].join(" ") }]}
+      source={source} />);
+    const links = within(await screen.findByRole("region")).getAllByRole("link");
+    expect(links.map((link) => link.getAttribute("href"))).toEqual(urls);
+    expect(source.loadMany).toHaveBeenCalledTimes(1);
+    expect(source.loadMany).toHaveBeenCalledWith(urls, expect.anything());
+    expect(source.load).not.toHaveBeenCalled();
+  });
+
+  it("aborts a departed batch and ignores its late results", async () => {
+    const pending = deferred<readonly AionLinkPreview[]>();
+    const source = {
+      load: vi.fn(),
+      loadMany: vi.fn<NonNullable<AionLinkPreviewSource["loadMany"]>>().mockReturnValue(pending.promise),
+    };
+    const view = render(<AionChatLinkPreviews parts={parts} source={source} />);
+    const signal = source.loadMany.mock.calls[0]![1]!.signal as AbortSignal;
+    view.unmount();
+    expect(signal.aborted).toBe(true);
+    await act(async () => { pending.resolve([preview]); await pending.promise; });
+    expect(screen.queryByRole("region")).toBeNull();
+  });
+
+  it("leaves the original message usable when a batch fails", async () => {
+    const source = { load: vi.fn(), loadMany: vi.fn().mockRejectedValue(new Error("offline")) };
+    render(<AionChatMessage message={message} linkPreviewSource={source} />);
+    expect(await screen.findByRole("link", { name: "https://example.com/one" })).toBeTruthy();
+    expect(screen.queryByRole("region")).toBeNull();
+    expect(source.loadMany).toHaveBeenCalledTimes(1);
+    expect(source.load).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { kind: "Image" as const, value: "https://example.com/photo.jpg" },
+    { kind: "YouTube" as const, value: "dQw4w9WgXcQ" },
+    { kind: "Vimeo" as const, value: "12345" },
+    { kind: "X" as const, value: "12345" },
+  ])("opens $kind preview cards as ordinary links in a new window", async (embed) => {
+    render(<AionChatLinkPreviews parts={parts}
+      source={{ load: () => Promise.resolve({ ...preview, embed }) }} />);
+    const footer = await screen.findByRole("region");
+    const link = within(footer).getByRole("link", { name: /Example page/ });
+    expect(link.getAttribute("href")).toBe(preview.url);
+    expect(link.getAttribute("target")).toBe("_blank");
+    expect(link.getAttribute("rel")).toBe("noopener noreferrer");
+    expect(within(footer).queryByRole("button")).toBeNull();
     expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.querySelector("iframe")).toBeNull();
   });
 
   it("keeps the card when a thumbnail fails", async () => {

@@ -13,7 +13,7 @@
   },
   "dist/graphql/apollo.js": {
     "rawBytes": 43008,
-    "gzipBytes": 13312
+    "gzipBytes": 13568
   },
   "dist/graphql/standalone.js": {
     "rawBytes": 45056,

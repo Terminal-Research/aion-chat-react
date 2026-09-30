@@ -224,6 +224,8 @@ const profileSource: AionAgentProfileSource = {
 };
 
 const previewSource: AionLinkPreviewSource = {
+  loadMany: async (urls) => (await Promise.all(urls.map((url) => previewSource.load(url))))
+    .filter((preview) => preview !== undefined),
   load: (url) => Promise.resolve(url.endsWith("missing") ? undefined : {
     url,
     title: url.includes("youtube.com") ? "Video preview" : url.includes("x.com/")

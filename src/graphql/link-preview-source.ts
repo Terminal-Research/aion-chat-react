@@ -11,3 +11,17 @@ export const AION_LINK_PREVIEW_QUERY_SOURCE = `
     }
   }
 `;
+
+/** Batch metadata query; null entries represent individual unavailable URLs. */
+export const AION_LINK_PREVIEWS_QUERY_SOURCE = `
+  query AionChatLinkPreviews($urls: [String!]!) {
+    linkPreviews(urls: $urls) {
+      url
+      title
+      description
+      siteName
+      imageUrl
+      embed { kind value }
+    }
+  }
+`;

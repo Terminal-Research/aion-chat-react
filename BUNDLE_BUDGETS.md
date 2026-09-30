@@ -14,15 +14,15 @@ byte-level noise while material growth requires an explicit review.
 
 | Entry | Baseline raw | Baseline gzip | Raw budget | Gzip budget |
 | --- | ---: | ---: | ---: | ---: |
-| Core `dist/index.js` | 112.8 kB | 30.5 kB | 112 KiB | 31 KiB |
+| Core `dist/index.js` | 111.2 kB | 30.1 kB | 112 KiB | 31 KiB |
 | Profile `dist/profile.js` | 15.1 kB | 5.2 kB | 18 KiB | 6 KiB |
 | Direct A2A `dist/a2a/direct.js` | 23.8 kB | 7.6 kB | 28 KiB | 9 KiB |
-| Apollo `dist/graphql/apollo.js` | 41.2 kB | 13.1 kB | 42 KiB | 13 KiB |
+| Apollo `dist/graphql/apollo.js` | 42.0 kB | 13.3 kB | 42 KiB | 13.25 KiB |
 | Standalone GraphQL | 43.5 kB | 13.9 kB | 44 KiB | 14 KiB |
 | Testing `dist/testing.js` | 1.3 kB | 0.7 kB | 2 KiB | 1 KiB |
 | Uploads `dist/uploads.js` | 5.2 kB | 2.0 kB | 8 KiB | 3 KiB |
 | Browser storage `dist/storage/browser.js` | 9.8 kB | 3.2 kB | 16 KiB | 5 KiB |
-| Styles `dist/styles.css` | 36.1 kB | 5.9 kB | 36 KiB | 6 KiB |
+| Styles `dist/styles.css` | 35.6 kB | 5.7 kB | 36 KiB | 6 KiB |
 
 The core entry includes the default message, activity, Markdown, motion,
 conversation storage, and workspace navigation. The profile view is loaded
@@ -56,3 +56,10 @@ standalone metadata sources. Core measured 112,841 raw / 30,532 gzip bytes, a
 standalone measured 43,523 / 13,898. The allowances above cover those additions.
 `unified` and `remark-parse` are now direct external dependencies, sharing the
 parser versions already used by `react-markdown`; no second parser is bundled.
+
+The 2026-09-30 batch-preview remeasurement includes the additional multi-URL
+GraphQL operation and shared cancellation handling for single and batch reads.
+Apollo measured 42,017 raw / 13,329 gzip bytes, 226 gzip bytes above the previous
+preview baseline. Its gzip allowance increases by 256 bytes to retain headroom;
+all other budgets remain unchanged. Removing provider-frame dialogs reduced core
+to 111,155 raw / 30,085 gzip bytes. No runtime dependency was added.

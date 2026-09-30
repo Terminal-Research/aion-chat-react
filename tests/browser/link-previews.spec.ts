@@ -10,12 +10,9 @@ async function openPreviewThread(page: Page) {
 for (const viewport of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) {
   test.describe(`${viewport.width}px previews`, () => {
     test.use({ viewport });
-    test("places deduplicated cards below text and expands video in the shared dialog", async ({ page }) => {
-      const embedRequests: string[] = [];
-      await page.route("https://www.youtube-nocookie.com/**", (route) => {
-        embedRequests.push(route.request().url());
-        return route.fulfill({ contentType: "text/html", body: "<p>Provider player</p>" });
-      });
+    test("places deduplicated cards below text and opens video in a new window", async ({ page }) => {
+      await page.context().route("https://www.youtube.com/**", (route) =>
+        route.fulfill({ contentType: "text/html", body: "<p>Original video page</p>" }));
       await openPreviewThread(page);
       const footer = page.getByRole("region", { name: "Link previews" });
       const cards = footer.locator(".aion-chat__link-preview-card");
@@ -24,7 +21,7 @@ for (const viewport of [{ width: 1280, height: 800 }, { width: 390, height: 844 
       await expect(cards.nth(1)).toContainText("Video preview");
       await expect(cards.nth(2)).toContainText("Post preview");
       await expect(footer.locator("img").first()).toHaveJSProperty("naturalWidth", 1600);
-      expect(embedRequests).toEqual([]);
+      await expect(page.locator("iframe")).toHaveCount(0);
       await expect(page.getByRole("link", { name: "Unavailable", exact: true })).toBeVisible();
       const text = await page.getByText("Resources:", { exact: false }).boundingBox();
       const footerBox = (await footer.boundingBox())!;
@@ -56,43 +53,34 @@ for (const viewport of [{ width: 1280, height: 800 }, { width: 390, height: 844 
         element.scrollHeight - element.scrollTop - element.clientHeight,
       )).toBeLessThanOrEqual(2);
 
-      const expand = footer.getByRole("button", { name: "Expand Video preview" });
-      await expand.click();
-      const dialog = page.getByRole("dialog", { name: "Video preview" });
-      await expect(dialog).toBeVisible();
-      await expect(dialog.locator("iframe")).toHaveAttribute("src", "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ");
-      const modal = (await dialog.boundingBox())!;
-      expect(modal.x).toBeGreaterThanOrEqual(0);
-      expect(modal.y).toBeGreaterThanOrEqual(0);
-      expect(modal.x + modal.width).toBeLessThanOrEqual(viewport.width);
-      expect(modal.y + modal.height).toBeLessThanOrEqual(viewport.height);
-      await dialog.getByRole("button", { name: "Close preview" }).click();
-      await expect(dialog).toBeHidden();
-      await expect(expand).toBeFocused();
-      await expand.press("Enter");
-      await expect(dialog).toBeVisible();
-      await page.keyboard.press("Escape");
-      await expect(dialog).toBeHidden();
+      const video = footer.getByRole("link", { name: /Video preview/ });
+      const popupOpened = page.waitForEvent("popup");
+      await video.click();
+      const popup = await popupOpened;
+      await expect(popup).toHaveURL("https://www.youtube.com/watch?v=dQw4w9WgXcQ");
+      await expect(popup.getByText("Original video page")).toBeVisible();
+      expect(await popup.evaluate(() => window.opener === null)).toBe(true);
+      await expect(page.getByRole("dialog")).toHaveCount(0);
+      await expect(page.locator("iframe")).toHaveCount(0);
+      await popup.close();
     });
   });
 }
 
-test("runs X in a separate provider origin only after expansion", async ({ page }) => {
-  let frames = 0;
-  await page.route("https://platform.twitter.com/embed/**", (route) => {
-    frames += 1;
-    return route.fulfill({ contentType: "text/html", body: `<script>
-      try { parent.document.body.dataset.providerAccess = 'unsafe'; }
-      catch { document.write('<p>Provider isolated</p>'); }
-    </script>` });
-  });
+test("opens X in a new window using keyboard activation", async ({ page }) => {
+  await page.context().route("https://x.com/**", (route) =>
+    route.fulfill({ contentType: "text/html", body: "<p>Original post</p>" }));
   await openPreviewThread(page);
-  expect(frames).toBe(0);
-  await page.getByRole("button", { name: "Expand Post preview" }).click();
-  const dialog = page.getByRole("dialog", { name: "Post preview" });
-  await expect(dialog.frameLocator("iframe").getByText("Provider isolated")).toBeVisible();
-  expect(frames).toBe(1);
-  expect(await page.locator("body").getAttribute("data-provider-access")).toBeNull();
-  await expect(dialog.getByRole("link", { name: "Open original" }))
-    .toHaveAttribute("href", "https://x.com/user/status/12345");
+  const card = page.getByRole("region", { name: "Link previews" })
+    .getByRole("link", { name: /Post preview/ });
+  await card.focus();
+  const popupOpened = page.waitForEvent("popup");
+  await card.press("Enter");
+  const popup = await popupOpened;
+  await expect(popup).toHaveURL("https://x.com/user/status/12345");
+  await expect(popup.getByText("Original post")).toBeVisible();
+  expect(await popup.evaluate(() => window.opener === null)).toBe(true);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.locator("iframe")).toHaveCount(0);
+  await popup.close();
 });

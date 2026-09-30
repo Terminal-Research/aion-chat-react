@@ -1,4 +1,4 @@
-/** Provider-owned content that can be expanded without accepting remote HTML. */
+/** Validated provider-owned content identifier returned with preview metadata. */
 export type AionLinkPreviewEmbed =
   | { readonly kind: "Image"; readonly value: string }
   | { readonly kind: "YouTube" | "Vimeo" | "X"; readonly value: string };
@@ -20,6 +20,14 @@ export interface AionLinkPreviewSource {
     url: string,
     options?: { readonly signal?: AbortSignal },
   ): Promise<AionLinkPreview | undefined>;
+  /**
+   * Resolve all URLs in one batch, in input order, omitting unavailable previews.
+   * No link-count limit is imposed. Sources without this method use parallel load calls.
+   */
+  loadMany?(
+    urls: readonly string[],
+    options?: { readonly signal?: AbortSignal },
+  ): Promise<readonly AionLinkPreview[]>;
 }
 
 /** @internal Canonical web URL, excluding credentials and document fragments. */
@@ -65,4 +73,21 @@ export function normalizeLinkPreview(value: unknown): AionLinkPreview | undefine
     imageUrl: linkPreviewUrl(data.imageUrl),
     embed,
   };
+}
+
+/** @internal Canonicalize and deduplicate a URL batch without truncating it. */
+export function linkPreviewUrls(values: readonly string[]): string[] {
+  return [...new Set(values.flatMap((value) => {
+    const url = linkPreviewUrl(value);
+    return url ? [url] : [];
+  }))];
+}
+
+/** @internal Validate batch results and omit individual unavailable previews. */
+export function normalizeLinkPreviews(value: unknown): AionLinkPreview[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    const preview = normalizeLinkPreview(item);
+    return preview ? [preview] : [];
+  });
 }

@@ -45,4 +45,4 @@ export {
   createStandaloneAionLinkPreviewSource,
   type StandaloneAionLinkPreviewSourceOptions,
 } from "./standalone-link-preview";
-export { AION_LINK_PREVIEW_QUERY_SOURCE } from "./link-preview-source";
+export { AION_LINK_PREVIEW_QUERY_SOURCE, AION_LINK_PREVIEWS_QUERY_SOURCE } from "./link-preview-source";

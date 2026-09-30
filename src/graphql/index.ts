@@ -49,6 +49,7 @@ export {
 export {
   createApolloAionLinkPreviewSource,
   AION_LINK_PREVIEW_QUERY,
+  AION_LINK_PREVIEWS_QUERY,
   type ApolloAionLinkPreviewSourceOptions,
 } from "./apollo-link-preview";
-export { AION_LINK_PREVIEW_QUERY_SOURCE } from "./link-preview-source";
+export { AION_LINK_PREVIEW_QUERY_SOURCE, AION_LINK_PREVIEWS_QUERY_SOURCE } from "./link-preview-source";
