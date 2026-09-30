@@ -317,7 +317,8 @@ async function authorizationHeader(
   provider: AionCredentialProvider | undefined,
   signal: AbortSignal,
 ): Promise<string | undefined> {
-  const schemeName = bearerSchemeName(card);
+  const schemeName = bearerSchemeName(card) ??
+    (provider?.sendOnPublicEndpoints ? "bearer" : undefined);
   if (!schemeName) {
     return undefined;
   }
@@ -569,6 +570,7 @@ export async function callDirectAionJsonRpc(
   request: DirectAionJsonRpcRequest,
   signal: AbortSignal,
 ): Promise<unknown> {
+  signal = credentialSignal(options, signal);
   validateConnectionOptions(options);
   const fetcher = options.fetch ?? globalThis.fetch;
   const card = await resolveAgentCard(options, fetcher, signal);
@@ -599,7 +601,17 @@ export async function callDirectAionJsonRpc(
     await response.body?.cancel();
     throw httpError(response);
   }
-  return response.json();
+  const result: unknown = await response.json();
+  signal.throwIfAborted();
+  return result;
+}
+
+function credentialSignal(
+  options: DirectAionA2AConnectionOptions,
+  signal: AbortSignal,
+): AbortSignal {
+  const identity = options.credentials?.lifecycleSignal;
+  return identity ? AbortSignal.any([signal, identity]) : signal;
 }
 
 async function* responsePayloads(
@@ -625,6 +637,7 @@ async function* directStream(
   request: AionChatRequest,
   signal: AbortSignal,
 ): AsyncIterable<ChatTransportEvent> {
+  signal = credentialSignal(options, signal);
   const fetcher = options.fetch ?? globalThis.fetch;
   const createEventId =
     options.createEventId ?? (() => globalThis.crypto.randomUUID());
@@ -664,12 +677,14 @@ async function* directStream(
     }
 
     for await (const payload of responsePayloads(response, signal)) {
+      signal.throwIfAborted();
       const context = normalizationContext(request, createEventId, now);
       for (const event of normalizePayload(
         payload,
         agentInterface.protocolBinding,
         context,
       )) {
+        signal.throwIfAborted();
         yield event;
         if (isTerminalChatTransportEvent(event)) {
           return;

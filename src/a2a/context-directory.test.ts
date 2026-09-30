@@ -24,6 +24,25 @@ const CARD: DirectAionAgentCard = {
 };
 
 describe("createDirectAionConversationDirectory", () => {
+  it("sends opted-in session credentials on public context calls and discards late responses", async () => {
+    const lifecycle = new AbortController();
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(() => {
+      lifecycle.abort();
+      return Promise.resolve(Response.json({ jsonrpc: "2.0", id: "request-1", result: [] }));
+    });
+    const directory = createDirectAionConversationDirectory({
+      connectionForAgent: () => ({ agentCard: CARD, fetch: fetcher,
+        credentials: { sendOnPublicEndpoints: true, lifecycleSignal: lifecycle.signal,
+          getBearerToken: () => Promise.resolve("guest-token") },
+      }),
+      createRequestId: () => "request-1",
+    });
+    await expect(directory.list(AGENT)).rejects.toThrow();
+    const init = fetcher.mock.calls[0]?.[1];
+    expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer guest-token");
+    expect(init?.signal?.aborted).toBe(true);
+  });
+
   it("lists context activity through one authenticated extension call", async () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
       Response.json({

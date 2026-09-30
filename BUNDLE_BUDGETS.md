@@ -14,9 +14,9 @@ byte-level noise while material growth requires an explicit review.
 
 | Entry | Baseline raw | Baseline gzip | Raw budget | Gzip budget |
 | --- | ---: | ---: | ---: | ---: |
-| Core `dist/index.js` | 113.7 kB | 30.8 kB | 112 KiB | 31 KiB |
+| Core `dist/index.js` | 115.1 kB | 31.3 kB | 113 KiB | 31 KiB |
 | Profile `dist/profile.js` | 15.1 kB | 5.2 kB | 18 KiB | 6 KiB |
-| Direct A2A `dist/a2a/direct.js` | 23.8 kB | 7.6 kB | 28 KiB | 9 KiB |
+| Direct A2A `dist/a2a/direct.js` | 32.5 kB | 10.4 kB | 33 KiB | 11 KiB |
 | Apollo `dist/graphql/apollo.js` | 42.0 kB | 13.3 kB | 42 KiB | 13.25 KiB |
 | Standalone GraphQL | 43.5 kB | 13.9 kB | 44 KiB | 14 KiB |
 | Testing `dist/testing.js` | 1.3 kB | 0.7 kB | 2 KiB | 1 KiB |
@@ -68,3 +68,10 @@ The 2026-09-30 reply-space remeasurement includes transient response spacing,
 layout observation, and safe removal after upward scrolling. Core measured
 113,730 raw / 30,819 gzip bytes, a 2,575 / 734 byte increase. Existing budgets
 cover the change, and no runtime dependency was added.
+
+The 2026-09-30 anonymous-session remeasurement adds the opt-in credential
+lifecycle, host-storage adapter contract, renewal/backoff, and identity-change
+cancellation to the direct entry. It measures 32,534 raw / 10,404 gzip bytes.
+The React notice boundary measures 115,075 raw / 31,266 gzip bytes in core,
+requiring 1 KiB more raw allowance (gzip is unchanged). No transport code enters
+core and no dependency is added; all other entry budgets remain unchanged.

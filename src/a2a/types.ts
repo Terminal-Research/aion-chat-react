@@ -52,6 +52,10 @@ export interface AionCredentialRequest {
 
 /** Supplies current bearer credentials without transferring token ownership. */
 export interface AionCredentialProvider {
+  /** Explicit opt-in to send a bearer even when a card allows public access. */
+  readonly sendOnPublicEndpoints?: boolean;
+  /** Aborted on login/logout, replacement or source disposal, not renewal. */
+  readonly lifecycleSignal?: AbortSignal;
   /**
    * Returns a current bearer token for one secured request.
    *

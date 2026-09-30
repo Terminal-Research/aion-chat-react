@@ -1,10 +1,10 @@
 {
   "dist/a2a/direct.js": {
-    "rawBytes": 28672,
-    "gzipBytes": 9216
+    "rawBytes": 33792,
+    "gzipBytes": 11264
   },
   "dist/index.js": {
-    "rawBytes": 114688,
+    "rawBytes": 115712,
     "gzipBytes": 31744
   },
   "dist/profile.js": {

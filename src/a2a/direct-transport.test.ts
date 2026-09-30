@@ -114,6 +114,42 @@ function transportOptions(fetcher: typeof fetch) {
 }
 
 describe("createDirectAionA2ATransport", () => {
+  it("stops between events normalized from the same payload on identity change", async () => {
+    const lifecycle = new AbortController();
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(responseStream([
+      'data: {"task":{"id":"task-1","contextId":"context-1","status":{"state":"TASK_STATE_COMPLETED"},"history":[{"messageId":"m-1","role":"ROLE_AGENT","parts":[{"text":"old identity"}]}]}}\n\n',
+    ]));
+    const transport = createDirectAionA2ATransport({
+      ...transportOptions(fetcher), agentCard: PUBLIC_CARD,
+      credentials: { lifecycleSignal: lifecycle.signal,
+        getBearerToken: () => Promise.resolve(null) },
+    });
+    const stream = transport.stream(REQUEST, { signal: new AbortController().signal })[Symbol.asyncIterator]();
+    expect((await stream.next()).done).toBe(false);
+    lifecycle.abort();
+    expect((await stream.next()).done).toBe(true);
+  });
+
+  it("sends opted-in session credentials and drops stream data after identity change", async () => {
+    const lifecycle = new AbortController();
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(() => {
+      lifecycle.abort();
+      return Promise.resolve(responseStream([
+        'data: {"task":{"id":"old-task","contextId":"old-context","status":{"state":"TASK_STATE_COMPLETED"}}}\n\n',
+      ]));
+    });
+    const transport = createDirectAionA2ATransport({
+      ...transportOptions(fetcher), agentCard: PUBLIC_CARD,
+      credentials: { sendOnPublicEndpoints: true, lifecycleSignal: lifecycle.signal,
+        getBearerToken: () => Promise.resolve("guest-token") },
+    });
+    const trace = await collectAionChatTransportTrace(transport, REQUEST);
+    expect(trace.events).toEqual([]);
+    const init = fetcher.mock.calls[0]?.[1];
+    expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer guest-token");
+    expect(init?.signal?.aborted).toBe(true);
+  });
+
   it("streams through the first supported REST interface", async () => {
     const fetcher = vi.fn<typeof fetch>();
     const getBearerToken = vi.fn(() => Promise.resolve("unused-token"));

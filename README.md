@@ -643,12 +643,72 @@ extension CSP, permissions, and content-script mounting remain deferred until
 there is a concrete extension host.
 
 Authentication is owned at the adapter boundary. Core components and stores
-never receive credentials. Direct A2A requests call a credential provider only
-when the Agent Card requires bearer authentication. The Apollo adapter inherits
+never receive credentials. Direct A2A requests call a credential provider when
+the Agent Card requires bearer authentication, or when the host explicitly opts
+into session credentials for a public endpoint. The Apollo adapter inherits
 the host client's authenticated links. The standalone GraphQL client requires
 an organization ID and asynchronous user-JWT callback for the current Aion
 GraphQL catalog and RPC operations. A supplied credential failure is never
 downgraded to anonymous access.
+
+### Renewable guest sessions (direct A2A)
+
+Guest access is opt-in and requires a public target. It does not unlock the
+authenticated GraphQL catalog or Files API. Create one credential controller per
+trusted API/environment/source/destination, outside render, and dispose it when
+that integration ends. Never derive these URLs from token claims.
+
+```tsx
+import { AionChatSessionBoundary } from '@terminal-research/aion-chat-react';
+import {
+  createAionSessionCredentials,
+  createDirectAionA2ATransport,
+} from '@terminal-research/aion-chat-react/a2a';
+
+const credentials = createAionSessionCredentials({
+  controlPlaneUrl: 'https://api.example.com',
+  environmentId: 'production',
+  sourceId: 'support',
+  destinationOrigin: 'https://api.example.com',
+  storage: {
+    read: (key) => localStorage.getItem(key),
+    write: (key, value) => localStorage.setItem(key, value),
+  },
+});
+const transport = createDirectAionA2ATransport({
+  agentCardUrl: 'https://api.example.com/agent-card.json',
+  credentials,
+});
+// Use the same credentials for createDirectAionConversationDirectory.
+// Wrap the entire workspace (inside AionChatTheme):
+// <AionChatSessionBoundary credentials={credentials}>
+//   <YourWorkspace transport={transport} />
+// </AionChatSessionBoundary>
+```
+
+The host storage adapter receives a versioned, escaped key containing the API
+base URL, environment, source, and destination origin. Storage exceptions or
+malformed entries mean credential loss; the library does not access browser
+storage itself or recover old credentials. localStorage exposes bearers to any
+script on the host origin: use a trusted page/CSP and never log these values.
+
+`prepare()` and credential requests renew on active use during the final seven
+days of the renewable 30-day lifetime. Renewal preserves the session ID, with
+no absolute lifetime limit. Network attempts time out after ten seconds;
+active-use retries back off 1/5/30 seconds, then five minutes, respecting
+`Retry-After`. An expired/rejected session requires the explicit **Start new
+session** action and warns that old history access will be lost.
+
+On login call `credentials.setAccount({ scopeKey: userAndOrganizationKey,
+credentials: accountProvider })`; on explicit logout call `setAccount(null)`.
+An account error never triggers guest fallback. Identity changes abort direct
+streams and context requests. The session boundary remounts children to clear
+in-memory state; also scope your conversation store by
+`credentials.getSnapshot().scopeKey` (subscribe using `useSyncExternalStore`).
+Keep this credential storage separate from transcript and account-token stores.
+The boundary displays transient-refresh/expiry notices with existing theme
+variables. `retry()` does not replace an expired identity. `dispose()` cancels
+outstanding credential work on source teardown.
 
 ## Aion Files uploads
 
