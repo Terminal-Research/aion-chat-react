@@ -478,6 +478,11 @@ function AionChatWorkspaceContent({
           conversations={conversations.summaries}
           selectedAgentId={agent?.id}
           selectedContextId={conversations.selectedContextId}
+          pendingContextId={
+            conversations.conversation?.activeRun?.status === "running"
+              ? conversations.conversation.contextId
+              : undefined
+          }
           catalogLoading={catalogState.status === "loading"}
           catalogError={catalogState.error}
           conversationsLoading={conversations.status === "loading"}

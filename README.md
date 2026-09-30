@@ -372,6 +372,12 @@ provider never creates a GraphQL or HTTP upload client itself.
 
 ## Live conversation metadata
 
+The workspace shows the thread-row spinner as soon as a local request starts,
+including while the composer says “Waiting for the agent.” It remains until the
+request settles. Live task updates continue to show background activity and the
+brief completion checkmark in the same position. Standalone navigators and
+conversation lists can supply `pendingContextId` for the same immediate feedback.
+
 Pass an optional principal-wide source to the workspace to update background
 thread activity and generated titles without changing the selected conversation:
 

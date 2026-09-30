@@ -51,15 +51,18 @@ function feed(scopeKey: string) {
 function View({
   source,
   selected,
+  pending,
 }: {
   source: AionConversationUpdatesSource;
   selected?: string;
+  pending?: string;
 }) {
   return (
     <ConversationUpdatesProvider source={source}>
       <AionConversationList
         summaries={summaries}
         selectedContextId={selected}
+        pendingContextId={pending}
         onSelectConversation={() => {}}
       />
     </ConversationUpdatesProvider>
@@ -114,6 +117,43 @@ describe("conversation subscription lifecycle", () => {
     expect(screen.getByText("Current principal")).toBeTruthy();
     view.unmount();
     expect(next.calls[0]!.signal.aborted).toBe(true);
+  });
+
+  it("keeps local waiting ahead of a feed completion until the request settles", async () => {
+    vi.useFakeTimers();
+    const channel = feed("user");
+    const view = render(<View source={channel.source} pending="context" />);
+    expect(screen.getByText("Task in progress")).toBeTruthy();
+    await act(() => channel.send({
+      reset: false,
+      updates: [{ ...update, kind: "TaskStatusUpdated", taskId: "one",
+        taskState: "TASK_STATE_COMPLETED" }],
+    }));
+    expect(screen.getByText("Task in progress")).toBeTruthy();
+    expect(screen.queryByText("Task completed")).toBeNull();
+    view.rerender(<View source={channel.source} />);
+    expect(screen.queryByText("Task in progress")).toBeNull();
+    expect(screen.getByText("Task completed")).toBeTruthy();
+    await act(async () => vi.advanceTimersByTimeAsync(1_201));
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  it("keeps background activity when the local request changes threads", async () => {
+    const channel = feed("user");
+    const view = render(<View source={channel.source} pending="context" />);
+    await act(() => channel.send({
+      reset: false,
+      updates: [{ ...update, kind: "TaskStatusUpdated", taskId: "one",
+        taskState: "TASK_STATE_WORKING" }],
+    }));
+    view.rerender(<View source={channel.source} pending="another-context" />);
+    expect(screen.getByText("Task in progress")).toBeTruthy();
+    await act(() => channel.send({
+      reset: false,
+      updates: [{ ...update, kind: "TaskStatusUpdated", taskId: "one",
+        taskState: "TASK_STATE_FAILED" }],
+    }));
+    expect(screen.queryByRole("status")).toBeNull();
   });
 
   it("expires completion and replacement motion without duplicate flashes", async () => {

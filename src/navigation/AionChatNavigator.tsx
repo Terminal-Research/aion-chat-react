@@ -22,6 +22,8 @@ export interface AionChatNavigatorProps
   readonly conversations: readonly AionConversationSummary[];
   readonly selectedAgentId?: string;
   readonly selectedContextId?: string;
+  /** Thread with a local request awaiting completion, before feed updates arrive. */
+  readonly pendingContextId?: string;
   readonly catalogLoading?: boolean;
   readonly catalogError?: Error;
   readonly conversationsLoading?: boolean;
@@ -50,6 +52,7 @@ export function AionChatNavigator({
   conversations,
   selectedAgentId,
   selectedContextId,
+  pendingContextId,
   catalogLoading,
   catalogError,
   conversationsLoading,
@@ -163,6 +166,7 @@ export function AionChatNavigator({
           <AionConversationList
             summaries={conversations}
             selectedContextId={selectedContextId}
+            pendingContextId={pendingContextId}
             loading={conversationsLoading}
             hasMore={hasMoreConversations}
             error={conversationsError}

@@ -100,3 +100,35 @@ test("replacement titles respect reduced motion and remain keyboard accessible",
   await page.keyboard.press("Enter");
   await expect(button).toHaveAttribute("aria-current", "true");
 });
+
+test("local waiting uses the completion icon position before task updates arrive", async ({
+  page,
+}) => {
+  await page.goto("/tests/browser/fixture/index.html?updates");
+  await page.getByRole("button", {
+    name: "Available agent Aion agent", exact: true,
+  }).click();
+  await page.locator(".aion-chat__conversation-select").first().click();
+  const row = page.getByRole("listitem").filter({
+    has: page.locator(".aion-chat__conversation-select[aria-current=true]"),
+  });
+  const indicator = row.getByRole("status");
+  await page.getByRole("textbox", { name: "Chat message" }).fill("Waiting test");
+  await page.getByRole("button", { name: "Send", exact: true }).click();
+  await expect(page.getByText("Waiting for the agent", { exact: true }))
+    .toBeVisible();
+  await expect(indicator).toHaveAttribute("data-activity-phase", "pending");
+  const pendingBounds = await indicator.boundingBox();
+  await emit(page, {
+    kind: "TaskStatusUpdated",
+    taskId: "local-request",
+    taskState: "TASK_STATE_COMPLETED",
+  });
+  await expect(indicator).toHaveAttribute("data-activity-phase", "pending");
+  await page.evaluate(() => window.dispatchEvent(new Event("complete-chat-request")));
+  await expect(indicator).toHaveAttribute("data-activity-phase", "succeeded");
+  const completedBounds = await indicator.boundingBox();
+  expect(completedBounds?.x).toBeCloseTo(pendingBounds!.x, 1);
+  expect(completedBounds?.y).toBeCloseTo(pendingBounds!.y, 1);
+  await expect(indicator).toHaveCount(0);
+});

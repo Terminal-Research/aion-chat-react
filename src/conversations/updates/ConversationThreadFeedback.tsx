@@ -133,13 +133,16 @@ function Activity({
   );
 }
 
-/** Reuse composer lifecycle styling, with task completion as the success trigger. */
+/** Show local waiting immediately; use the feed for background activity and success. */
 export function ConversationThreadActivity({
   summary,
+  pending = false,
 }: {
   readonly summary: AionConversationSummary;
+  readonly pending?: boolean;
 }) {
   const context = useConversationUpdatesContext();
+  if (pending) return <Activity phase="pending" until={0} />;
   return context ? (
     <ScopedActivity store={context.store} summary={summary} />
   ) : null;

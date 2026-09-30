@@ -195,7 +195,15 @@ const profileSource: AionAgentProfileSource = {
     }),
 };
 
-const transport = new FakeAionChatTransport(() => []);
+// Keep local waiting observable until the browser test delivers the response.
+const transport = new FakeAionChatTransport((request) => new Promise((resolve) => {
+  window.addEventListener("complete-chat-request", () => resolve([{ event: {
+    type: "run.completed",
+    eventId: `${request.requestId}-completed`,
+    requestId: request.requestId,
+    occurredAt: new Date().toISOString(),
+  } }]), { once: true });
+}));
 const store = createBrowserAionConversationStore({
   scopeKey: "browser-fixture",
 });

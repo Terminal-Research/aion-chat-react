@@ -12,6 +12,8 @@ export interface AionConversationListProps
   extends Omit<HTMLAttributes<HTMLDivElement>, "children"> {
   readonly summaries: readonly AionConversationSummary[];
   readonly selectedContextId?: string;
+  /** Thread with a local request awaiting completion, before feed updates arrive. */
+  readonly pendingContextId?: string;
   readonly loading?: boolean;
   readonly hasMore?: boolean;
   readonly error?: Error;
@@ -48,6 +50,7 @@ function runtimeTimeZone(): string {
 export function AionConversationList({
   summaries,
   selectedContextId,
+  pendingContextId,
   loading = false,
   hasMore = false,
   error,
@@ -122,7 +125,10 @@ export function AionConversationList({
                   </time>
                 ) : null}
               </button>
-              <ConversationThreadActivity summary={summary} />
+              <ConversationThreadActivity
+                summary={summary}
+                pending={summary.contextId === pendingContextId}
+              />
               {onRemoveConversation ? (
                 <button
                   className="aion-chat__conversation-remove"
