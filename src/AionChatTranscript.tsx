@@ -7,7 +7,7 @@ import { isWelcomeRequest } from "./welcome";
 import {
   type HTMLAttributes,
   useCallback,
-  useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -159,7 +159,7 @@ function visibleTranscriptEntries(
 
 /**
  * Renders each logical response once and follows new output only while the
- * reader is already pinned near the bottom.
+ * reader is already pinned near the bottom, including delayed layout changes.
  */
 export function AionChatTranscript({
   entries: allEntries,
@@ -179,6 +179,8 @@ export function AionChatTranscript({
   const EmptyStateComponent =
     slots.emptyState?.component ?? AionChatEmptyState;
   const scrollRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const autoScrollTopRef = useRef(0);
   const pinnedRef = useRef(true);
   const [isPinned, setIsPinned] = useState(true);
 
@@ -188,19 +190,38 @@ export function AionChatTranscript({
       return;
     }
     element.scrollTop = element.scrollHeight;
+    autoScrollTopRef.current = element.scrollTop;
     pinnedRef.current = true;
     setIsPinned(true);
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (pinnedRef.current) {
       scrollToBottom();
     }
   }, [entries, scrollToBottom]);
 
+  useLayoutEffect(() => {
+    const viewport = scrollRef.current;
+    const content = contentRef.current;
+    if (!viewport || !content || typeof ResizeObserver === "undefined") return;
+    // Restored entries, images, fonts, and composer resizing can change the
+    // bottom position after React has committed the message list.
+    const observer = new ResizeObserver(() => {
+      if (pinnedRef.current) scrollToBottom();
+    });
+    observer.observe(viewport);
+    observer.observe(content);
+    return () => observer.disconnect();
+  }, [scrollToBottom]);
+
   const onScroll = useCallback(() => {
     const element = scrollRef.current;
     if (!element) {
+      return;
+    }
+    // A delayed event from our own scroll must not unpin a changing layout.
+    if (pinnedRef.current && element.scrollTop === autoScrollTopRef.current) {
       return;
     }
     const distance =
@@ -223,64 +244,66 @@ export function AionChatTranscript({
         aria-relevant="additions text"
         {...props}
       >
-        {entries.length === 0 ? (
-          <EmptyStateComponent
-            {...slots.emptyState?.props}
-            agentTitle={agentTitle}
-          />
-        ) : (
-          entries.map((entry) => {
-            if (entry.type === "message") {
+        <div ref={contentRef} className="aion-chat__transcript-content">
+          {entries.length === 0 ? (
+            <EmptyStateComponent
+              {...slots.emptyState?.props}
+              agentTitle={agentTitle}
+            />
+          ) : (
+            entries.map((entry) => {
+              if (entry.type === "message") {
+                return (
+                  <div
+                    key={`message:${entry.message.id}`}
+                    className="aion-chat__transcript-entry"
+                    data-entry-type="message"
+                    data-entry-id={entry.message.id}
+                  >
+                    <MessageComponent
+                      {...slots.message?.props}
+                      message={entry.message}
+                      streaming={entry.streaming}
+                      responseMetadata={entry.responseMetadata}
+                      markdownComponent={slots.markdown}
+                      dataRenderers={slots.dataRenderers}
+                    />
+                  </div>
+                );
+              }
+              if (entry.type === "artifact") {
+                return (
+                  <div
+                    key={`artifact:${entry.artifact.id}`}
+                    className="aion-chat__transcript-entry"
+                    data-entry-type="artifact"
+                    data-entry-id={entry.artifact.id}
+                  >
+                    <ArtifactComponent
+                      {...slots.artifact?.props}
+                      artifact={entry.artifact}
+                      markdownComponent={slots.markdown}
+                      dataRenderers={slots.dataRenderers}
+                    />
+                  </div>
+                );
+              }
               return (
                 <div
-                  key={`message:${entry.message.id}`}
+                  key={`task:${entry.task.id}`}
                   className="aion-chat__transcript-entry"
-                  data-entry-type="message"
-                  data-entry-id={entry.message.id}
+                  data-entry-type="task"
+                  data-entry-id={entry.task.id}
                 >
-                  <MessageComponent
-                    {...slots.message?.props}
-                    message={entry.message}
-                    streaming={entry.streaming}
-                    responseMetadata={entry.responseMetadata}
-                    markdownComponent={slots.markdown}
-                    dataRenderers={slots.dataRenderers}
+                  <TaskActivityComponent
+                    {...slots.taskActivity?.props}
+                    task={entry.task}
                   />
                 </div>
               );
-            }
-            if (entry.type === "artifact") {
-              return (
-                <div
-                  key={`artifact:${entry.artifact.id}`}
-                  className="aion-chat__transcript-entry"
-                  data-entry-type="artifact"
-                  data-entry-id={entry.artifact.id}
-                >
-                  <ArtifactComponent
-                    {...slots.artifact?.props}
-                    artifact={entry.artifact}
-                    markdownComponent={slots.markdown}
-                    dataRenderers={slots.dataRenderers}
-                  />
-                </div>
-              );
-            }
-            return (
-              <div
-                key={`task:${entry.task.id}`}
-                className="aion-chat__transcript-entry"
-                data-entry-type="task"
-                data-entry-id={entry.task.id}
-              >
-                <TaskActivityComponent
-                  {...slots.taskActivity?.props}
-                  task={entry.task}
-                />
-              </div>
-            );
-          })
-        )}
+            })
+          )}
+        </div>
       </div>
       {!isPinned && (
         <button

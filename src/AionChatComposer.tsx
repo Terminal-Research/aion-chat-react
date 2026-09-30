@@ -38,6 +38,8 @@ export interface AionChatComposerProps
   readonly value: string;
   readonly status: AionChatComposerStatus;
   readonly canSend: boolean;
+  /** Focus on mount; defaults to devices with a fine pointer and hover support. */
+  readonly autoFocus?: boolean;
   /** Visible explanation when the composer is restricted to history access. */
   readonly readOnlyReason?: string;
   readonly attachments: readonly ChatAttachmentDraft[];
@@ -94,11 +96,13 @@ function resizeTextarea(
     contentHeight > maximumHeight ? "auto" : "hidden";
 }
 
-/** Controlled multiline composer with send and stop behavior. */
+/** Controlled multiline composer with desktop initial focus and send/stop behavior. */
 export function AionChatComposer({
   value,
   status,
   canSend,
+  autoFocus,
+  disabled = false,
   readOnly = false,
   readOnlyReason,
   attachments,
@@ -129,6 +133,15 @@ export function AionChatComposer({
     }
     resizeTextarea(textarea, minimumRows);
   }, [minimumRows, value]);
+
+  useLayoutEffect(() => {
+    const shouldFocus = autoFocus ?? window.matchMedia?.(
+      "(hover: hover) and (pointer: fine)",
+    ).matches;
+    if (shouldFocus && !readOnly && !disabled) {
+      textareaRef.current?.focus({ preventScroll: true });
+    }
+  }, [autoFocus, disabled, readOnly]);
 
   const focusInput = () => textareaRef.current?.focus();
 
@@ -261,6 +274,7 @@ export function AionChatComposer({
           placeholder={placeholder}
           aria-label="Chat message"
           readOnly={readOnly}
+          disabled={disabled}
           rows={minimumRows}
           onChange={(event) => {
             if (!readOnly) {

@@ -195,6 +195,12 @@ the workspace has a default minimum height of `28rem`. Use `min-height: 0`
 and `min-width: 0` on shrinking host flex/grid children as needed so the
 transcript scrolls inside the panel rather than expanding the page.
 
+Selecting a thread opens it at the latest message and keeps the bottom in view
+as restored content finishes laying out. Scrolling up pauses this following
+until the reader returns to the bottom. The composer receives focus on devices
+with a fine pointer and hover support; touch-first devices keep focus in the
+navigator. Hosts can override the composer’s existing `autoFocus` prop.
+
 The default workspace stacks navigation above chat at viewport widths of
 `40rem` or less. This is a viewport media query, not a container query; a
 narrow panel on a wide page may need a host-specific layout override.

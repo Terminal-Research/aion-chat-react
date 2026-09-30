@@ -586,6 +586,12 @@
   overscroll-behavior: contain;
 }
 
+.aion-chat__transcript-content {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
 .aion-chat__transcript-entry {
   content-visibility: auto;
   contain-intrinsic-size: auto 6rem;
@@ -593,6 +599,7 @@
 
 .aion-chat__empty {
   display: grid;
+  flex: 1 0 auto;
   min-height: 100%;
   place-items: center;
   color: var(--aion-chat-color-muted);

@@ -87,6 +87,7 @@ describe("AionChatComposer", () => {
       <AionChatComposer
         {...DEFAULT_PROPS}
         readOnly
+        autoFocus
         readOnlyReason={reason}
         onChange={onChange}
         onSelectAttachments={onSelectAttachments}
@@ -99,6 +100,7 @@ describe("AionChatComposer", () => {
 
     const textarea = screen.getByRole("textbox", { name: "Chat message" });
     expect(textarea).toHaveProperty("readOnly", true);
+    expect(document.activeElement).not.toBe(textarea);
     expect(screen.getByText(reason)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Attach files" }))
       .toHaveProperty("disabled", true);

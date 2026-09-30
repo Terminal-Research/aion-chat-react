@@ -19,6 +19,8 @@ import { FakeAionChatTransport } from "../../../src/testing";
 import "../../../src/styles/aion-chat.css";
 import "./fixture.css";
 
+const fixtureOptions = new URLSearchParams(location.search);
+
 const AVAILABLE_AGENT: ChatAgent = {
   id: "available-agent",
   title: "Available agent",
@@ -114,7 +116,10 @@ function conversation(
           text:
             index === 0
               ? `${contextId} prompt`
-              : `Historical response ${index} for ${contextId}.`,
+              : `Historical response ${index} for ${contextId}.` +
+                (fixtureOptions.has("long-history")
+                  ? "\n\n" + "A longer restored message with variable height. ".repeat((index % 8 + 1) * 12)
+                  : ""),
         },
       ],
       contextId,
@@ -156,7 +161,12 @@ const directory: AionConversationDirectory = {
         : undefined,
     });
   },
-  load: (agent, contextId) => {
+  load: async (agent, contextId) => {
+    if (fixtureOptions.has("deferred-history")) {
+      await new Promise<void>((resolve) => {
+        window.addEventListener("load-history", () => resolve(), { once: true });
+      });
+    }
     const index = contextIdsFor(agent).indexOf(contextId);
     return Promise.resolve({
       conversation: conversation(agent, contextId),
