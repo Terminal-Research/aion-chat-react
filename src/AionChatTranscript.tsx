@@ -13,6 +13,8 @@ import {
   useState,
 } from "react";
 
+import type { AionLinkPreviewSource } from "./link-preview";
+
 import {
   AionChatMessage,
   type AionChatDataPartRenderers,
@@ -63,10 +65,11 @@ export interface AionChatTranscriptSlots {
     | "responseMetadata"
     | "markdownComponent"
     | "dataRenderers"
+    | "linkPreviewSource"
   >;
   readonly artifact?: AionSlotValue<
     AionChatArtifactProps,
-    "artifact" | "markdownComponent" | "dataRenderers"
+    "artifact" | "markdownComponent" | "dataRenderers" | "linkPreviewSource"
   >;
   readonly taskActivity?: AionSlotValue<AionChatTaskActivityProps, "task">;
   readonly emptyState?: AionSlotValue<AionChatEmptyStateProps, "agentTitle">;
@@ -78,6 +81,7 @@ export interface AionChatTranscriptSlots {
 export interface AionChatTranscriptProps
   extends Omit<HTMLAttributes<HTMLDivElement>, "children"> {
   readonly entries: readonly AionChatTranscriptEntry[];
+  readonly linkPreviewSource?: AionLinkPreviewSource;
   readonly agentTitle?: string;
   readonly slots?: AionChatTranscriptSlots;
 }
@@ -164,6 +168,7 @@ function visibleTranscriptEntries(
  */
 export function AionChatTranscript({
   entries: allEntries,
+  linkPreviewSource,
   agentTitle,
   slots = {},
   className,
@@ -269,6 +274,7 @@ export function AionChatTranscript({
                       responseMetadata={entry.responseMetadata}
                       markdownComponent={slots.markdown}
                       dataRenderers={slots.dataRenderers}
+                      linkPreviewSource={linkPreviewSource}
                     />
                   </div>
                 );
@@ -286,6 +292,7 @@ export function AionChatTranscript({
                       artifact={entry.artifact}
                       markdownComponent={slots.markdown}
                       dataRenderers={slots.dataRenderers}
+                      linkPreviewSource={linkPreviewSource}
                     />
                   </div>
                 );

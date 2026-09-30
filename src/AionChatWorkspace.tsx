@@ -8,6 +8,8 @@ import {
   useState,
 } from "react";
 
+import type { AionLinkPreviewSource } from "./link-preview";
+
 import {
   AionChatProvider,
   type AionChatProviderProps,
@@ -88,6 +90,8 @@ export interface AionChatWorkspaceProps
   readonly chatViewProps?: AionChatViewProps;
   /** Enables the built-in lazy identity profile for selected catalog entries. */
   readonly agentProfileSource?: AionAgentProfileSource;
+  /** Enables public link previews below completed responses. */
+  readonly linkPreviewSource?: AionLinkPreviewSource;
   /** Overrides the production Aion application root used by profile links. */
   readonly agentProfileAppBaseUrl?: string;
   readonly onAgentChange?: (
@@ -215,6 +219,7 @@ function AionChatWorkspaceContent({
   attachmentUploader,
   chatViewProps,
   agentProfileSource,
+  linkPreviewSource,
   agentProfileAppBaseUrl,
   onAgentChange,
   onViewAgentProfile,
@@ -553,7 +558,12 @@ function AionChatWorkspaceContent({
               createId={createId}
               now={now}
             >
-              <AionChatView {...chatViewProps} />
+              <AionChatView
+                {...chatViewProps}
+                linkPreviewSource={
+                  linkPreviewSource ?? chatViewProps?.linkPreviewSource
+                }
+              />
             </AionChatProvider>
           ) : (
             <div className="aion-chat__workspace-empty">

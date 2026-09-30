@@ -221,3 +221,7 @@ export type {
   AionConversationUpdates,
   AionConversationUpdatesSource,
 } from "./conversations/updates/types";
+
+export type { AionLinkPreview, AionLinkPreviewEmbed, AionLinkPreviewSource } from "./link-preview";
+export { AionChatLinkPreviews } from "./AionChatLinkPreviews";
+export type { AionChatLinkPreviewsProps } from "./AionChatLinkPreviews";

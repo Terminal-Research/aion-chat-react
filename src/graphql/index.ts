@@ -46,3 +46,9 @@ export {
   createApolloAionConversationUpdatesSource,
   type ApolloConversationUpdatesSourceOptions,
 } from "./apollo-conversation-updates";
+export {
+  createApolloAionLinkPreviewSource,
+  AION_LINK_PREVIEW_QUERY,
+  type ApolloAionLinkPreviewSourceOptions,
+} from "./apollo-link-preview";
+export { AION_LINK_PREVIEW_QUERY_SOURCE } from "./link-preview-source";

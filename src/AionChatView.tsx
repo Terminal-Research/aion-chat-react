@@ -5,6 +5,8 @@
  */
 import { type HTMLAttributes, useMemo } from "react";
 
+import type { AionLinkPreviewSource } from "./link-preview";
+
 import {
   AionChatComposer,
   type AionChatComposerProps,
@@ -57,11 +59,14 @@ export interface AionChatViewSlots extends AionChatTranscriptSlots {
 export interface AionChatViewProps
   extends Omit<HTMLAttributes<HTMLDivElement>, "children"> {
   readonly slots?: AionChatViewSlots;
+  /** Enables previews below completed responses. */
+  readonly linkPreviewSource?: AionLinkPreviewSource;
 }
 
 /** Inline chat surface backed by the nearest Aion chat provider. */
 export function AionChatView({
   slots = {},
+  linkPreviewSource,
   className,
   ...props
 }: AionChatViewProps) {
@@ -154,6 +159,7 @@ export function AionChatView({
       {...props}
     >
       <AionChatTranscript
+        linkPreviewSource={linkPreviewSource}
         entries={transcriptEntries}
         agentTitle={state.agent?.title}
         slots={slots}

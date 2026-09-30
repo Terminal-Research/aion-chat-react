@@ -41,3 +41,8 @@ export {
   createStandaloneAionConversationUpdatesSource,
   type StandaloneConversationUpdatesSourceOptions,
 } from "./standalone-conversation-updates";
+export {
+  createStandaloneAionLinkPreviewSource,
+  type StandaloneAionLinkPreviewSourceOptions,
+} from "./standalone-link-preview";
+export { AION_LINK_PREVIEW_QUERY_SOURCE } from "./link-preview-source";

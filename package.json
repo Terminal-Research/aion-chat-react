@@ -102,6 +102,7 @@
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.58.2",
     "@testing-library/react": "^16.3.3",
+    "@types/mdast": "^4.0.4",
     "@types/node": "^26.4.0",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.5",
@@ -124,6 +125,8 @@
     "graphql-ws": "^6.0.6",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
+    "remark-parse": "^11.0.0",
+    "unified": "^11.0.5",
     "zustand": "^5.0.8"
   }
 }

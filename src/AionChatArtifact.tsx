@@ -1,4 +1,7 @@
+import { AionChatLinkPreviews } from "./AionChatLinkPreviews";
 import { type HTMLAttributes, memo } from "react";
+
+import type { AionLinkPreviewSource } from "./link-preview";
 
 import {
   AionChatMarkdown,
@@ -18,6 +21,8 @@ export interface AionChatArtifactProps extends HTMLAttributes<HTMLElement> {
   readonly artifact: ChatArtifact;
   readonly markdownComponent?: AionChatMarkdownComponent;
   readonly dataRenderers?: AionChatDataPartRenderers;
+  /** Optional public metadata source for completed-response previews. */
+  readonly linkPreviewSource?: AionLinkPreviewSource;
 }
 
 /** Default transcript presentation for one streamed or completed artifact. */
@@ -25,6 +30,7 @@ export const AionChatArtifact = memo(function AionChatArtifact({
   artifact,
   markdownComponent = AionChatMarkdown,
   dataRenderers,
+  linkPreviewSource,
   className,
   ...props
 }: AionChatArtifactProps) {
@@ -85,6 +91,9 @@ export const AionChatArtifact = memo(function AionChatArtifact({
               ? content
               : "This artifact has no previewable content."}
           </div>
+          {artifact.lastChunk && linkPreviewSource && (
+            <AionChatLinkPreviews parts={artifact.parts} source={linkPreviewSource} />
+          )}
           {artifact.lastChunk ? (
             <AionChatResponseActions
               text={getChatText(artifact.parts)}

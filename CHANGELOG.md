@@ -5,6 +5,10 @@ All notable changes to this package are documented here. The project follows
 
 ## Unreleased
 
+- Add optional link-preview sources, completed-response cards in Markdown order,
+  Open Graph/oEmbed metadata adapters, and click-to-expand image, YouTube, Vimeo,
+  and isolated X post rendering. Failed previews preserve the original links.
+
 - Connect Delete chat to server-confirmed context deletion through direct A2A
   and existing GraphQL clients, with pending/retry states, local cache cleanup,
   and protection against stale history reads and writes restoring the thread.

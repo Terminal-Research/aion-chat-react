@@ -33,6 +33,8 @@ export default defineConfig({
         "react/jsx-runtime",
         "react-markdown",
         "remark-gfm",
+        "remark-parse",
+        "unified",
         /^@phosphor-icons\/react\//,
         "@apollo/client",
         "@apollo/client/core",

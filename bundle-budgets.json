@@ -4,19 +4,19 @@
     "gzipBytes": 9216
   },
   "dist/index.js": {
-    "rawBytes": 110592,
-    "gzipBytes": 29696
+    "rawBytes": 114688,
+    "gzipBytes": 31744
   },
   "dist/profile.js": {
     "rawBytes": 18432,
     "gzipBytes": 6144
   },
   "dist/graphql/apollo.js": {
-    "rawBytes": 40960,
+    "rawBytes": 43008,
     "gzipBytes": 13312
   },
   "dist/graphql/standalone.js": {
-    "rawBytes": 43008,
+    "rawBytes": 45056,
     "gzipBytes": 14336
   },
   "dist/testing.js": {

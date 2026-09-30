@@ -14,15 +14,15 @@ byte-level noise while material growth requires an explicit review.
 
 | Entry | Baseline raw | Baseline gzip | Raw budget | Gzip budget |
 | --- | ---: | ---: | ---: | ---: |
-| Core `dist/index.js` | 106.6 kB | 28.8 kB | 108 KiB | 29 KiB |
+| Core `dist/index.js` | 112.8 kB | 30.5 kB | 112 KiB | 31 KiB |
 | Profile `dist/profile.js` | 15.1 kB | 5.2 kB | 18 KiB | 6 KiB |
 | Direct A2A `dist/a2a/direct.js` | 23.8 kB | 7.6 kB | 28 KiB | 9 KiB |
-| Apollo `dist/graphql/apollo.js` | 38.1 kB | 12.0 kB | 40 KiB | 13 KiB |
-| Standalone GraphQL | 41.2 kB | 13.0 kB | 42 KiB | 14 KiB |
+| Apollo `dist/graphql/apollo.js` | 41.2 kB | 13.1 kB | 42 KiB | 13 KiB |
+| Standalone GraphQL | 43.5 kB | 13.9 kB | 44 KiB | 14 KiB |
 | Testing `dist/testing.js` | 1.3 kB | 0.7 kB | 2 KiB | 1 KiB |
 | Uploads `dist/uploads.js` | 5.2 kB | 2.0 kB | 8 KiB | 3 KiB |
 | Browser storage `dist/storage/browser.js` | 9.8 kB | 3.2 kB | 16 KiB | 5 KiB |
-| Styles `dist/styles.css` | 31.9 kB | 5.2 kB | 36 KiB | 6 KiB |
+| Styles `dist/styles.css` | 36.1 kB | 5.9 kB | 36 KiB | 6 KiB |
 
 The core entry includes the default message, activity, Markdown, motion,
 conversation storage, and workspace navigation. The profile view is loaded
@@ -48,3 +48,11 @@ handling. Core measured 106,597 raw / 28,832 gzip bytes, an increase of 1,145 /
 283 bytes over the preceding thread-selection build. Only the core allowance
 increased; no runtime dependency was added and the other entry budgets remain
 unchanged.
+
+The 2026-09-29 link-preview remeasurement includes completed-response Markdown
+link discovery, compact horizontally scrolling cards, provider-frame media dialogs, and optional Apollo and
+standalone metadata sources. Core measured 112,841 raw / 30,532 gzip bytes, a
+6,244 / 1,700 byte increase over inline images. Apollo measured 41,191 / 13,103;
+standalone measured 43,523 / 13,898. The allowances above cover those additions.
+`unified` and `remark-parse` are now direct external dependencies, sharing the
+parser versions already used by `react-markdown`; no second parser is bundled.

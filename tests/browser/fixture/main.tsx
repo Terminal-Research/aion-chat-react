@@ -6,6 +6,7 @@ import {
   AionChatWorkspace,
   type AionAgentCatalog,
   type AionAgentProfileSource,
+  type AionLinkPreviewSource,
   type AionConversationDirectory,
   type AionConversationUpdate,
   type AionConversationUpdates,
@@ -110,7 +111,13 @@ function conversation(
     (_, index) => ({
       id: `${contextId}-message-${index}`,
       role: index % 2 === 0 ? "user" : "assistant",
-      parts: fixtureOptions.has("image-parts") && index === messageCount - 1 ? [
+      parts: fixtureOptions.has("link-previews") && index === messageCount - 1 ? [
+        { type: "text", text: "Resources: [Article](https://example.com/article), " +
+          "[Video](https://www.youtube.com/watch?v=dQw4w9WgXcQ), " +
+          "[Post](https://x.com/user/status/12345). " +
+          "[Same article](https://example.com/article#section) and " +
+          "[Unavailable](https://example.com/missing)." },
+      ] : fixtureOptions.has("image-parts") && index === messageCount - 1 ? [
         { type: "text", text: "Before the image." },
         {
           type: "file",
@@ -216,6 +223,19 @@ const profileSource: AionAgentProfileSource = {
     }),
 };
 
+const previewSource: AionLinkPreviewSource = {
+  load: (url) => Promise.resolve(url.endsWith("missing") ? undefined : {
+    url,
+    title: url.includes("youtube.com") ? "Video preview" : url.includes("x.com/")
+      ? "Post preview" : "Article preview",
+    siteName: new URL(url).hostname,
+    description: "A compact card below the completed response.",
+    imageUrl: `${location.origin}/tests/browser/fixture/image.svg`,
+    embed: url.includes("youtube.com") ? { kind: "YouTube", value: "dQw4w9WgXcQ" }
+      : url.includes("x.com/") ? { kind: "X", value: "12345" } : undefined,
+  }),
+};
+
 // Keep local waiting observable until the browser test delivers the response.
 const transport = new FakeAionChatTransport((request) => new Promise((resolve) => {
   window.addEventListener("complete-chat-request", () => resolve([{ event: {
@@ -236,6 +256,7 @@ createRoot(document.getElementById("root")!).render(
         <AionChatWorkspace
           catalog={catalog}
           agentProfileSource={profileSource}
+          linkPreviewSource={fixtureOptions.has("link-previews") ? previewSource : undefined}
           conversationDirectory={directory}
           conversationUpdatesSource={new URLSearchParams(location.search).has("updates") ? updatesSource : undefined}
           conversationStore={store}

@@ -3,11 +3,14 @@
  * packages/react-core/src/v2/components/chat/CopilotChatMessageView.tsx
  * pinned at 65bd05e3682ced8f424023f75627f8f833e52745 (MIT).
  */
+import { AionChatLinkPreviews } from "./AionChatLinkPreviews";
 import {
   type ComponentType,
   type HTMLAttributes,
   memo,
 } from "react";
+
+import type { AionLinkPreviewSource } from "./link-preview";
 
 import { AionChatImagePart } from "./AionChatImagePart";
 import {
@@ -60,6 +63,8 @@ export interface AionChatMessageProps extends HTMLAttributes<HTMLDivElement> {
   readonly responseMetadata?: AionChatResponseMetadata;
   readonly markdownComponent?: AionChatMarkdownComponent;
   readonly dataRenderers?: AionChatDataPartRenderers;
+  /** Optional public metadata source for completed-response previews. */
+  readonly linkPreviewSource?: AionLinkPreviewSource;
 }
 
 function safeFileUrl(url: string | undefined): string | undefined {
@@ -210,6 +215,7 @@ export const AionChatMessage = memo(function AionChatMessage({
   responseMetadata,
   markdownComponent = AionChatMarkdown,
   dataRenderers,
+  linkPreviewSource,
   className,
   ...props
 }: AionChatMessageProps) {
@@ -251,6 +257,9 @@ export const AionChatMessage = memo(function AionChatMessage({
           />
         )}
       </div>
+      {message.role === "assistant" && !streaming && linkPreviewSource && (
+        <AionChatLinkPreviews parts={message.parts} source={linkPreviewSource} />
+      )}
       {message.role === "assistant" && !streaming ? (
         <AionChatResponseActions
           text={getChatText(message.parts)}
