@@ -19,6 +19,7 @@ interface AionChatDialogProps
   readonly title: string;
   readonly closeLabel: string;
   readonly children: ReactNode;
+  /** Unmount the owning view immediately; cleanup closes the native dialog. */
   readonly onRequestClose: () => void;
   /** Optional safe initial action, focused after the native modal opens. */
   readonly initialFocusRef?: RefObject<HTMLElement | null>;
@@ -67,15 +68,6 @@ export function AionChatDialog({
     return null;
   }
 
-  const closeDialog = () => {
-    const dialog = dialogRef.current;
-    if (typeof dialog?.close === "function" && dialog.open) {
-      dialog.close();
-    } else {
-      onRequestClose();
-    }
-  };
-
   return createPortal(
     <dialog
       ref={dialogRef}
@@ -84,7 +76,7 @@ export function AionChatDialog({
       aria-modal="true"
       onCancel={(event) => {
         event.preventDefault();
-        closeDialog();
+        onRequestClose();
       }}
       onClose={(event) => {
         // StrictMode can reopen before the cleanup's queued close event arrives.
@@ -92,7 +84,7 @@ export function AionChatDialog({
       }}
       onClick={(event) => {
         if (event.target === event.currentTarget) {
-          closeDialog();
+          onRequestClose();
         }
       }}
       {...props}
@@ -103,7 +95,7 @@ export function AionChatDialog({
           className="aion-chat__dialog-close"
           type="button"
           aria-label={closeLabel}
-          onClick={closeDialog}
+          onClick={onRequestClose}
         >
           <XIcon aria-hidden="true" />
         </button>

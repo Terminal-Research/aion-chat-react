@@ -9,6 +9,7 @@ import {
   memo,
 } from "react";
 
+import { AionChatImagePart } from "./AionChatImagePart";
 import {
   AionChatMarkdown,
   type AionChatMarkdownComponent,
@@ -114,21 +115,29 @@ function dataTitle(part: ChatDataPart): string | undefined {
   );
 }
 
-/** Renders a URL- or byte-backed A2A file without creating unsafe links. */
+/**
+ * Previews URL-backed images and links other A2A files using safe URLs only.
+ * Byte-only files retain their attachment label and media type.
+ */
 export const AionChatFilePart = memo(function AionChatFilePart({
   part,
 }: AionChatFilePartProps) {
   const url = safeFileUrl(part.file.url);
-  const name = part.file.name ?? "File attachment";
+  const isImage = part.file.mediaType?.trim().toLowerCase().startsWith("image/");
+  const name = part.file.name ?? (isImage ? "Image attachment" : "File attachment");
   const detail =
     part.file.mediaType ?? (part.file.bytes ? "Embedded file" : "File");
-
-  return (
+  const attachment = (
     <span className="aion-chat__file">
       {url ? <a href={url}>{name}</a> : <span>{name}</span>}
       <span className="aion-chat__file-detail">{detail}</span>
     </span>
   );
+
+  return url && isImage ? (
+    // A changed URL starts a fresh preview, including after an expired link.
+    <AionChatImagePart key={url} url={url} name={name} fallback={attachment} />
+  ) : attachment;
 });
 
 /**

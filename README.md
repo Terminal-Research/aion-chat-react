@@ -67,6 +67,14 @@ renderer. Raw HTML and remote Markdown images are not rendered, unsafe URL
 protocols are removed, and external links use opener isolation. A host can
 replace the Markdown slot when it intentionally needs a different policy.
 
+URL-backed file parts with an `image/*` media type render inline in their
+original part order, so text, an image, and more text remain separate sections.
+Previews preserve aspect ratio and stay within 20% of the viewport height.
+Click or keyboard-activate an image to open a larger, screen-fitting view in the
+themed modal; close it with the X button, Escape, or the backdrop. Failed image
+loads fall back to the file link. Other file parts keep their attachment
+presentation, and byte-only images do not create a preview.
+
 Task states and Aion `aion:thinking-delta` artifacts have default activity and
 reasoning presentations. Structured data remains visible as JSON unless a host
 registers a typed component by `part.data.kind` through
@@ -158,8 +166,8 @@ const theme = {
 
 Inline values take precedence over stylesheet declarations. Theme variables
 follow normal CSS inheritance inside the boundary, including the built-in
-profile and response-detail dialogs: their portal target is inside the theme
-element. Place standalone `AionAgentProfile` components inside a theme too.
+profile, image, and response-detail dialogs: their portal target is inside the
+theme element. Place standalone `AionAgentProfile` components inside a theme too.
 Custom portaled components can use `useAionChatPortalContainer()` to retain
 that scope instead of rendering into `document.body`.
 

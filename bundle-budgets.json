@@ -4,8 +4,8 @@
     "gzipBytes": 9216
   },
   "dist/index.js": {
-    "rawBytes": 106496,
-    "gzipBytes": 28672
+    "rawBytes": 110592,
+    "gzipBytes": 29696
   },
   "dist/profile.js": {
     "rawBytes": 18432,

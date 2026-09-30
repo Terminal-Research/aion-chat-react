@@ -160,6 +160,7 @@ function visibleTranscriptEntries(
 /**
  * Renders each logical response once and follows new output only while the
  * reader is already pinned near the bottom, including delayed layout changes.
+ * Native scroll anchoring is reserved for reading older output.
  */
 export function AionChatTranscript({
   entries: allEntries,
@@ -239,6 +240,7 @@ export function AionChatTranscript({
           .filter(Boolean)
           .join(" ")}
         onScroll={onScroll}
+        data-scroll-pinned={isPinned}
         role="log"
         aria-live="polite"
         aria-relevant="additions text"

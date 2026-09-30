@@ -110,7 +110,18 @@ function conversation(
     (_, index) => ({
       id: `${contextId}-message-${index}`,
       role: index % 2 === 0 ? "user" : "assistant",
-      parts: [
+      parts: fixtureOptions.has("image-parts") && index === messageCount - 1 ? [
+        { type: "text", text: "Before the image." },
+        {
+          type: "file",
+          file: {
+            name: "Landscape.svg",
+            mediaType: "image/svg+xml",
+            url: "/tests/browser/fixture/image.svg",
+          },
+        },
+        { type: "text", text: "After the image." },
+      ] : [
         {
           type: "text",
           text:

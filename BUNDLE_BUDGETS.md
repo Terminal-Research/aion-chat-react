@@ -14,7 +14,7 @@ byte-level noise while material growth requires an explicit review.
 
 | Entry | Baseline raw | Baseline gzip | Raw budget | Gzip budget |
 | --- | ---: | ---: | ---: | ---: |
-| Core `dist/index.js` | 103.1 kB | 27.9 kB | 104 KiB | 28 KiB |
+| Core `dist/index.js` | 106.6 kB | 28.8 kB | 108 KiB | 29 KiB |
 | Profile `dist/profile.js` | 15.1 kB | 5.2 kB | 18 KiB | 6 KiB |
 | Direct A2A `dist/a2a/direct.js` | 23.8 kB | 7.6 kB | 28 KiB | 9 KiB |
 | Apollo `dist/graphql/apollo.js` | 38.1 kB | 12.0 kB | 40 KiB | 13 KiB |
@@ -41,3 +41,10 @@ response merging, and persisted trigger visibility. Core measured 103,132 raw /
 27,873 gzip bytes; Apollo 38,091 / 11,966; standalone 41,183 / 13,033. Only these
 three allowances increased. Transport dependencies remain outside core and no
 new runtime dependency was added.
+
+The 2026-09-29 inline image preview remeasurement includes ordered image file
+parts, expansion through the existing dialog, and delayed-image scroll
+handling. Core measured 106,597 raw / 28,832 gzip bytes, an increase of 1,145 /
+283 bytes over the preceding thread-selection build. Only the core allowance
+increased; no runtime dependency was added and the other entry budgets remain
+unchanged.
