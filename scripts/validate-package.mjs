@@ -133,7 +133,7 @@ try {
         private: true,
         type: "module",
         dependencies: {
-          "@apollo/client": "3.14.0",
+          "@apollo/client": "3.14.1",
           [packageName]: `file:${tarballPath}`,
           "@types/react": "19.2.2",
           "@types/react-dom": "19.2.5",

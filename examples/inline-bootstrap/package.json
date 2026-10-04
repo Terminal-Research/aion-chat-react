@@ -8,10 +8,10 @@
     "dev": "vite"
   },
   "dependencies": {
-    "@apollo/client": "^3.14.0",
+    "@apollo/client": "3.14.1",
     "@terminal-research/aion-chat-react": "file:../..",
     "bootstrap": "^5.3.8",
-    "graphql": "^16.14.2",
+    "graphql": "16.14.2",
     "react": "^19.2.0",
     "react-bootstrap": "^2.10.10",
     "react-dom": "^19.2.0"

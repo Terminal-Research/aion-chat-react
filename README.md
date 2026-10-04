@@ -37,6 +37,11 @@ loader script that mounts an Aion-hosted, cross-origin iframe. The iframe
 application will consume this library internally; customer sites will not need
 React, GraphQL, or Aion package dependencies.
 
+The GraphQL transports use exact versions: `graphql@16.14.2`,
+`@apollo/client@3.14.1`, and `graphql-ws@6.3.0`. The optional GraphQL peer
+dependencies use the same pins as the Aion frontend. Direct A2A consumers
+do not need Apollo Client. Apollo Client 3 does not support GraphQL.js 17.
+
 ## Local usage
 
 The root entry exports the transport-neutral model, provider, headless hooks,
