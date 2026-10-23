@@ -5,6 +5,9 @@ All notable changes to this package are documented here. The project follows
 
 ## Unreleased
 
+- Render response stream deltas inside the assistant response bubble and merge
+  matching durable responses even when a stream has no final chunk marker.
+
 - Reserve response space below newly sent messages, consume it during streaming,
   and remove leftover space after safe upward scrolling without moving the
   reading position. Restored conversations still open at their actual bottom.

@@ -71,7 +71,8 @@ it.each([false, true])(
   await within(log).findByText("Hello from the agent");
   expect(within(log).getAllByText("Hello from the agent")).toHaveLength(1);
   expect(log.querySelector('[data-message-role="user"]')).toBeNull();
-  expect(log.querySelector('[data-message-role="assistant"]')).toBeNull();
+  expect(log.querySelector(".aion-chat__message--welcome")?.textContent)
+    .toContain("Hello from the agent");
   expect(sent).toHaveLength(1);
 
   fireEvent.change(screen.getByRole("textbox", { name: "Chat message" }), {

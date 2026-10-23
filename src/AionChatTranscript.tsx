@@ -18,10 +18,8 @@ import {
 } from "./AionChatActivity";
 import type { AionChatMarkdownComponent } from "./AionChatMarkdown";
 import {
-  getChatText,
   type ChatArtifact,
   type ChatMessage,
-  type ChatPart,
   type ChatTask,
   type ChatTurn,
 } from "./model";
@@ -98,64 +96,98 @@ export function AionChatEmptyState({
   );
 }
 
-/** Matches only complete text with the same task and context identity. */
-function textResponseKey(
-  taskId: string | undefined,
-  contextId: string | undefined,
-  parts: readonly ChatPart[],
-): string | undefined {
-  if (!taskId || !contextId || parts.some((part) => part.type !== "text")) {
-    return undefined;
+type MessageEntry = Extract<AionChatTranscriptEntry, { type: "message" }>;
+type ArtifactEntry = Extract<AionChatTranscriptEntry, { type: "artifact" }>;
+type VisibleTranscriptEntry = AionChatTranscriptEntry & { readonly key: string };
+
+function isResponseStream(entry: AionChatTranscriptEntry): entry is ArtifactEntry {
+  return entry.type === "artifact" && (
+    entry.artifact.artifactId === "aion:stream-delta" ||
+    entry.artifact.artifactId === "stream_delta"
+  );
+}
+
+function entryKey(entry: AionChatTranscriptEntry): string {
+  switch (entry.type) {
+    case "message": return `message:${entry.message.id}`;
+    case "artifact": return `artifact:${entry.artifact.id}`;
+    case "task": return `task:${entry.task.id}`;
   }
-  const text = getChatText(parts);
-  return text ? JSON.stringify([contextId, taskId, text]) : undefined;
 }
 
 /**
- * Shows one copy of an assistant reply represented by both a message and its
- * completed stream artifact. Use the first transcript position, so restored
- * history stays chronological even when artifacts arrive newest first.
+ * Presents streamed response text as an assistant message and reconciles its
+ * durable copy, even when the SDK ends the stream with a message rather than
+ * lastChunk. Keep the first transcript position and a stable rendering key.
  * Structured output and unrelated messages remain separate entries.
  */
 function visibleTranscriptEntries(
   entries: readonly AionChatTranscriptEntry[],
-): readonly AionChatTranscriptEntry[] {
-  const responses = new Map<
-    string,
-    Extract<AionChatTranscriptEntry, { type: "artifact" }>
+): readonly VisibleTranscriptEntry[] {
+  const streamsByTask = new Map<string, ArtifactEntry>();
+  for (const entry of entries) {
+    if (!isResponseStream(entry)) continue;
+    const { artifact } = entry;
+    if (artifact.parts.every((part) => part.type === "text")) {
+      streamsByTask.set(JSON.stringify([artifact.contextId, artifact.taskId]), entry);
+    }
+  }
+
+  const durableResponses = new Map<
+    string, { readonly stream: ArtifactEntry; readonly entry: MessageEntry }
   >();
   for (const entry of entries) {
-    if (entry.type !== "artifact" || !entry.artifact.lastChunk) continue;
-    const { artifact } = entry;
-    if (artifact.artifactId !== "aion:stream-delta" &&
-        artifact.artifactId !== "stream_delta") continue;
-    const key = textResponseKey(
-      artifact.taskId, artifact.contextId, artifact.parts,
-    );
-    if (key) responses.set(key, entry);
+    if (entry.type !== "message" || entry.message.role !== "assistant" ||
+        entry.streaming || entry.message.parts.some((part) => part.type !== "text")) continue;
+    const taskId = entry.message.taskId ?? entry.responseMetadata?.taskId;
+    const contextId = entry.message.contextId ?? entry.responseMetadata?.contextId;
+    const stream = taskId && contextId
+      ? streamsByTask.get(JSON.stringify([contextId, taskId])) : undefined;
+    if (stream) {
+      durableResponses.set(stream.artifact.id, { stream, entry });
+    }
   }
-  const renderedArtifacts = new Set<string>();
-  return entries.flatMap((entry) => {
+  const streamByMessageId = new Map(
+    [...durableResponses.values()].map(({ stream, entry }) => [entry.message.id, stream]),
+  );
+
+  const renderedStreams = new Set<string>();
+  return entries.flatMap<VisibleTranscriptEntry>((entry) => {
     if (entry.type === "message" && isWelcomeRequest(entry.message)) return [];
-    const key = entry.type === "message" && entry.message.role === "assistant"
-      ? textResponseKey(
-          entry.message.taskId ?? entry.responseMetadata?.taskId,
-          entry.message.contextId ?? entry.responseMetadata?.contextId,
-          entry.message.parts,
-        )
-      : undefined;
-    const artifact = entry.type === "artifact"
-      ? entry : key ? responses.get(key) : undefined;
-    if (!artifact) return [entry];
-    if (renderedArtifacts.has(artifact.artifact.id)) return [];
-    renderedArtifacts.add(artifact.artifact.id);
-    return [artifact];
+    const replacement = entry.type === "message"
+      ? streamByMessageId.get(entry.message.id) : undefined;
+    const stream = isResponseStream(entry) ? entry : replacement;
+    if (!stream) return [{ ...entry, key: entryKey(entry) }];
+
+    const { artifact } = stream;
+    if (renderedStreams.has(artifact.id)) return [];
+    renderedStreams.add(artifact.id);
+    const durable = durableResponses.get(artifact.id)?.entry;
+    return [{
+      type: "message",
+      key: `response:${artifact.id}`,
+      message: durable?.message ?? {
+        id: artifact.id,
+        role: "assistant",
+        parts: artifact.parts,
+        contextId: artifact.contextId,
+        taskId: artifact.taskId,
+        createdAt: "",
+        metadata: artifact.metadata,
+      },
+      streaming: !durable && !artifact.lastChunk,
+      responseMetadata: durable?.responseMetadata ?? {
+        contextId: artifact.contextId,
+        taskId: artifact.taskId,
+      },
+    }];
   });
 }
 
 /**
- * Renders each logical response once and follows new output only while the
- * reader is already pinned near the bottom, including delayed layout changes.
+ * Renders streamed and completed replies through the message slot, once per
+ * logical response. Follows new output only while the reader is already pinned
+ * near the bottom, including delayed layout changes.
  * Native scroll anchoring is reserved for reading older output.
  */
 export function AionChatTranscript({
@@ -205,7 +237,7 @@ export function AionChatTranscript({
               if (entry.type === "message") {
                 return (
                   <div
-                    key={`message:${entry.message.id}`}
+                    key={entry.key}
                     className="aion-chat__transcript-entry"
                     data-entry-type="message"
                     data-entry-id={entry.message.id}
@@ -226,7 +258,7 @@ export function AionChatTranscript({
               if (entry.type === "artifact") {
                 return (
                   <div
-                    key={`artifact:${entry.artifact.id}`}
+                    key={entry.key}
                     className="aion-chat__transcript-entry"
                     data-entry-type="artifact"
                     data-entry-id={entry.artifact.id}
@@ -243,7 +275,7 @@ export function AionChatTranscript({
               }
               return (
                 <div
-                  key={`task:${entry.task.id}`}
+                  key={entry.key}
                   className="aion-chat__transcript-entry"
                   data-entry-type="task"
                   data-entry-id={entry.task.id}

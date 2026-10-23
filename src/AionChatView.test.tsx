@@ -14,6 +14,7 @@ import { AionChatView } from "./AionChatView";
 import type { AionChatMessageProps } from "./AionChatMessage";
 import type { ChatArtifact, ChatConversationState, ChatMessage } from "./model";
 import { FakeAionChatTransport } from "./testing/fake-transport";
+import { createAionChatGraphQLTransport } from "./graphql/chat-transport";
 
 const AGENT = {
   id: "distribution-1",
@@ -100,21 +101,22 @@ describe("AionChatView", () => {
   });
 
   it.each([
-    "user-message", "different-task", "different-text", "structured-message",
-    "regular-artifact", "unfinished-stream",
+    "user-message", "different-task", "different-context", "structured-message",
+    "regular-artifact",
   ])("retains distinct content alongside a stream artifact (%s)", (variant) => {
     const message: ChatMessage = {
       id: "message", role: variant === "user-message" ? "user" : "assistant",
       taskId: variant === "different-task" ? "other-task" : "task",
-      contextId: "context", createdAt: "2026-09-29T13:00:00Z",
-      parts: [{ type: "text", text: variant === "different-text" ? "More detail" : "Hello" },
+      contextId: variant === "different-context" ? "other-context" : "context",
+      createdAt: "2026-09-29T13:00:00Z",
+      parts: [{ type: "text", text: "Hello" },
         ...(variant === "structured-message" ? [{ type: "data" as const, data: { result: 42 } }] : [])],
     };
     const artifact: ChatArtifact = {
       id: "task:artifact", taskId: "task", contextId: "context",
       artifactId: variant === "regular-artifact" ? "report" : "aion:stream-delta",
       parts: [{ type: "text", text: "Hello" }],
-      lastChunk: variant !== "unfinished-stream",
+      lastChunk: true,
     };
     const view = render(<AionChatTranscript entries={[
       { type: "message", message }, { type: "artifact", artifact },
@@ -168,6 +170,72 @@ describe("AionChatView", () => {
       { type: "text", text: "What changed?" },
     ]);
   });
+
+  it.each([undefined, "Stream Delta"])(
+    "replaces live SDK deltas with the final response (name=%s)",
+    async (name) => {
+      let append = () => {};
+      let complete = () => {};
+      let settle = () => {};
+      const appended = new Promise<void>((resolve) => { append = resolve; });
+      const completed = new Promise<void>((resolve) => { complete = resolve; });
+      const settled = new Promise<void>((resolve) => { settle = resolve; });
+      const wrap = (result: Record<string, unknown>) => ({ data: { a2aRpc: {
+        __typename: "A2AJsonRpcSuccessResponseGQL" as const,
+        jsonrpc: "2.0", result,
+      } } });
+      const transport = createAionChatGraphQLTransport({
+        async *observe() {
+          const stream = (text: string, isAppend: boolean) => wrap({
+            kind: "TaskArtifactUpdateEvent", taskId: "task", contextId: "context",
+            append: isAppend, lastChunk: false,
+            artifact: { artifactId: "aion:stream-delta", name,
+              parts: [{ kind: "text", text }] },
+          });
+          yield stream("Hello", false);
+          await appended;
+          yield stream(" world", true);
+          await completed;
+          yield wrap({
+            kind: "TaskStatusUpdateEvent", taskId: "task", contextId: "context",
+            status: { state: "working", message: {
+              messageId: "final-message", role: "agent", taskId: "task", contextId: "context",
+              parts: [{ kind: "text", text: "The final corrected answer." }],
+            } },
+          });
+          await settled;
+          yield wrap({
+            kind: "TaskStatusUpdateEvent", taskId: "task", contextId: "context",
+            final: true, status: { state: "completed" },
+          });
+        },
+      });
+      const view = render(<AionChatProvider transport={transport} defaultAgent={AGENT} defaultDraft="Begin">
+        <AionChatView />
+      </AionChatProvider>);
+      fireEvent.click(screen.getByRole("button", { name: "Send" }));
+      await screen.findByText("Hello");
+      const bubble = view.container.querySelector(".aion-chat__message--assistant");
+      expect(bubble).toBeTruthy();
+      expect(screen.queryByText("Stream Delta")).toBeNull();
+
+      act(append);
+      await screen.findByText("world");
+      expect(bubble?.textContent).toBe("Hello world");
+      expect(view.container.querySelectorAll(".aion-chat__message--assistant")).toHaveLength(1);
+
+      act(complete);
+      await screen.findByText("The final corrected answer.");
+      await waitFor(() => {
+        expect(view.container.querySelectorAll(".aion-chat__message--assistant")).toHaveLength(1);
+      });
+      expect(view.container.querySelector(".aion-chat__message--assistant")).toBe(bubble);
+      expect(bubble?.textContent).not.toContain("Hello world");
+      expect(view.container.querySelector(".aion-chat__artifact")).toBeNull();
+      act(settle);
+      await screen.findByRole("button", { name: "Send" });
+    },
+  );
 
   it("marks only appended assistant message deltas for motion", async () => {
     const transport = new FakeAionChatTransport((request) => [
