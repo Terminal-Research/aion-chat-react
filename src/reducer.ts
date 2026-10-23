@@ -149,6 +149,7 @@ function appendMessageDelta(
         role: "assistant",
         parts: [{ type: "text", text }],
         createdAt: occurredAt,
+        streaming: true,
       },
     ];
   }
@@ -164,7 +165,7 @@ function appendMessageDelta(
     parts.push({ type: "text", text });
   }
 
-  return upsertById(messages, { ...existing, parts });
+  return upsertById(messages, { ...existing, parts, streaming: true });
 }
 
 function mergeArtifact(

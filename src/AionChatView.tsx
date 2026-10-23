@@ -126,7 +126,7 @@ export function AionChatView({
                 {
                   type: "message" as const,
                   message,
-                  streaming: streamingMessageIds.has(message.id),
+                  streaming: streamingMessageIds.has(message.id) && message.streaming === true,
                   responseMetadata,
                 },
               ]
