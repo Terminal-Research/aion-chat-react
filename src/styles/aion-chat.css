@@ -395,6 +395,11 @@
   font-weight: 700;
 }
 
+.aion-chat__agent-avatar:has(> img) {
+  background-color: transparent;
+  border-color: transparent;
+}
+
 .aion-chat__navigation-avatar {
   width: 2.25rem;
   height: 2.25rem;
