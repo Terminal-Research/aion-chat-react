@@ -5,6 +5,13 @@ All notable changes to this package are documented here. The project follows
 
 ## Unreleased
 
+- Send ordinary GraphQL chat messages with unary `SendMessage` from the start
+  when the route's public Agent Card says the route does not stream (the
+  `streaming` flag is `false` or absent, or the card endpoint answers 404).
+  The route card is read fresh for each send, an abort during that lookup
+  sends nothing, and a failed lookup keeps the streaming-first path with no
+  extra retry. Public `getAgentCapabilities` results are unchanged.
+
 - Render response stream deltas inside the assistant response bubble and merge
   matching durable responses even when a stream has no final chunk marker.
 

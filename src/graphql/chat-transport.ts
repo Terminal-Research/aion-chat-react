@@ -30,6 +30,16 @@ export interface AionChatGraphQLTransportOptions {
     target: AionChatGraphQLTarget,
     signal: AbortSignal,
   ) => Promise<AionAgentCapabilities>;
+  /**
+   * Reads, fresh for each ordinary send, whether ingress admits streaming on
+   * the exact route. `false` makes the send use unary `SendMessage` first
+   * (unless `unaryFallback` is `false`); `undefined` or a rejected lookup is
+   * unknown and keeps the streaming-first behavior without an extra retry.
+   */
+  readonly getRouteStreaming?: (
+    target: AionChatGraphQLTarget,
+    signal: AbortSignal,
+  ) => Promise<boolean | undefined>;
   /** Observes a request; `retry: false` must prohibit transport resubmission. */
   readonly observe: (
     variables: AionChatGraphQLVariables,
@@ -46,6 +56,15 @@ export interface AionChatGraphQLTransportOptions {
 
 function createEventId(): string {
   return globalThis.crypto.randomUUID();
+}
+
+function isAionChatGraphQLTarget(target: AionChatGraphQLTarget): boolean {
+  try {
+    assertAionChatGraphQLTarget(target);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function now(): string {
@@ -186,10 +205,30 @@ async function* streamAionChatGraphQL(
     distributionId: request.agent.id,
   };
   const allowUnaryFallback = options.unaryFallback !== false;
-  const methods: readonly ("SendStreamingMessage" | "SendMessage")[] =
+  let methods: readonly ("SendStreamingMessage" | "SendMessage")[] =
     request.operation === "SendMessage" ? ["SendMessage"] : allowUnaryFallback
       ? ["SendStreamingMessage", "SendMessage"]
       : ["SendStreamingMessage"];
+
+  if (
+    request.operation !== "SendMessage" &&
+    allowUnaryFallback &&
+    options.getRouteStreaming &&
+    isAionChatGraphQLTarget(target)
+  ) {
+    // Choose the method before dispatch. A failed lookup is not evidence of
+    // either capability, so it keeps streaming first and adds no retry.
+    // Invalid targets skip discovery and fail below exactly as before.
+    const streaming = await options
+      .getRouteStreaming(target, signal)
+      .catch(() => undefined);
+    if (signal.aborted) {
+      return;
+    }
+    if (streaming === false) {
+      methods = ["SendMessage"];
+    }
+  }
 
   for (const method of methods) {
     let receivedPayload = false;

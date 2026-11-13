@@ -1,5 +1,5 @@
 import {
-  AION_AGENT_CARD_QUERY_SOURCE, loadAgentCardCapabilities,
+  AION_AGENT_CARD_QUERY_SOURCE, loadAgentCardCapabilities, loadRouteStreaming,
   type AionAgentCardData, type AionAgentCardVariables,
 } from "./agent-card";
 import type { ChatAgent } from "../model";
@@ -33,15 +33,22 @@ export function createStandaloneAionChatTransport(
   options: StandaloneAionChatTransportOptions,
 ): AionChatTransport {
   const query = options.operation ?? AION_CHAT_A2A_RPC_SUBSCRIPTION_SOURCE;
+  // Uncached on purpose: each caller reads the route card as it is now.
+  const resolveAgentCard = (target: AionChatGraphQLTarget, signal: AbortSignal) =>
+    options.client.execute<AionAgentCardData, AionAgentCardVariables>({
+      query: AION_AGENT_CARD_QUERY_SOURCE,
+      variables: { target }, operationName: "AionChatAgentCard",
+    }, { signal });
   return createAionChatGraphQLTransport({
     async getAgentCapabilities(target, signal) {
-      const result = await options.client.execute<
-        AionAgentCardData, AionAgentCardVariables
-      >({
-        query: AION_AGENT_CARD_QUERY_SOURCE,
-        variables: { target }, operationName: "AionChatAgentCard",
-      }, { signal });
-      return loadAgentCardCapabilities(result, signal, options.fetch);
+      return loadAgentCardCapabilities(
+        await resolveAgentCard(target, signal), signal, options.fetch,
+      );
+    },
+    async getRouteStreaming(target, signal) {
+      return loadRouteStreaming(
+        await resolveAgentCard(target, signal), signal, options.fetch,
+      );
     },
     observe: (variables, signal, { retry }) =>
       options.client.subscribe<AionChatGraphQLSubscriptionData>(
