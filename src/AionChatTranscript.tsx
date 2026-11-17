@@ -115,67 +115,83 @@ function entryKey(entry: AionChatTranscriptEntry): string {
   }
 }
 
+/** Artifacts and the message that represent one task's assistant response. */
+type AssistantResponse = {
+  stream?: ArtifactEntry;
+  answer?: ArtifactEntry;
+  message?: MessageEntry;
+};
+
 /**
- * Presents streamed response text as an assistant message and reconciles its
- * durable copy, even when the SDK ends the stream with a message rather than
- * lastChunk. Keep the first transcript position and a stable rendering key.
- * Structured output and unrelated messages remain separate entries.
+ * Keeps one response bubble from streaming through completion. A final answer
+ * artifact supplies its content and replaces only its explicitly linked source
+ * message. Older streams fall back to the completed text message for their task.
+ * Keep the first transcript position and stream key; retain unrelated output.
  */
 function visibleTranscriptEntries(
   entries: readonly AionChatTranscriptEntry[],
 ): readonly VisibleTranscriptEntry[] {
-  const streamsByTask = new Map<string, ArtifactEntry>();
+  const responsesByTask = new Map<string, AssistantResponse>();
   for (const entry of entries) {
-    if (!isResponseStream(entry)) continue;
+    if (entry.type !== "artifact") continue;
     const { artifact } = entry;
-    if (artifact.parts.every((part) => part.type === "text")) {
-      streamsByTask.set(JSON.stringify([artifact.contextId, artifact.taskId]), entry);
-    }
+    const isAnswer = artifact.artifactId === "aion:assistant-answer";
+    if (!isAnswer && !isResponseStream(entry)) continue;
+    const taskKey = JSON.stringify([artifact.contextId, artifact.taskId]);
+    const response = responsesByTask.get(taskKey) ?? {};
+    if (isAnswer) response.answer = entry;
+    else response.stream = entry;
+    responsesByTask.set(taskKey, response);
   }
 
-  const durableResponses = new Map<
-    string, { readonly stream: ArtifactEntry; readonly entry: MessageEntry }
-  >();
   for (const entry of entries) {
-    if (entry.type !== "message" || entry.message.role !== "assistant" ||
-        entry.streaming || entry.message.parts.some((part) => part.type !== "text")) continue;
+    if (entry.type !== "message" || entry.message.role !== "assistant") continue;
     const taskId = entry.message.taskId ?? entry.responseMetadata?.taskId;
     const contextId = entry.message.contextId ?? entry.responseMetadata?.contextId;
-    const stream = taskId && contextId
-      ? streamsByTask.get(JSON.stringify([contextId, taskId])) : undefined;
-    if (stream) {
-      durableResponses.set(stream.artifact.id, { stream, entry });
+    const response = taskId && contextId
+      ? responsesByTask.get(JSON.stringify([contextId, taskId])) : undefined;
+    if (!response) continue;
+    if (response.answer) {
+      if (entry.message.id !== response.answer.artifact.metadata?.["aion:sourceMessageId"]) continue;
+    } else if (entry.streaming ||
+        entry.message.parts.some((part) => part.type !== "text") ||
+        response.stream?.artifact.parts.some((part) => part.type !== "text")) continue;
+    response.message = entry;
+  }
+
+  const responsesByEntry = new Map<string, AssistantResponse>();
+  for (const response of responsesByTask.values()) {
+    for (const entry of [response.stream, response.answer, response.message]) {
+      if (entry) responsesByEntry.set(entryKey(entry), response);
     }
   }
-  const streamByMessageId = new Map(
-    [...durableResponses.values()].map(({ stream, entry }) => [entry.message.id, stream]),
-  );
 
-  const renderedStreams = new Set<string>();
+  const renderedResponses = new Set<AssistantResponse>();
   return entries.flatMap<VisibleTranscriptEntry>((entry) => {
     if (entry.type === "message" && isWelcomeRequest(entry.message)) return [];
-    const replacement = entry.type === "message"
-      ? streamByMessageId.get(entry.message.id) : undefined;
-    const stream = isResponseStream(entry) ? entry : replacement;
-    if (!stream) return [{ ...entry, key: entryKey(entry) }];
+    const response = responsesByEntry.get(entryKey(entry));
+    const preferred = response?.answer ?? response?.stream;
+    if (!response || !preferred) return [{ ...entry, key: entryKey(entry) }];
+    if (renderedResponses.has(response)) return [];
+    renderedResponses.add(response);
 
-    const { artifact } = stream;
-    if (renderedStreams.has(artifact.id)) return [];
-    renderedStreams.add(artifact.id);
-    const durable = durableResponses.get(artifact.id)?.entry;
+    const { artifact } = preferred;
+    const durable = response.message;
     return [{
       type: "message",
-      key: `response:${artifact.id}`,
-      message: durable?.message ?? {
-        id: artifact.id,
+      key: `response:${response.stream?.artifact.id ?? artifact.id}`,
+      message: !response.answer && durable ? durable.message : {
+        ...durable?.message,
+        id: durable?.message.id ?? artifact.id,
         role: "assistant",
         parts: artifact.parts,
         contextId: artifact.contextId,
         taskId: artifact.taskId,
-        createdAt: "",
+        createdAt: durable?.message.createdAt ?? "",
         metadata: artifact.metadata,
+        streaming: !artifact.lastChunk,
       },
-      streaming: !durable && !artifact.lastChunk,
+      streaming: response.answer ? !artifact.lastChunk : !durable && !artifact.lastChunk,
       responseMetadata: durable?.responseMetadata ?? {
         contextId: artifact.contextId,
         taskId: artifact.taskId,

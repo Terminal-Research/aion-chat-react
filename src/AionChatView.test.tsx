@@ -171,9 +171,14 @@ describe("AionChatView", () => {
     ]);
   });
 
-  it.each([undefined, "Stream Delta"])(
-    "replaces live SDK deltas with the final response (name=%s)",
-    async (name) => {
+  it.each([
+    { name: undefined, finalArtifact: false },
+    { name: "Stream Delta", finalArtifact: false },
+    { name: undefined, finalArtifact: true },
+    { name: "Stream Delta", finalArtifact: true },
+  ])(
+    "replaces live SDK deltas with the final response (name=$name, artifact=$finalArtifact)",
+    async ({ name, finalArtifact }) => {
       let append = () => {};
       let complete = () => {};
       let settle = () => {};
@@ -196,6 +201,17 @@ describe("AionChatView", () => {
           await appended;
           yield stream(" world", true);
           await completed;
+          if (finalArtifact) {
+            yield wrap({
+              kind: "TaskArtifactUpdateEvent", taskId: "task", contextId: "context",
+              append: false, lastChunk: true,
+              artifact: {
+                artifactId: "aion:assistant-answer", name: "Assistant Answer",
+                metadata: { "aion:sourceMessageId": "final-message" },
+                parts: [{ kind: "text", text: "The artifact's completed answer." }],
+              },
+            });
+          }
           yield wrap({
             kind: "TaskStatusUpdateEvent", taskId: "task", contextId: "context",
             status: { state: "working", message: {
@@ -225,12 +241,16 @@ describe("AionChatView", () => {
       expect(view.container.querySelectorAll(".aion-chat__message--assistant")).toHaveLength(1);
 
       act(complete);
-      await screen.findByText("The final corrected answer.");
+      await screen.findByText(finalArtifact
+        ? "The artifact's completed answer." : "The final corrected answer.");
       await waitFor(() => {
         expect(view.container.querySelectorAll(".aion-chat__message--assistant")).toHaveLength(1);
       });
       expect(view.container.querySelector(".aion-chat__message--assistant")).toBe(bubble);
       expect(bubble?.textContent).not.toContain("Hello world");
+      if (finalArtifact) {
+        expect(screen.queryByText("The final corrected answer.")).toBeNull();
+      }
       expect(view.container.querySelector(".aion-chat__artifact")).toBeNull();
       act(settle);
       await screen.findByRole("button", { name: "Send" });

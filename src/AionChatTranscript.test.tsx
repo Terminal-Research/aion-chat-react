@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { AionChatTranscript } from "./AionChatTranscript";
+import { AionChatTranscript, type AionChatTranscriptEntry } from "./AionChatTranscript";
 import type { ChatArtifact, ChatMessage } from "./model";
 
 afterEach(cleanup);
@@ -70,6 +70,123 @@ describe("AionChatTranscript", () => {
     expect(screen.getAllByText("Complete response")).toHaveLength(1);
     expect(view.container.querySelectorAll(".aion-chat__message--assistant")).toHaveLength(1);
     expect(view.container.querySelector(".aion-chat__artifact")).toBeNull();
+  });
+
+  it.each([false, true])(
+    "uses the final answer artifact when its source arrives before or after it (artifact first=%s)",
+    (artifactFirst) => {
+      const message: ChatMessage = {
+        id: "reply", role: "assistant", taskId: "task", contextId: "context",
+        parts: [{ type: "text", text: "Original message content" }], createdAt: "2026-10-22T12:00:00Z",
+      };
+      const artifact: ChatArtifact = {
+        id: "task:answer", artifactId: "aion:assistant-answer", name: "Assistant Answer",
+        taskId: "task", contextId: "context", lastChunk: true,
+        metadata: { "aion:sourceMessageId": message.id },
+        parts: [
+          { type: "text", text: "Authoritative answer" },
+          { type: "file", file: { name: "Report", url: "https://files.example/report.pdf" } },
+          { type: "data", data: { title: "Result", count: 42 } },
+        ],
+      };
+      const entries: AionChatTranscriptEntry[] = [
+        { type: "message", message }, { type: "artifact", artifact },
+      ];
+      if (artifactFirst) entries.reverse();
+      const view = render(<AionChatTranscript entries={entries.slice(0, 1)} />);
+      view.rerender(<AionChatTranscript entries={entries} />);
+
+      expect(view.container.querySelectorAll(".aion-chat__message--assistant")).toHaveLength(1);
+      expect(screen.getAllByText("Authoritative answer")).toHaveLength(1);
+      expect(screen.queryByText("Original message content")).toBeNull();
+      expect(screen.queryByText("Assistant Answer")).toBeNull();
+      expect(screen.getByRole("link", { name: "Report" }).getAttribute("href"))
+        .toBe("https://files.example/report.pdf");
+      expect(screen.getByText("Result")).toBeTruthy();
+      expect(view.container.querySelector(".aion-chat__data")?.textContent).toContain('"count": 42');
+      expect(screen.getByRole("button", { name: "Copy response" })).toBeTruthy();
+    },
+  );
+
+  it.each(["aion:stream-delta", "stream_delta"])(
+    "replaces %s with the final artifact's complete parts in the same bubble",
+    (artifactId) => {
+      const stream: ChatArtifact = {
+        id: `task:${artifactId}`, artifactId, taskId: "task", contextId: "context",
+        parts: [{ type: "text", text: "Partial streamed answer" }], lastChunk: false,
+      };
+      const view = render(<AionChatTranscript entries={[{ type: "artifact", artifact: stream }]} />);
+      const bubble = view.container.querySelector(".aion-chat__message--assistant");
+      const message: ChatMessage = {
+        id: "reply", role: "assistant", taskId: "task", contextId: "context",
+        parts: [{ type: "text", text: "Message fallback" }], createdAt: "2026-10-22T12:00:00Z",
+      };
+      const answer: ChatArtifact = {
+        ...stream, id: "task:answer", artifactId: "aion:assistant-answer", lastChunk: true,
+        metadata: { "aion:sourceMessageId": message.id },
+        parts: [
+          { type: "text", text: "Final artifact answer" },
+          { type: "file", file: { name: "Final report", url: "https://files.example/report.pdf" } },
+        ],
+      };
+      view.rerender(<AionChatTranscript entries={[
+        { type: "artifact", artifact: stream }, { type: "message", message },
+        { type: "artifact", artifact: answer },
+      ]} />);
+
+      expect(view.container.querySelectorAll(".aion-chat__message--assistant")).toHaveLength(1);
+      expect(view.container.querySelector(".aion-chat__message--assistant")).toBe(bubble);
+      expect(screen.getByText("Final artifact answer")).toBeTruthy();
+      expect(screen.getByRole("link", { name: "Final report" })).toBeTruthy();
+      expect(screen.queryByText("Partial streamed answer")).toBeNull();
+      expect(screen.queryByText("Message fallback")).toBeNull();
+      expect(view.container.querySelector(".aion-chat__artifact")).toBeNull();
+    },
+  );
+
+  it.each(["unlinked", "missing-link", "different-task", "different-context", "user"])(
+    "retains messages that are not the answer artifact's source (%s)",
+    (variant) => {
+      const message: ChatMessage = {
+        id: variant === "unlinked" ? "other-reply" : "reply",
+        role: variant === "user" ? "user" : "assistant",
+        taskId: variant === "different-task" ? "other-task" : "task",
+        contextId: variant === "different-context" ? "other-context" : "context",
+        parts: [{ type: "text", text: "Same text" }], createdAt: "2026-10-22T12:00:00Z",
+      };
+      const artifact: ChatArtifact = {
+        id: "task:answer", artifactId: "aion:assistant-answer", taskId: "task", contextId: "context",
+        parts: message.parts, lastChunk: true,
+        metadata: variant === "missing-link" ? {} : { "aion:sourceMessageId": "reply" },
+      };
+      const view = render(<AionChatTranscript entries={[
+        { type: "message", message }, { type: "artifact", artifact },
+      ]} />);
+
+      expect(view.container.querySelectorAll('[data-entry-type="message"]')).toHaveLength(2);
+      expect(screen.getAllByText("Same text")).toHaveLength(2);
+    },
+  );
+
+  it("retains unrelated messages and artifacts beside the authoritative answer", () => {
+    const message: ChatMessage = {
+      id: "reply", role: "assistant", taskId: "task", contextId: "context",
+      parts: [{ type: "text", text: "The answer" }], createdAt: "2026-10-22T12:00:00Z",
+    };
+    const artifact: ChatArtifact = {
+      id: "task:answer", artifactId: "aion:assistant-answer", taskId: "task", contextId: "context",
+      parts: message.parts, lastChunk: true, metadata: { "aion:sourceMessageId": message.id },
+    };
+    const view = render(<AionChatTranscript entries={[
+      { type: "message", message },
+      { type: "artifact", artifact },
+      { type: "message", message: { ...message, id: "separate-reply" } },
+      { type: "artifact", artifact: { ...artifact, id: "task:report", artifactId: "report" } },
+    ]} />);
+
+    expect(view.container.querySelectorAll('[data-entry-type="message"]')).toHaveLength(2);
+    expect(view.container.querySelectorAll('[data-entry-type="artifact"]')).toHaveLength(1);
+    expect(screen.getAllByText("The answer")).toHaveLength(3);
   });
 
   it("uses the message slot for streamed responses and retains artifact slots for thinking", () => {

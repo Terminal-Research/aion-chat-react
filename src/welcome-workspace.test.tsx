@@ -10,9 +10,14 @@ import { WELCOME_MESSAGE_EXTENSION_URI } from "./welcome";
 
 afterEach(cleanup);
 
-it.each([false, true])(
-  "shows one welcome immediately and retains ordered replies after reopening (artifacts=%s)",
-  async (restoreArtifacts) => {
+it.each([
+  { restoreArtifacts: false, artifactId: "aion:stream-delta" },
+  { restoreArtifacts: true, artifactId: "aion:stream-delta" },
+  { restoreArtifacts: false, artifactId: "aion:assistant-answer" },
+  { restoreArtifacts: true, artifactId: "aion:assistant-answer" },
+])(
+  "shows one welcome and retains ordered replies after reopening ($artifactId, artifacts=$restoreArtifacts)",
+  async ({ restoreArtifacts, artifactId }) => {
   const agent = { id: "agent", title: "Welcome agent", availability: "available" as const };
   const now = () => "2026-09-29T13:00:00Z";
   let nextId = 0;
@@ -37,7 +42,10 @@ it.each([false, true])(
         parts: [{ kind: "text", text: welcome ? "Hello from the agent" : `Answer ${sent.length - 1}` }],
         extensions: welcome ? [WELCOME_MESSAGE_EXTENSION_URI] : [],
       };
-      const artifact = { artifactId: "aion:stream-delta", taskId, parts: message.parts };
+      const artifact = {
+        artifactId, taskId, parts: message.parts,
+        metadata: { "aion:sourceMessageId": message.messageId },
+      };
       history.push(request, message);
       artifacts.unshift(artifact);
       yield await Promise.resolve({ data: { a2aRpc: {
@@ -89,10 +97,8 @@ it.each([false, true])(
   const texts = () => [...restored.querySelectorAll("[data-entry-type]")]
     .map((entry) => entry.querySelector(".aion-chat__message-content, .aion-chat__artifact-content")?.textContent);
   expect(texts()).toEqual(["Hello from the agent", "First question", "Answer 1"]);
-  if (!restoreArtifacts) {
-    expect(restored.querySelector(".aion-chat__message--welcome")?.textContent)
-      .toContain("Hello from the agent");
-  }
+  expect(restored.querySelector(".aion-chat__message--welcome")?.textContent)
+    .toContain("Hello from the agent");
   expect(sent).toHaveLength(2);
 
   fireEvent.change(screen.getByRole("textbox", { name: "Chat message" }), {
