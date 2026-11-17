@@ -132,37 +132,112 @@ describe("workspace conversation updates", () => {
         ?.title,
     ).toBe("Current");
   });
-  it("tracks multiple tasks and expires success without hiding pending work", () => {
+  it("clears stale working activity when the latest task completes", () => {
     const store = createConversationUpdatesStore();
-    const activity = () =>
-      conversationActivity(
-        selectConversationThread(store.getState(), "catalog-agent", "context"),
-      );
-    store
-      .getState()
-      .apply(
-        { reset: true, updates: [task("one", working), task("two", working)] },
-        agentId,
-        0,
-      );
-    store
-      .getState()
-      .apply({ reset: false, updates: [task("one", completed)] }, agentId, 10);
+    const activity = () => conversationActivity(selectConversationThread(
+      store.getState(), "catalog-agent", "context",
+    ));
+    store.getState().apply({ reset: false, updates: [
+      task("stuck", working),
+      task("latest", working, "2026-09-12T12:01:00Z"),
+    ] }, agentId, 0);
     expect(activity()).toBe("pending");
-    store
-      .getState()
-      .apply({ reset: false, updates: [task("two", completed)] }, agentId, 20);
+    const finished = task("latest", completed, "2026-09-12T12:02:00Z");
+    store.getState().apply({ reset: false, updates: [finished] }, agentId, 10);
     expect(activity()).toBe("succeeded");
-    store.getState().expire(1_221);
+    expect(selectConversationThread(store.getState(), "catalog-agent", "context")
+      ?.tasks.stuck?.state).toBe(working);
+    store.getState().expire(1_211);
     expect(activity()).toBeUndefined();
-    store
-      .getState()
-      .apply(
-        { reset: false, updates: [task("two", completed)] },
-        agentId,
-        1_222,
-      );
+    store.getState().apply({ reset: false, updates: [finished] }, agentId, 1_212);
     expect(activity()).toBeUndefined();
+    store.getState().apply({ reset: true, updates: [task("stuck", working)] }, agentId, 1_213);
+    expect(activity()).toBeUndefined();
+  });
+
+  it.each([
+    ["INPUT_REQUIRED", "requires-action"],
+    ["AUTH_REQUIRED", "requires-action"],
+    ["FAILED", undefined],
+    ["REJECTED", undefined],
+    ["CANCELLED", undefined],
+    ["CANCELED", undefined],
+  ] as const)("uses the latest task's %s state despite older working tasks", (state, expected) => {
+    const store = createConversationUpdatesStore();
+    store.getState().apply({ reset: false, updates: [
+      task("stuck", working),
+      task("latest", `TASK_STATE_${state}`, "2026-09-12T12:01:00Z"),
+    ] }, agentId, 0);
+    expect(conversationActivity(selectConversationThread(
+      store.getState(), "catalog-agent", "context",
+    ))).toBe(expected);
+  });
+
+  it("keeps the latest task working when an older completion arrives late", () => {
+    const store = createConversationUpdatesStore();
+    store.getState().apply({ reset: false, updates: [
+      task("latest", working, "2026-09-12T12:02:00Z"),
+      task("older", completed),
+    ] }, agentId, 0);
+    expect(conversationActivity(selectConversationThread(
+      store.getState(), "catalog-agent", "context",
+    ))).toBe("pending");
+    expect(selectConversationThread(store.getState(), "catalog-agent", "context")
+      ?.completedUntil).toBe(0);
+  });
+
+  it("does not let delayed older tasks change activity or replay completion", () => {
+    const store = createConversationUpdatesStore();
+    const activity = () => conversationActivity(selectConversationThread(
+      store.getState(), "catalog-agent", "context",
+    ));
+    store.getState().apply({ reset: false, updates: [
+      task("latest", completed, "2026-09-12T12:02:00Z"),
+    ] }, agentId, 0);
+    store.getState().expire(1_201);
+    store.getState().apply({ reset: false, updates: [
+      task("older", working),
+      task("older", completed, "2026-09-12T12:01:00Z"),
+      task("stuck", working),
+    ] }, agentId, 1_202);
+    expect(activity()).toBeUndefined();
+  });
+
+  it("uses persisted timestamps when a reset delivers tasks out of order", () => {
+    const store = createConversationUpdatesStore();
+    store.getState().apply({ reset: true, updates: [
+      task("latest", "TASK_STATE_INPUT_REQUIRED", "2026-09-12T12:01:00Z"),
+      task("older", working),
+    ] }, agentId, 0);
+    expect(conversationActivity(selectConversationThread(
+      store.getState(), "catalog-agent", "context",
+    ))).toBe("requires-action");
+  });
+
+  it("uses the last accepted update for equal timestamps, including numeric task IDs", () => {
+    const store = createConversationUpdatesStore();
+    const activity = () => conversationActivity(selectConversationThread(
+      store.getState(), "catalog-agent", "context",
+    ));
+    store.getState().apply({ reset: false, updates: [
+      task("20", working), task("1", completed),
+    ] }, agentId, 0);
+    expect(activity()).toBe("succeeded");
+    store.getState().apply({ reset: false, updates: [
+      task("20", "TASK_STATE_AUTH_REQUIRED"),
+    ] }, agentId, 10);
+    expect(activity()).toBe("requires-action");
+  });
+
+  it("clears an earlier completion flash when a newer task fails", () => {
+    const store = createConversationUpdatesStore();
+    store.getState().apply({ reset: false, updates: [
+      task("older", completed),
+      task("latest", "TASK_STATE_FAILED", "2026-09-12T12:01:00Z"),
+    ] }, agentId, 0);
+    expect(conversationActivity(selectConversationThread(
+      store.getState(), "catalog-agent", "context",
+    ))).toBeUndefined();
   });
 
   it.each(["FAILED", "REJECTED", "CANCELLED"])(

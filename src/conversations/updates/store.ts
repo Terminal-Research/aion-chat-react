@@ -25,6 +25,8 @@ export interface ConversationTask {
 /** Canonical state is keyed by environment/context, not by catalog position. */
 export interface ConversationThread {
   readonly tasks: Readonly<Record<string, ConversationTask>>;
+  /** Task with the newest accepted updatedAt; the last delivery breaks ties. */
+  readonly latestTaskId?: string;
   readonly completedUntil: number;
   readonly summaryCheckpoint?: number;
   readonly metadata?: ConversationMetadata;
@@ -99,6 +101,11 @@ export function createConversationUpdatesStore() {
                       isTerminalTask(task.state),
                     ),
                   ),
+                  latestTaskId:
+                    thread.latestTaskId &&
+                    isTerminalTask(thread.tasks[thread.latestTaskId]?.state ?? "")
+                      ? thread.latestTaskId
+                      : undefined,
                   completedUntil: 0,
                 },
               ]),
@@ -165,8 +172,22 @@ export function createConversationUpdatesStore() {
             // Terminal tasks cannot regress when equal-time deliveries reorder.
             if (older || duplicate || (prior && isTerminalTask(prior.state)))
               continue;
+            const latestTask = thread.latestTaskId
+              ? thread.tasks[thread.latestTaskId]
+              : undefined;
+            const isLatest =
+              !latestTask ||
+              Date.parse(update.updatedAt) >= Date.parse(latestTask.updatedAt);
+            let completedUntil = thread.completedUntil;
+            if (isLatest) {
+              completedUntil =
+                !frame.reset && update.taskState === "TASK_STATE_COMPLETED"
+                  ? now + 1_200
+                  : 0;
+            }
             threads[key] = {
               ...thread,
+              latestTaskId: isLatest ? update.taskId : thread.latestTaskId,
               tasks: {
                 ...thread.tasks,
                 [update.taskId]: {
@@ -174,10 +195,7 @@ export function createConversationUpdatesStore() {
                   updatedAt: update.updatedAt,
                 },
               },
-              completedUntil:
-                !frame.reset && update.taskState === "TASK_STATE_COMPLETED"
-                  ? now + 1_200
-                  : thread.completedUntil,
+              completedUntil,
             };
           }
         }

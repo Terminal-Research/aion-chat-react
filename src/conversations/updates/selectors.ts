@@ -26,21 +26,19 @@ export function selectConversationMetadata(
   return read && (!live || read.revision >= live.revision) ? read : live;
 }
 
-/** Pending work wins over a different task's success; failures never imply success. */
+/** Derive thread activity from its latest accepted task; older tasks cannot keep it busy. */
 export function conversationActivity(
   thread: ReturnType<typeof selectConversationThread>,
 ): AionActivityPhase | undefined {
-  const active = Object.values(thread?.tasks ?? {}).filter(
-    (task) => !isTerminalTask(task.state),
-  );
+  const task = thread?.latestTaskId ? thread.tasks[thread.latestTaskId] : undefined;
+  if (!task) return undefined;
   if (
-    active.some(
-      (task) =>
-        task.state !== "TASK_STATE_INPUT_REQUIRED" &&
-        task.state !== "TASK_STATE_AUTH_REQUIRED",
-    )
+    task.state === "TASK_STATE_INPUT_REQUIRED" ||
+    task.state === "TASK_STATE_AUTH_REQUIRED"
   )
-    return "pending";
-  if (active.length) return "requires-action";
-  return thread?.completedUntil ? "succeeded" : undefined;
+    return "requires-action";
+  if (!isTerminalTask(task.state)) return "pending";
+  return task.state === "TASK_STATE_COMPLETED" && thread?.completedUntil
+    ? "succeeded"
+    : undefined;
 }

@@ -156,6 +156,36 @@ describe("conversation subscription lifecycle", () => {
     expect(screen.queryByRole("status")).toBeNull();
   });
 
+  it("clears the thread spinner after a newer task succeeds while an older task stays working", async () => {
+    vi.useFakeTimers();
+    const channel = feed("user");
+    const view = render(<View source={channel.source} />);
+    await act(() => channel.send({
+      reset: false,
+      updates: [{ ...update, kind: "TaskStatusUpdated", taskId: "stuck",
+        taskState: "TASK_STATE_WORKING" }],
+    }));
+    expect(screen.getByText("Task in progress")).toBeTruthy();
+    view.rerender(<View source={channel.source} pending="context" />);
+    await act(() => channel.send({
+      reset: false,
+      updates: [{ ...update, kind: "TaskStatusUpdated", taskId: "latest",
+        taskState: "TASK_STATE_COMPLETED", updatedAt: "2026-09-12T12:01:00Z" }],
+    }));
+    expect(screen.getByText("Task in progress")).toBeTruthy();
+    view.rerender(<View source={channel.source} />);
+    expect(screen.queryByText("Task in progress")).toBeNull();
+    expect(screen.getByText("Task completed")).toBeTruthy();
+    await act(async () => vi.advanceTimersByTimeAsync(1_201));
+    expect(screen.queryByRole("status")).toBeNull();
+    await act(() => channel.send({
+      reset: true,
+      updates: [{ ...update, kind: "TaskStatusUpdated", taskId: "stuck",
+        taskState: "TASK_STATE_WORKING" }],
+    }));
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+
   it("expires completion and replacement motion without duplicate flashes", async () => {
     vi.useFakeTimers();
     const channel = feed("user");
