@@ -50,6 +50,7 @@ function socketPeer(closeCode: number, acceptBeforeClose = 1) {
                 contextId: "context", parts: [{ kind: "text", text: "Hello" }],
                 extensions: [uri] } },
           } } });
+          this.receive({ type: "complete", id: message.id });
         }
       }
     }

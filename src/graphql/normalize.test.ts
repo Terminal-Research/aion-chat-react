@@ -13,7 +13,7 @@ function context() {
 }
 
 describe("normalizeAionChatGraphQLResponse", () => {
-  it("normalizes and completes a final Aion stream-delta artifact", () => {
+  it("normalizes a final artifact without completing its response", () => {
     const events = normalizeAionChatGraphQLResponse(
       {
         a2aRpc: {
@@ -54,12 +54,6 @@ describe("normalizeAionChatGraphQLResponse", () => {
           name: undefined,
           description: undefined,
         },
-      },
-      {
-        type: "run.completed",
-        eventId: "event-2",
-        requestId: "request-1",
-        occurredAt: "2026-08-31T12:00:00.000Z",
       },
     ]);
   });

@@ -676,6 +676,7 @@ async function* directStream(
       throw httpError(response);
     }
 
+    let terminal = false;
     for await (const payload of responsePayloads(response, signal)) {
       signal.throwIfAborted();
       const context = normalizationContext(request, createEventId, now);
@@ -685,11 +686,22 @@ async function* directStream(
         context,
       )) {
         signal.throwIfAborted();
-        yield event;
-        if (isTerminalChatTransportEvent(event)) {
-          return;
-        }
+        terminal ||= isTerminalChatTransportEvent(event);
+        // A terminal task can still be followed by its final snapshot.
+        // Only emit request completion after the response body ends.
+        if (event.type !== "run.completed") yield event;
+        if (event.type === "run.failed") return;
       }
+    }
+    signal.throwIfAborted();
+    if (terminal) {
+      yield {
+        type: "run.completed",
+        eventId: createEventId(),
+        requestId: request.requestId,
+        occurredAt: now(),
+      };
+      return;
     }
     throw transportError(
       "incomplete_a2a_stream",

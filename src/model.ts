@@ -173,6 +173,7 @@ export interface ChatRun {
   readonly attempt: number;
   readonly status: ChatTurnStatus;
   readonly startedAt: string;
+  /** When the response stream settled, including failed or paused outcomes. */
   readonly completedAt?: string;
   readonly error?: ChatError;
 }

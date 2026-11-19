@@ -76,7 +76,7 @@ export interface ChatArtifactUpdatedEvent extends ChatTransportEventBase {
   readonly append: boolean;
 }
 
-/** Marks the active run complete after its stream settles successfully. */
+/** Settles the response stream, preserving any reported task outcome. */
 export interface ChatRunCompletedEvent extends ChatTransportEventBase {
   readonly type: "run.completed";
 }
@@ -104,7 +104,10 @@ export type ChatTransportEvent =
   | ChatRunFailedEvent
   | ChatRunCanceledEvent;
 
-/** Whether an event ends the request and releases its active run. */
+/**
+ * Whether an event supplies a terminal response. Consumers still drain the
+ * request stream, which may include a final task snapshot before it closes.
+ */
 export function isTerminalChatTransportEvent(
   event: ChatTransportEvent,
 ): boolean {

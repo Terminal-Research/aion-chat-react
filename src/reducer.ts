@@ -222,9 +222,7 @@ function updateActiveRun(
     activeRun: {
       ...state.activeRun,
       status,
-      ...(TERMINAL_RUN_STATUSES.has(status)
-        ? { completedAt: occurredAt }
-        : {}),
+      completedAt: occurredAt,
     },
   };
 }
@@ -288,8 +286,22 @@ export function reduceChatConversation(
     return state;
   }
 
-  if (TERMINAL_RUN_STATUSES.has(state.activeRun.status)) {
+  if (
+    state.activeRun.completedAt ||
+    TERMINAL_RUN_STATUSES.has(state.activeRun.status)
+  ) {
     return state;
+  }
+
+  if (event.type === "task.received" || event.type === "task.status-changed") {
+    const turn = state.turns.find((candidate) => candidate.id === event.turnId);
+    const status = turnStatusForTask(
+      event.type === "task.received" ? event.task.status.state : event.state,
+    );
+    // Accept final content while draining, without reopening a finished task.
+    if (turn && turn.status !== "running" && turn.status !== status) {
+      return state;
+    }
   }
 
   let next = withSeenEvent(state, event);
@@ -366,7 +378,7 @@ export function reduceChatConversation(
           );
         }),
       };
-      return updateActiveRun(next, status, event.occurredAt);
+      return next;
     }
 
     case "task.status-changed": {
@@ -424,7 +436,7 @@ export function reduceChatConversation(
             : withTask;
         }),
       };
-      return updateActiveRun(next, status, event.occurredAt);
+      return next;
     }
 
     case "artifact.updated": {
@@ -457,16 +469,23 @@ export function reduceChatConversation(
       };
     }
 
-    case "run.completed":
-      next = updateActiveRun(next, "completed", event.occurredAt);
+    case "run.completed": {
+      const turn = next.turns.find(
+        (candidate) => candidate.id === next.activeRun!.turnId,
+      );
+      // Stream completion preserves a failed, canceled, or interrupted task.
+      const status = !turn || turn.status === "running"
+        ? "completed" : turn.status;
+      next = updateActiveRun(next, status, event.occurredAt);
       return {
         ...next,
         turns: updateTurn(next.turns, next.activeRun!.turnId, (turn) => ({
           ...turn,
-          status: "completed",
+          status,
           updatedAt: event.occurredAt,
         })),
       };
+    }
 
     case "run.failed":
       next = updateActiveRun(next, "failed", event.occurredAt);

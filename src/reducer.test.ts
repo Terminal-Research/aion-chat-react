@@ -111,7 +111,12 @@ describe("reduceChatConversation", () => {
       message: assistantMessage,
     });
 
-    expect(result.activeRun?.status).toBe("input-required");
+    expect(result.activeRun?.status).toBe("running");
+    const settled = reduceChatConversation(result, {
+      type: "run.completed", eventId: "event-complete-1",
+      requestId: "request-1", occurredAt: UPDATED_AT,
+    });
+    expect(settled.activeRun?.status).toBe("input-required");
     expect(result.turns[0]).toMatchObject({
       status: "input-required",
       taskIds: ["task-1"],
@@ -174,6 +179,45 @@ describe("reduceChatConversation", () => {
       "message-status-1",
     ]);
   });
+
+  it.each(["completed", "input-required", "auth-required"] as const)(
+    "accepts final content without reopening a %s task", (outcome) => {
+      const initial = reduceChatConversation(
+        createChatConversationState("conversation-1"), startedEvent(),
+      );
+      const completed: ChatTransportEvent = {
+        type: "task.status-changed", eventId: "task-completed",
+        requestId: "request-1", occurredAt: UPDATED_AT, turnId: "turn-1",
+        taskId: "task-1", contextId: "context-1", state: outcome, final: true,
+      };
+      const draining = reduceChatConversation(initial, completed);
+      expect(draining.activeRun?.status).toBe("running");
+      expect(draining.activeRun?.completedAt).toBeUndefined();
+      const stale: ChatTransportEvent = {
+        ...completed, eventId: "stale-working", state: "working", final: false,
+      };
+      expect(reduceChatConversation(draining, stale)).toBe(draining);
+      const finalSnapshot: ChatTransportEvent = {
+        type: "task.received", eventId: "final-snapshot",
+        requestId: "request-1", occurredAt: UPDATED_AT, turnId: "turn-1",
+        task: { id: "task-1", contextId: "context-1", status: { state: outcome },
+          history: [{ id: "answer", role: "assistant", createdAt: UPDATED_AT,
+            parts: [{ type: "text", text: "Final answer" }] }], artifactIds: [] },
+      };
+      const final = reduceChatConversation(draining, finalSnapshot);
+      expect(final.messages.at(-1)?.id).toBe("answer");
+      expect(reduceChatConversation(final, finalSnapshot)).toBe(final);
+      const settled = reduceChatConversation(final, {
+        type: "run.completed", eventId: "stream-ended",
+        requestId: "request-1", occurredAt: UPDATED_AT,
+      });
+      expect(settled.activeRun?.status).toBe(outcome);
+      expect(reduceChatConversation(settled, {
+        ...finalSnapshot, eventId: "after-closure",
+      })).toBe(settled);
+      expect(reduceChatConversation(settled, stale)).toBe(settled);
+    },
+  );
 
   it("settles completed, failed, and canceled runs distinctly", () => {
     const cases = [

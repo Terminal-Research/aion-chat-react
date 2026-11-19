@@ -7,8 +7,6 @@ import type {
   ChatTaskState,
 } from "../model";
 
-const STREAM_ARTIFACT_IDS = new Set(["aion:stream-delta", "stream_delta"]);
-
 /** Coordinates required to normalize one A2A response payload. */
 export interface AionResponseNormalizationContext {
   readonly requestId: string;
@@ -274,22 +272,6 @@ function normalizeArtifact(
   };
 }
 
-function streamArtifactCompleted(artifact: ChatArtifact): boolean {
-  if (!STREAM_ARTIFACT_IDS.has(artifact.artifactId)) {
-    return false;
-  }
-  const rawStatus = artifact.metadata?.status;
-  const rawReason =
-    artifact.metadata?.statusReason ?? artifact.metadata?.status_reason;
-  const status = typeof rawStatus === "string" ? rawStatus.toLowerCase() : "";
-  const reason = typeof rawReason === "string" ? rawReason.toLowerCase() : "";
-  return (
-    artifact.lastChunk ||
-    status === "finalized" ||
-    reason === "complete_message"
-  );
-}
-
 function messageEvent(
   message: ChatMessage,
   context: AionResponseNormalizationContext,
@@ -468,17 +450,7 @@ export function normalizeAionResponse(
       artifact,
       append: booleanField(result, "append"),
     };
-    return streamArtifactCompleted(artifact)
-      ? [
-          update,
-          {
-            type: "run.completed",
-            eventId: context.createEventId(),
-            requestId: context.requestId,
-            occurredAt: context.occurredAt,
-          },
-        ]
-      : [update];
+    return [update];
   }
   return [];
 }

@@ -56,14 +56,22 @@ export async function* welcomeEvents(
     userMessage: message,
   };
   try {
+    let terminal = false;
     for await (const event of transport.stream(request, { signal })) {
       if (signal.aborted) return;
       if (event.requestId !== request.requestId) continue;
       yield event.type === "run.failed"
         ? { ...event, error: { ...event.error, retryable: false } } : event;
-      if (isTerminalChatTransportEvent(event)) return;
+      terminal ||= isTerminalChatTransportEvent(event);
     }
     if (signal.aborted) return;
+    if (terminal) {
+      yield {
+        type: "run.completed", eventId: createId(), occurredAt: now(),
+        requestId: request.requestId,
+      };
+      return;
+    }
     throw new Error("The welcome request ended before its response completed.");
   } catch (error) {
     if (signal.aborted) return;

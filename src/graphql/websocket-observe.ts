@@ -29,7 +29,12 @@ export async function* observeGraphQLWebSocket<TData>(
   // resubscribe. Other operations may keep using the shared reconnect loop.
   const unlisten = stopOnClose?.on("closed", (error) => {
     void close().catch(() => undefined);
-    void iterator.throw?.(error).catch(() => undefined);
+    // graphql-ws may close a lazy socket before delivering iterator completion.
+    // Let normal closure settle naturally; an incomplete response still fails
+    // in the chat transport. Unexpected disconnects remain immediate failures.
+    const normal = typeof error === "object" && error !== null
+      && "code" in error && error.code === 1000;
+    if (!normal) void iterator.throw?.(error).catch(() => undefined);
   });
   signal?.addEventListener("abort", onAbort, { once: true });
 

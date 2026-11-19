@@ -14,7 +14,7 @@ byte-level noise while material growth requires an explicit review.
 
 | Entry | Baseline raw | Baseline gzip | Raw budget | Gzip budget |
 | --- | ---: | ---: | ---: | ---: |
-| Core `dist/index.js` | 115.1 kB | 31.3 kB | 113 KiB | 31 KiB |
+| Core `dist/index.js` | 117.3 kB | 31.8 kB | 116 KiB | 31.5 KiB |
 | Profile `dist/profile.js` | 15.1 kB | 5.2 kB | 18 KiB | 6 KiB |
 | Direct A2A `dist/a2a/direct.js` | 32.5 kB | 10.4 kB | 33 KiB | 11 KiB |
 | Apollo `dist/graphql/apollo.js` | 42.0 kB | 13.3 kB | 42 KiB | 13.25 KiB |
@@ -75,3 +75,13 @@ cancellation to the direct entry. It measures 32,534 raw / 10,404 gzip bytes.
 The React notice boundary measures 115,075 raw / 31,266 gzip bytes in core,
 requiring 1 KiB more raw allowance (gzip is unchanged). No transport code enters
 core and no dependency is added; all other entry budgets remain unchanged.
+
+
+The 2026-11-19 response-completion remeasurement separates task status from
+request completion and keeps final snapshots readable until response closure.
+Core measures 117,308 raw / 31,835 gzip bytes, a 630 / 112 byte increase over
+an isolated build of `ce036bb` (116,678 / 31,723). That unchanged baseline
+already exceeded the old raw allowance. Only core's allowance increases;
+Direct A2A decreases by 308 / 79 bytes and both GraphQL entries decrease by
+263 / 62 bytes. No runtime dependency is added and transport code stays out
+of core.

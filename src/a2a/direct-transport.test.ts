@@ -194,6 +194,7 @@ describe("createDirectAionA2ATransport", () => {
       "task.received",
       "artifact.updated",
       "task.status-changed",
+      "run.completed",
     ]);
     expect(trace.requestIdsMatch).toBe(true);
     expect(fetcher).toHaveBeenCalledTimes(2);
@@ -254,7 +255,7 @@ describe("createDirectAionA2ATransport", () => {
           "data: \"role\":\"ROLE_AGENT\",\n",
           "data: \"parts\":[{\"text\":\"Done\"}]}}\n\n",
         ],
-        false,
+        true,
         () => {
           streamCanceled = true;
         },
@@ -286,7 +287,7 @@ describe("createDirectAionA2ATransport", () => {
       id: "request-1",
       method: "SendStreamingMessage",
     });
-    expect(streamCanceled).toBe(true);
+    expect(streamCanceled).toBe(false);
   });
 
   it("does not dispatch without required credentials", async () => {

@@ -194,6 +194,7 @@ async function* streamAionChatGraphQL(
   for (const method of methods) {
     let receivedPayload = false;
     let retryUnary = false;
+    let terminal = false;
     try {
       const variables = buildAionChatGraphQLVariables(
         request,
@@ -240,10 +241,10 @@ async function* streamAionChatGraphQL(
           createEventId: eventId,
         });
         for (const event of events) {
-          yield event;
-          if (isTerminalChatTransportEvent(event)) {
-            return;
-          }
+          terminal ||= isTerminalChatTransportEvent(event);
+          // Await this GraphQL operation's completion, not the shared socket.
+          if (event.type !== "run.completed") yield event;
+          if (event.type === "run.failed") return;
         }
       }
     } catch (error) {
@@ -267,6 +268,15 @@ async function* streamAionChatGraphQL(
       return;
     }
     if (!retryUnary) {
+      if (terminal) {
+        yield {
+          type: "run.completed",
+          eventId: eventId(),
+          requestId: request.requestId,
+          occurredAt: timestamp(),
+        };
+        return;
+      }
       yield failedEvent(
         request,
         {

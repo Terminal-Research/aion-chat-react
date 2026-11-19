@@ -34,7 +34,9 @@ export interface AionChatTransport {
   ): Promise<AionAgentCapabilities>;
 
   /**
-   * Opens one response stream.
+   * Opens one response stream. Task status and artifact completion do not end
+   * iteration; consume through stream closure to receive any final snapshot.
+   * Emit run.completed only when the response stream has settled.
    *
    * @param request - Normalized outbound request.
    * @param options - Cancellation options owned by the controller.

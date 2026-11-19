@@ -475,10 +475,7 @@ export function AionChatProvider({
           if (event.type === "run.failed") {
             onError?.(event.error);
           }
-          terminal = isTerminalChatTransportEvent(event);
-          if (terminal) {
-            break;
-          }
+          terminal ||= isTerminalChatTransportEvent(event);
         }
 
         if (!mountedRef.current) {
@@ -494,7 +491,16 @@ export function AionChatProvider({
               occurredAt: now(),
             }),
           );
-        } else if (!terminal) {
+        } else if (terminal) {
+          updateConversation((state) =>
+            reduceChatConversation(state, {
+              type: "run.completed",
+              eventId: createId(),
+              requestId,
+              occurredAt: now(),
+            }),
+          );
+        } else {
           const error: ChatError = {
             code: "incomplete_a2a_stream",
             message: "The A2A stream closed before a terminal response.",
