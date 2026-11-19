@@ -64,6 +64,8 @@ export interface ChatMessage {
   readonly extensions?: readonly string[];
   /** True for accumulated message deltas; complete message snapshots omit it. */
   readonly streaming?: boolean;
+  /** Status or internal-event presentation, separate from the answer. */
+  readonly statusOnly?: boolean;
   readonly id: MessageId;
   readonly role: ChatMessageRole;
   readonly parts: readonly ChatPart[];

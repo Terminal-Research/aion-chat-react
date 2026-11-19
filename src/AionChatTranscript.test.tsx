@@ -5,7 +5,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AionChatTranscript, type AionChatTranscriptEntry } from "./AionChatTranscript";
-import type { ChatArtifact, ChatMessage } from "./model";
+import type { ChatArtifact, ChatMessage, ChatPart } from "./model";
 
 afterEach(cleanup);
 
@@ -144,11 +144,11 @@ describe("AionChatTranscript", () => {
     },
   );
 
-  it.each(["unlinked", "missing-link", "different-task", "different-context", "user"])(
-    "retains messages that are not the answer artifact's source (%s)",
+  it.each(["different-task", "different-context", "user"])(
+    "retains messages outside the answer artifact's response (%s)",
     (variant) => {
       const message: ChatMessage = {
-        id: variant === "unlinked" ? "other-reply" : "reply",
+        id: "reply",
         role: variant === "user" ? "user" : "assistant",
         taskId: variant === "different-task" ? "other-task" : "task",
         contextId: variant === "different-context" ? "other-context" : "context",
@@ -157,7 +157,7 @@ describe("AionChatTranscript", () => {
       const artifact: ChatArtifact = {
         id: "task:answer", artifactId: "aion:assistant-answer", taskId: "task", contextId: "context",
         parts: message.parts, lastChunk: true,
-        metadata: variant === "missing-link" ? {} : { "aion:sourceMessageId": "reply" },
+        metadata: { "aion:sourceMessageId": "reply" },
       };
       const view = render(<AionChatTranscript entries={[
         { type: "message", message }, { type: "artifact", artifact },
@@ -180,7 +180,7 @@ describe("AionChatTranscript", () => {
     const view = render(<AionChatTranscript entries={[
       { type: "message", message },
       { type: "artifact", artifact },
-      { type: "message", message: { ...message, id: "separate-reply" } },
+      { type: "message", message: { ...message, id: "separate-reply", taskId: "other-task" } },
       { type: "artifact", artifact: { ...artifact, id: "task:report", artifactId: "report" } },
     ]} />);
 
@@ -188,6 +188,70 @@ describe("AionChatTranscript", () => {
     expect(view.container.querySelectorAll('[data-entry-type="artifact"]')).toHaveLength(1);
     expect(screen.getAllByText("The answer")).toHaveLength(3);
   });
+
+  it.each([undefined, "missing-message", "fallback-1"])(
+    "selects the whole answer without relying on source provenance (%s)",
+    (sourceId) => {
+      const fallback: ChatMessage = {
+        id: "fallback-1", role: "assistant", taskId: "task", contextId: "context",
+        parts: [
+          { type: "text", text: "Message fallback" },
+          { type: "file", file: { name: "Old file", url: "https://files.example/old.pdf" } },
+        ], createdAt: "2026-11-19T12:00:00Z",
+      };
+      const stream: ChatArtifact = {
+        id: "task:stream", artifactId: "aion:stream-delta", taskId: "task", contextId: "context",
+        parts: [{ type: "text", text: "Stream fallback" }], lastChunk: false,
+      };
+      const answer: ChatArtifact = {
+        ...stream, id: "task:answer", artifactId: "aion:assistant-answer", lastChunk: true,
+        metadata: sourceId ? { "aion:sourceMessageId": sourceId } : undefined,
+        parts: [{ type: "text", text: "Canonical answer" }],
+      };
+      const view = render(<AionChatTranscript entries={[
+        { type: "artifact", artifact: stream },
+        { type: "message", message: fallback },
+        { type: "message", message: { ...fallback, id: "fallback-2" } },
+        { type: "artifact", artifact: answer },
+      ]} />);
+      expect(screen.getAllByText("Canonical answer")).toHaveLength(1);
+      expect(screen.queryByText("Message fallback")).toBeNull();
+      expect(screen.queryByText("Stream fallback")).toBeNull();
+      expect(screen.queryByRole("link", { name: "Old file" })).toBeNull();
+      expect(view.container.querySelectorAll(".aion-chat__message--assistant")).toHaveLength(1);
+    },
+  );
+
+  it.each([
+    { name: "empty", parts: [] },
+    { name: "whitespace", parts: [{ type: "text", text: "  " }] },
+    { name: "file-only", parts: [{ type: "file", file: {
+      name: "Canonical file", url: "https://files.example/canonical.pdf",
+    } }] },
+  ] satisfies { name: string; parts: ChatPart[] }[])(
+    "does not supplement a $name answer with message or stream content",
+    ({ name, parts }) => {
+      const stream: ChatArtifact = {
+        id: "task:stream", artifactId: "aion:stream-delta", taskId: "task", contextId: "context",
+        parts: [{ type: "text", text: "Stream fallback" }], lastChunk: false,
+      };
+      const message: ChatMessage = {
+        id: "fallback", role: "assistant", taskId: "task", contextId: "context",
+        parts: [{ type: "text", text: "Message fallback" }], createdAt: "2026-11-19T12:00:00Z",
+      };
+      const view = render(<AionChatTranscript entries={[{ type: "artifact", artifact: stream }]} />);
+      view.rerender(<AionChatTranscript entries={[
+        { type: "artifact", artifact: stream }, { type: "message", message },
+        { type: "artifact", artifact: {
+          ...stream, id: "task:answer", artifactId: "aion:assistant-answer", parts, lastChunk: true,
+        } },
+      ]} />);
+      expect(screen.getByRole("log").textContent).not.toContain("fallback");
+      if (name === "file-only") {
+        expect(screen.getByRole("link", { name: "Canonical file" })).toBeTruthy();
+      }
+    },
+  );
 
   it("uses the message slot for streamed responses and retains artifact slots for thinking", () => {
     const artifact: ChatArtifact = {

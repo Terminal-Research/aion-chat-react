@@ -295,13 +295,18 @@ function normalizeTask(
   const contextId =
     stringField(value, "contextId", "context_id") || context.requestId;
   const rawStatus = record(value.status) ?? {};
+  const state = taskState(rawStatus.state);
+  const rawStatusMessage = normalizeMessage(rawStatus.message, context);
+  const statusMessage = rawStatusMessage && state !== "completed"
+    ? { ...rawStatusMessage, statusOnly: true } : rawStatusMessage;
   const history = Array.isArray(value.history)
     ? value.history.flatMap((item) => {
         const message = normalizeMessage(item, context);
-        return message ? [message] : [];
+        if (!message) return [];
+        return [statusMessage?.statusOnly && message.id === statusMessage.id
+          ? { ...message, statusOnly: true } : message];
       })
     : [];
-  const statusMessage = normalizeMessage(rawStatus.message, context);
   const artifacts = Array.isArray(value.artifacts)
     ? value.artifacts.flatMap((item) => {
         const artifact = normalizeArtifact(
@@ -318,7 +323,7 @@ function normalizeTask(
     id: taskId,
     contextId,
     status: {
-      state: taskState(rawStatus.state),
+      state,
       message: statusMessage,
       timestamp:
         stringField(rawStatus, "timestamp") || context.occurredAt,

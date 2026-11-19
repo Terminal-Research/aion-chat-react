@@ -9,6 +9,7 @@ import { normalizeAionResponse } from "./a2a/normalize";
 import { createApolloAionChatTransport } from "./graphql/apollo-transport";
 import type { AionChatGraphQLSubscriptionData } from "./graphql/types";
 import { useAionChat } from "./hooks";
+import { createAionConversationSnapshot, parseAionConversationSnapshot } from "./conversations/snapshot";
 import { createChatConversationState, getChatText } from "./model";
 import { reduceChatConversation } from "./reducer";
 import type { AionChatController } from "./AionChatProvider";
@@ -17,9 +18,13 @@ import { welcomeEvents, WELCOME_MESSAGE_EXTENSION_URI } from "./welcome";
 const AGENT = { id: "agent", title: "Agent", availability: "available" as const };
 const TASK = { id: "task", contextId: "context" };
 const DRAFT = "Draft-only streamed response.";
+const MESSAGE_FALLBACK = "Final message fallback, superseded by the artifact.";
 const ANSWER = "Final canonical answer from assistant artifact.";
 const FINAL_TASK = {
-  kind: "task", ...TASK, status: { state: "completed" }, history: [],
+  kind: "task", ...TASK, status: { state: "completed" }, history: [{
+    kind: "message", messageId: "final-message", role: "agent", taskId: TASK.id,
+    contextId: TASK.contextId, parts: [{ kind: "text", text: MESSAGE_FALLBACK }],
+  }],
   artifacts: [
     { artifactId: "aion:stream-delta", parts: [{ kind: "text", text: DRAFT }] },
     { artifactId: "aion:assistant-answer", parts: [{ kind: "text", text: ANSWER }] },
@@ -121,14 +126,14 @@ async function client(binding: Binding) {
     chat = useAionChat();
     return <AionChatView />;
   }
-  render(<AionChatProvider transport={source.transport} defaultAgent={AGENT} onRunEnd={onRunEnd}>
+  const view = render(<AionChatProvider transport={source.transport} defaultAgent={AGENT} onRunEnd={onRunEnd}>
     <Chat />
   </AionChatProvider>);
   let sending: Promise<void>;
   act(() => { sending = chat.actions.send({ parts: [{ type: "text", text: "Hello" }] }); });
   await waitFor(() => expect(source.ready()).toBe(true));
   return {
-    ...source, onRunEnd,
+    ...source, onRunEnd, unmount: view.unmount,
     chat: () => chat,
     done: () => sending,
     async deliver(result: Record<string, unknown>) {
@@ -162,6 +167,7 @@ describe.each<Binding>(["HTTP+JSON", "JSONRPC", "GraphQL"])("%s response complet
     await source.deliver(FINAL_TASK);
     expect(await screen.findByText(ANSWER)).toBeTruthy();
     expect(screen.queryByText(DRAFT)).toBeNull();
+    expect(screen.queryByText(MESSAGE_FALLBACK)).toBeNull();
     expect(source.chat().meta.isRunning).toBe(true);
     await source.finish();
     expect(source.chat().state.conversation.activeRun?.status).toBe("completed");
@@ -255,4 +261,96 @@ it("retains the final welcome snapshot after a terminal task status", async () =
   expect(exhausted).toBe(true);
   expect(getChatText(state.artifacts["task:aion:assistant-answer"]!.parts)).toBe(ANSWER);
   expect(state.activeRun?.status).toBe("completed");
+});
+
+
+it.each([false, true])("preserves separate output through snapshots and restoration (linked status=%s)", async (linkedStatus) => {
+  const source = await client("HTTP+JSON");
+  const progress = {
+    kind: "message", messageId: "progress", role: "agent", ...TASK, taskId: TASK.id,
+    parts: [{ kind: "text", text: "Checking the records." }],
+  };
+  const event = {
+    ...progress, messageId: "internal-event",
+    parts: [{ kind: "text", text: "Separate event output." }],
+    metadata: { "aion:messageType": "event", secret: "must-not-persist" },
+  };
+  await source.deliver({
+    ...status("working"), final: false,
+    status: { state: "working", message: progress },
+  });
+  const final = {
+    ...FINAL_TASK, history: [progress, event, ...FINAL_TASK.history],
+    artifacts: FINAL_TASK.artifacts.map((artifact) => ({
+      ...artifact,
+      metadata: linkedStatus && artifact.artifactId === "aion:assistant-answer"
+        ? { "aion:sourceMessageId": progress.messageId } : undefined,
+    })),
+  };
+  await source.deliver(final);
+  await source.deliver(final);
+  await source.finish();
+  const verify = () => {
+    expect(screen.queryAllByText("Checking the records.")).toHaveLength(linkedStatus ? 0 : 1);
+    expect(screen.getAllByText("Separate event output.")).toHaveLength(1);
+    expect(screen.getAllByText(ANSWER)).toHaveLength(1);
+    expect(screen.queryByText(MESSAGE_FALLBACK)).toBeNull();
+    expect(screen.queryByText(DRAFT)).toBeNull();
+  };
+  verify();
+  const snapshot = createAionConversationSnapshot(source.chat().state.conversation);
+  const serialized = JSON.stringify(snapshot);
+  expect(serialized).not.toContain("must-not-persist");
+  const restored = parseAionConversationSnapshot(JSON.parse(serialized));
+  expect(restored).not.toBeNull();
+  source.unmount();
+  render(<AionChatProvider transport={source.transport} conversation={restored!.conversation}>
+    <AionChatView />
+  </AionChatProvider>);
+  verify();
+});
+
+it.each(["input-required", "auth-required", "failed", "canceled", "rejected"])(
+  "keeps the %s status message separate from Assistant Answer", async (state) => {
+    const source = await client("GraphQL");
+    const prompt = {
+      kind: "message", messageId: "status-message", role: "agent", taskId: TASK.id,
+      contextId: TASK.contextId, parts: [{ kind: "text", text: "Separate status prompt." }],
+    };
+    await source.deliver({
+      ...FINAL_TASK, status: { state, message: prompt },
+      history: [...FINAL_TASK.history, prompt],
+    });
+    await source.finish();
+    expect(screen.getAllByText("Separate status prompt.")).toHaveLength(1);
+    expect(screen.getAllByText(ANSWER)).toHaveLength(1);
+    expect(screen.queryByText(MESSAGE_FALLBACK)).toBeNull();
+  },
+);
+
+it("keeps Assistant Answer authoritative through append, empty append, reset, and repeated snapshots", async () => {
+  const source = await client("HTTP+JSON");
+  await source.deliver(delta(DRAFT));
+  await source.deliver({ ...FINAL_TASK.history[0] });
+  const answer = (text: string, append: boolean) => ({
+    kind: "artifact-update", taskId: TASK.id, contextId: TASK.contextId, append,
+    lastChunk: false,
+    artifact: { artifactId: "aion:assistant-answer", parts: [{ kind: "text", text }] },
+  });
+  await source.deliver(answer("Canonical", false));
+  await source.deliver(answer(" answer", true));
+  await source.deliver(answer("", true));
+  expect(screen.getByRole("log").textContent).toContain("Canonical answer");
+  expect(screen.getByRole("log").textContent).not.toContain(MESSAGE_FALLBACK);
+  await source.deliver(answer("Replacement", false));
+  expect(screen.getByRole("log").textContent).toContain("Replacement");
+  expect(screen.getByRole("log").textContent).not.toContain("Canonical answer");
+  const empty = { ...FINAL_TASK, artifacts: [{ artifactId: "aion:assistant-answer", parts: [] }] };
+  await source.deliver(empty);
+  await source.deliver(empty);
+  await source.finish();
+  const text = screen.getByRole("log").textContent;
+  for (const excluded of ["Replacement", "Canonical answer", MESSAGE_FALLBACK, DRAFT]) {
+    expect(text).not.toContain(excluded);
+  }
 });

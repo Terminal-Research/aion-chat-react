@@ -11,13 +11,14 @@ import { WELCOME_MESSAGE_EXTENSION_URI } from "./welcome";
 afterEach(cleanup);
 
 it.each([
-  { restoreArtifacts: false, artifactId: "aion:stream-delta" },
-  { restoreArtifacts: true, artifactId: "aion:stream-delta" },
-  { restoreArtifacts: false, artifactId: "aion:assistant-answer" },
-  { restoreArtifacts: true, artifactId: "aion:assistant-answer" },
+  { restoreArtifacts: false, artifactId: "aion:stream-delta", sourceLinked: true },
+  { restoreArtifacts: true, artifactId: "aion:stream-delta", sourceLinked: true },
+  { restoreArtifacts: false, artifactId: "aion:assistant-answer", sourceLinked: true },
+  { restoreArtifacts: true, artifactId: "aion:assistant-answer", sourceLinked: true },
+  { restoreArtifacts: true, artifactId: "aion:assistant-answer", sourceLinked: false },
 ])(
-  "shows one welcome and retains ordered replies after reopening ($artifactId, artifacts=$restoreArtifacts)",
-  async ({ restoreArtifacts, artifactId }) => {
+  "shows one welcome and retains ordered replies after reopening ($artifactId, artifacts=$restoreArtifacts, source=$sourceLinked)",
+  async ({ restoreArtifacts, artifactId, sourceLinked }) => {
   const agent = { id: "agent", title: "Welcome agent", availability: "available" as const };
   const now = () => "2026-09-29T13:00:00Z";
   let nextId = 0;
@@ -44,7 +45,7 @@ it.each([
       };
       const artifact = {
         artifactId, taskId, parts: message.parts,
-        metadata: { "aion:sourceMessageId": message.messageId },
+        metadata: sourceLinked ? { "aion:sourceMessageId": message.messageId } : undefined,
       };
       history.push(request, message);
       artifacts.unshift(artifact);

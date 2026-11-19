@@ -351,9 +351,20 @@ export function reduceChatConversation(
 
     case "task.received": {
       const status = turnStatusForTask(event.task.status.state);
-      const taskMessages = event.task.status.message
-        ? [...event.task.history, event.task.status.message]
-        : event.task.history;
+      const previousMessages = new Map(next.messages.map((message) => [message.id, message]));
+      const statusMessage = event.task.status.message;
+      const taskMessages = event.task.history.map((message) => {
+        const statusOnly = message.statusOnly || previousMessages.get(message.id)?.statusOnly ||
+          (event.task.status.state !== "completed" && message.id === statusMessage?.id);
+        return statusOnly ? { ...message, statusOnly: true } : message;
+      });
+      if (statusMessage && !taskMessages.some((message) => message.id === statusMessage.id)) {
+        taskMessages.push({
+          ...statusMessage,
+          statusOnly: statusMessage.statusOnly || previousMessages.get(statusMessage.id)?.statusOnly ||
+            event.task.status.state !== "completed",
+        });
+      }
       const transcript = appendTranscriptItem(
         appendMessageItems(next.transcript, taskMessages),
         { type: "task", id: event.task.id },
@@ -421,7 +432,10 @@ export function reduceChatConversation(
         contextId: event.contextId || next.contextId,
         tasks: { ...next.tasks, [event.taskId]: task },
         messages: event.message
-          ? upsertById(next.messages, event.message)
+          ? upsertById(next.messages, {
+              ...event.message,
+              statusOnly: event.message.statusOnly || event.state !== "completed",
+            })
           : next.messages,
         transcript,
         turns: updateTurn(next.turns, event.turnId, (turn) => {

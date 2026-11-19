@@ -120,13 +120,16 @@ type AssistantResponse = {
   stream?: ArtifactEntry;
   answer?: ArtifactEntry;
   message?: MessageEntry;
+  fallbacks?: MessageEntry[];
 };
 
 /**
  * Keeps one response bubble from streaming through completion. A final answer
- * artifact supplies its content and replaces only its explicitly linked source
- * message. Older streams fall back to the completed text message for their task.
- * Keep the first transcript position and stream key; retain unrelated output.
+ * artifact supplies all content, even when empty, and replaces the task's
+ * ordinary message fallbacks without requiring a source-message association.
+ * Status messages and other output remain separate. Without an answer artifact,
+ * older streams fall back to their completed text message. Keep the first
+ * response position and stream key.
  */
 function visibleTranscriptEntries(
   entries: readonly AionChatTranscriptEntry[],
@@ -152,7 +155,13 @@ function visibleTranscriptEntries(
       ? responsesByTask.get(JSON.stringify([contextId, taskId])) : undefined;
     if (!response) continue;
     if (response.answer) {
-      if (entry.message.id !== response.answer.artifact.metadata?.["aion:sourceMessageId"]) continue;
+      const messageType = entry.message.metadata?.["aion:messageType"];
+      const sourceId = response.answer.artifact.metadata?.["aion:sourceMessageId"];
+      if (entry.message.id !== sourceId && (entry.message.statusOnly ||
+          (messageType !== undefined && messageType !== "message"))) continue;
+      (response.fallbacks ??= []).push(entry);
+      // Provenance chooses message details, never whether the artifact wins.
+      if (response.message && response.message.message.id === sourceId) continue;
     } else if (entry.streaming ||
         entry.message.parts.some((part) => part.type !== "text") ||
         response.stream?.artifact.parts.some((part) => part.type !== "text")) continue;
@@ -161,7 +170,8 @@ function visibleTranscriptEntries(
 
   const responsesByEntry = new Map<string, AssistantResponse>();
   for (const response of responsesByTask.values()) {
-    for (const entry of [response.stream, response.answer, response.message]) {
+    const related = [response.stream, response.answer, response.message, ...(response.fallbacks ?? [])];
+    for (const entry of related) {
       if (entry) responsesByEntry.set(entryKey(entry), response);
     }
   }

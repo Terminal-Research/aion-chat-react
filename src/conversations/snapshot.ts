@@ -154,6 +154,7 @@ function safePart(part: ChatPart): ChatPart {
 }
 
 function safeMessage(message: ChatMessage): ChatMessage {
+  const messageType = message.metadata?.["aion:messageType"];
   return {
     id: message.id,
     role: message.role,
@@ -162,6 +163,8 @@ function safeMessage(message: ChatMessage): ChatMessage {
     contextId: message.contextId,
     taskId: message.taskId,
     createdAt: message.createdAt,
+    ...(message.statusOnly || (messageType !== undefined && messageType !== "message")
+      ? { statusOnly: true } : {}),
   };
 }
 
@@ -199,6 +202,7 @@ function safeTask(task: ChatTask): ChatTask {
 }
 
 function safeArtifact(artifact: ChatArtifact): ChatArtifact {
+  const sourceId = artifact.metadata?.["aion:sourceMessageId"];
   return {
     id: artifact.id,
     artifactId: artifact.artifactId,
@@ -208,6 +212,8 @@ function safeArtifact(artifact: ChatArtifact): ChatArtifact {
     description: artifact.description,
     parts: artifact.parts.map(safePart),
     lastChunk: artifact.lastChunk,
+    ...(typeof sourceId === "string" && sourceId.length > 0
+      ? { metadata: { "aion:sourceMessageId": sourceId } } : {}),
   };
 }
 
@@ -381,6 +387,7 @@ function validMessage(value: unknown): value is ChatMessage {
       (candidate.extensions === undefined || stringArray(candidate.extensions)) &&
       optionalString(candidate.contextId) &&
       optionalString(candidate.taskId) &&
+      (candidate.statusOnly === undefined || typeof candidate.statusOnly === "boolean") &&
       validTimestamp(candidate.createdAt),
   );
 }
