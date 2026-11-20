@@ -3,7 +3,7 @@ import type { Client } from "graphql-ws";
 import { observeGraphQLWebSocket } from "./websocket-observe";
 import { asApolloQueryClient, type ApolloAionQueryClient } from "./apollo-client";
 import {
-  AION_AGENT_CARD_QUERY_SOURCE, loadAgentCardCapabilities,
+  AION_AGENT_CARD_QUERY_SOURCE, loadAgentCardCapabilities, loadRouteStreaming,
   type AionAgentCardData, type AionAgentCardVariables,
 } from "./agent-card";
 import type { DocumentNode } from "graphql";
@@ -49,19 +49,35 @@ export function createApolloAionChatTransport(
   options: ApolloAionChatTransportOptions,
 ): AionChatTransport {
   const operation = options.operation ?? AION_CHAT_A2A_RPC_SUBSCRIPTION;
+  // Uncached on purpose: each caller reads the route card as it is now.
+  const resolveAgentCard = async (
+    target: AionChatGraphQLTarget,
+    signal: AbortSignal,
+  ) => {
+    const client = asApolloQueryClient({ query: options.client.query });
+    const result = await client.query<AionAgentCardData, AionAgentCardVariables>({
+      query: parse(AION_AGENT_CARD_QUERY_SOURCE), variables: { target },
+      fetchPolicy: "no-cache", errorPolicy: "all",
+      context: { fetchOptions: { signal } },
+    });
+    return {
+      data: result.data,
+      errors: result.errors?.map((error) => ({ ...error, message: error.message })),
+    };
+  };
   return createAionChatGraphQLTransport({
     async getAgentCapabilities(target, signal) {
-      const client = asApolloQueryClient({ query: options.client.query });
-      const result = await client.query<AionAgentCardData, AionAgentCardVariables>({
-        query: parse(AION_AGENT_CARD_QUERY_SOURCE), variables: { target },
-        fetchPolicy: "no-cache", errorPolicy: "all",
-        context: { fetchOptions: { signal } },
-      });
-      return loadAgentCardCapabilities({
-        data: result.data,
-        errors: result.errors?.map((error) => ({ ...error, message: error.message })),
-      }, signal, options.fetch);
+      return loadAgentCardCapabilities(
+        await resolveAgentCard(target, signal), signal, options.fetch,
+      );
     },
+    // Without query support there is no route discovery; sends keep the
+    // streaming-first path rather than failing a lookup on every send.
+    getRouteStreaming: typeof options.client.query === "function"
+      ? async (target, signal) => loadRouteStreaming(
+          await resolveAgentCard(target, signal), signal, options.fetch,
+        )
+      : undefined,
     async *observe(variables, signal, { retry }) {
       if (!retry) {
         const client = options.getWebSocketClient?.();
